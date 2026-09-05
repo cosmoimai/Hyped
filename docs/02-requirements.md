@@ -19,6 +19,10 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 | Room visibility | Private and not publicly discoverable |
 | Ways to join | HTTPS invite link or human-enterable room code |
 | Editing permissions | Creator and creator-selected co-hosts |
+| Room capacity | 25 people, including the creator |
+| Per-user limits | Create 10 active rooms; join 25 additional active rooms |
+| Event lifecycle | Celebrate at zero, archive, then delete after 24 hours |
+| Reminders | 24 hours before, 1 hour before, and at event time; configurable per member |
 | Primary business goal | Successful group adoption |
 | Link technology | iOS Universal Links and Android App Links; Firebase Dynamic Links will not be used |
 
@@ -43,7 +47,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 | Edit event details and theme | No | No | Yes | Yes |
 | Invite other people | No | Yes | Yes | Yes |
 | Promote or remove co-hosts | No | No | No | Yes |
-| Remove members | No | No | No | Yes |
+| Remove regular members | No | No | Yes | Yes |
 | Regenerate or disable invite access | No | No | No | Yes |
 | Delete room | No | No | No | Yes |
 
@@ -60,18 +64,22 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-AUTH-07:** Account deletion shall require re-authentication or an equivalent recent-authentication check before destructive processing begins.
 - **FR-AUTH-08:** If the same verified identity signs in again, the system shall restore access to rooms that remain associated with that identity.
 - **FR-AUTH-09:** Authentication failures, cancellation, loss of connectivity, and unavailable providers shall produce clear and recoverable error states.
+- **FR-AUTH-10:** The user profile shall use the provider display name and photo when available and an initials-based avatar when a photo is unavailable.
+- **FR-AUTH-11:** A user shall be able to edit their Hyped! display name and profile photo without changing the provider account.
 
 ### 4.2 Countdown room creation
 
 - **FR-ROOM-01:** An authenticated user shall be able to create a private countdown room.
 - **FR-ROOM-02:** Room creation shall require an event title, future event date, event time, and IANA time zone.
-- **FR-ROOM-03:** The creator may optionally add a short description and a supported theme.
+- **FR-ROOM-03:** The creator may optionally add a location, short description, and supported theme.
 - **FR-ROOM-04:** The system shall validate that the normalized event timestamp is in the future at the time of creation.
 - **FR-ROOM-05:** The application shall show the selected local date, local time, time zone, and calculated instant for confirmation before creation.
 - **FR-ROOM-06:** A successfully created room shall assign the creating user the creator role.
 - **FR-ROOM-07:** A room shall receive a non-guessable internal identifier and a separate human-enterable room code.
 - **FR-ROOM-08:** The newly created room shall not appear in public listings or searches.
 - **FR-ROOM-09:** If creation fails, the application shall not show a room as successfully created and shall allow the user to retry safely.
+- **FR-ROOM-10:** A user shall not own more than 10 active rooms; archived rooms shall not count toward this limit.
+- **FR-ROOM-11:** The MVP shall support one-time events only and shall not expose recurrence controls.
 
 ### 4.3 Room viewing and countdown calculation
 
@@ -82,19 +90,21 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-COUNT-05:** The calculation shall remain correct across device time zones and daylight-saving changes.
 - **FR-COUNT-06:** When the event instant is reached, the room shall enter the completed state and display a celebration or completed-event message rather than negative time.
 - **FR-COUNT-07:** The application shall identify unavailable, deleted, invalid, and access-denied rooms with distinct user-facing states.
+- **FR-COUNT-08:** Members shall see the event converted to their device time zone while retaining access to the configured event time and IANA time-zone identifier.
 
 ### 4.4 Editing and role management
 
-- **FR-EDIT-01:** The creator and co-hosts shall be able to edit the event title, description, future date, time, time zone, and supported theme.
+- **FR-EDIT-01:** The creator and co-hosts shall be able to edit the event title, location, description, future date, time, time zone, and supported theme.
 - **FR-EDIT-02:** Ordinary members shall not be able to edit the fields listed in FR-EDIT-01.
 - **FR-EDIT-03:** The system shall validate edits using the same timestamp and media rules used during room creation.
 - **FR-EDIT-04:** A successful edit shall update the room revision and synchronize the new values to all members.
 - **FR-EDIT-05:** Conflicting edits shall not silently overwrite a newer room revision. The later editor shall be prompted to reload or intentionally retry.
 - **FR-ROLE-01:** Only the creator shall be able to promote a member to co-host or demote a co-host to member.
-- **FR-ROLE-02:** Only the creator shall be able to remove another member from the room.
+- **FR-ROLE-02:** The creator and co-hosts shall be able to remove regular members. Only the creator shall be able to demote or remove a co-host.
 - **FR-ROLE-03:** Removing or demoting a user shall take effect on the server immediately and on connected clients without requiring a new login.
 - **FR-ROLE-04:** The creator shall not be removable by a co-host or member.
-- **FR-ROLE-05:** The creator shall be able to transfer ownership to an existing co-host after explicit confirmation.
+- **FR-ROLE-05:** The creator shall be able to transfer ownership to an existing member or co-host after explicit confirmation.
+- **FR-ROLE-06:** A removed user may rejoin with a currently valid invite link or room code.
 
 ### 4.5 Invitations and joining
 
@@ -102,13 +112,14 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-INV-02:** A room member shall be able to view and share the room code.
 - **FR-INV-03:** When the application is installed, a valid supported invite link shall open the intended room join screen through an iOS Universal Link or Android App Link.
 - **FR-INV-04:** An unauthenticated invite recipient shall be asked to sign in and shall then be returned to the intended room join flow.
-- **FR-INV-05:** Before joining, the recipient shall see a safe preview containing the event title, event date, creator display name, and current member count. Private member details and editable controls shall not be exposed.
-- **FR-INV-06:** Joining shall require an explicit confirmation action and shall be idempotent.
-- **FR-INV-07:** A valid room code shall lead to the same preview and confirmation flow as a valid invite link.
+- **FR-INV-05:** Before authentication or joining, the recipient shall see a safe preview containing the event title, cover image or theme, current countdown, and inviter identity. The full member list and private controls shall not be exposed.
+- **FR-INV-06:** A valid invite shall join an authenticated recipient immediately without creator approval. Joining shall be idempotent.
+- **FR-INV-07:** Submitting a valid room code shall show the same safe preview and join the authenticated user immediately.
 - **FR-INV-08:** Invalid, disabled, expired, or deleted-room invitations shall not grant room membership and shall show an appropriate explanation.
-- **FR-INV-09:** The creator shall be able to rotate the room code and disable the current invite link. Previously issued values shall stop granting new access.
-- **FR-INV-10:** When the app is not installed, the invite URL shall open a mobile web landing page with platform-appropriate store links and a visible room code fallback.
+- **FR-INV-09:** The creator shall be able to regenerate the invite link and room code together. Both previously issued values shall stop granting new access immediately.
+- **FR-INV-10:** When the app is not installed, the invite URL shall redirect directly to the platform-appropriate app-store listing. Automatic invite restoration after installation is not required for the MVP.
 - **FR-INV-11:** The system shall preserve the invite intent through sign-in during the same installed-app session.
+- **FR-INV-12:** Invite links and room codes shall remain valid until the creator regenerates them or the room ends.
 
 ### 4.6 Room list and membership
 
@@ -118,6 +129,8 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-MEM-04:** Leaving a room shall remove its private data and widget eligibility from that user's devices.
 - **FR-MEM-05:** A creator shall not be able to leave without first transferring ownership or deleting the room.
 - **FR-MEM-06:** A room member shall be able to report a room or theme for review.
+- **FR-MEM-07:** A room shall allow no more than 25 active memberships, including the creator.
+- **FR-MEM-08:** A user shall not join more than 25 active rooms in addition to rooms they created; archived rooms shall not count toward this limit.
 
 ### 4.7 Synchronization and offline behavior
 
@@ -125,13 +138,13 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-SYNC-02:** After reconnecting, a client shall fetch and apply the newest authorized room revision.
 - **FR-SYNC-03:** Previously loaded room details may be displayed while offline with a clear offline or last-updated indicator.
 - **FR-SYNC-04:** Offline countdown calculations shall continue from the last trusted event instant using the device clock.
-- **FR-SYNC-05:** Room creation, joining, role changes, invitation rotation, and deletion shall require connectivity.
+- **FR-SYNC-05:** Room creation, joining, editing, leaving, role changes, invitation rotation, room deletion, and account deletion shall require connectivity.
 - **FR-SYNC-06:** The client shall not reveal cached room data after the user has signed out, left the room, been removed, or lost authorization once that state is known locally.
 
 ### 4.8 Themes and media
 
-- **FR-THEME-01:** A creator or co-host shall be able to select a supported background color and text style.
-- **FR-THEME-02:** A creator or co-host may upload a supported static image or GIF when media themes are enabled for the MVP build.
+- **FR-THEME-01:** A creator or co-host shall be able to select a supported preset colour or gradient.
+- **FR-THEME-02:** A creator or co-host shall be able to search for a GIF through an approved provider or upload a supported static cover image. User-uploaded GIF files are not supported in the MVP.
 - **FR-THEME-03:** The application shall validate media type, dimensions, and file size before upload.
 - **FR-THEME-04:** Countdown text shall remain readable over every supported theme through contrast controls, overlays, or validated combinations.
 - **FR-THEME-05:** If animated media cannot run on a home-screen widget, the widget shall use a safe static preview frame or theme color without changing the room's in-app theme.
@@ -139,7 +152,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 
 ### 4.9 Home-screen widgets
 
-- **FR-WIDGET-01:** A signed-in member shall be able to select one joined room for a Hyped! home-screen widget.
+- **FR-WIDGET-01:** A signed-in member shall be able to add a Hyped! widget manually through the operating-system widget flow and select one joined room for that widget.
 - **FR-WIDGET-02:** The widget shall show at least the event title and a countdown value appropriate to the remaining duration.
 - **FR-WIDGET-03:** Tapping the widget shall open the associated room in the application.
 - **FR-WIDGET-04:** The widget shall refresh within the limits and scheduling behavior allowed by the operating system.
@@ -149,13 +162,22 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 
 ### 4.10 Room lifecycle
 
-- **FR-LIFE-01:** Completed rooms shall remain visible until a member leaves or the creator deletes the room.
+- **FR-LIFE-01:** At the event instant, the room shall show a celebration, enter the archived state, remain accessible for 24 hours, and then be permanently deleted with its associated room media, memberships, and invitations.
 - **FR-LIFE-02:** The creator shall be able to delete a room after explicit destructive-action confirmation.
 - **FR-LIFE-03:** Room deletion shall revoke member access, invalidate invitations, and move installed widgets to an unavailable state.
-- **FR-LIFE-04:** Account deletion shall either transfer or delete rooms owned by the user according to a confirmed choice presented before deletion.
+- **FR-LIFE-04:** Before account deletion, a user shall transfer ownership of every owned room and leave every joined room. The system shall prevent deletion until these conditions are met.
 - **FR-LIFE-05:** Destructive operations shall be idempotent and shall not produce partially visible room states.
+- **FR-LIFE-06:** Only the creator shall be able to delete an active room; deletion shall require confirmation and notify all current members.
 
-### 4.11 Analytics and growth measurement
+### 4.11 Notifications
+
+- **FR-NOTIFY-01:** When notification permission is available, each member shall receive default reminders 24 hours before, 1 hour before, and at the event instant.
+- **FR-NOTIFY-02:** Each member shall be able to enable, disable, or change reminders for themselves without affecting other members.
+- **FR-NOTIFY-03:** Members shall be notified when the event title, date, time, time zone, or location changes.
+- **FR-NOTIFY-04:** Description and theme changes shall synchronize without a mandatory member notification.
+- **FR-NOTIFY-05:** Denied operating-system notification permission shall not block room creation, joining, or viewing.
+
+### 4.12 Analytics and growth measurement
 
 - **FR-AN-01:** The product shall record privacy-safe events for room creation, invite sharing, invite opening, join preview, successful join, widget setup, room completion, room leaving, and later room creation by an invited member.
 - **FR-AN-02:** Analytics shall distinguish invite-link joins from room-code joins.
@@ -224,21 +246,17 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - External GIFs or arbitrary remote URLs shall not be embedded directly without validation and safety controls.
 - Payments, subscriptions, public discovery, chat, event booking, and complex planning features are outside the MVP.
 
-## 7. Provisional assumptions requiring review
+## 7. Remaining design inputs
 
-These defaults make the requirements testable enough to continue design work. They are not considered final until this document is approved.
+The product behaviour previously listed as provisional has now been confirmed and moved into the functional requirements. The following implementation inputs remain for HLD and deployment planning:
 
-| ID | Provisional assumption | Why it matters |
+| ID | Open input | Why it matters |
 |---|---|---|
-| A-01 | If the app is not installed, the invite opens a landing page with store links and a visible room code. Guaranteed automatic invite restoration after a fresh install is not required for MVP. | Determines whether a paid deferred-deep-link provider is needed. |
-| A-02 | A room supports up to 50 active members. | Affects storage, real-time fan-out, UI, and abuse limits. |
-| A-03 | A user may belong to up to 20 active rooms. | Prevents unbounded MVP usage and simplifies widget selection. |
-| A-04 | Invite links and room codes remain valid until the creator rotates them or deletes the room. | Defines access lifecycle and support behavior. |
-| A-05 | Only one creator exists at a time; ownership can be transferred to a co-host. | Prevents ambiguous ownership and deletion rights. |
-| A-06 | Event reminders and push notifications are not required for the first MVP release. | Keeps the MVP focused on sharing, sync, and widgets. |
-| A-07 | Completed rooms are retained until deletion or account-retention rules apply. | Affects storage cost and room-list design. |
-| A-08 | Static images are required; animated GIF upload may be feature-flagged if widget and storage constraints threaten the launch. | Protects delivery of the core countdown loop. |
-| A-09 | Launch load testing will cover at least 100 concurrently active users and 20 application API requests per second. | Provides an initial capacity baseline until real traffic exists. |
+| D-01 | Minimum supported Android API level and iOS version | Determines device coverage and available widget APIs. |
+| D-02 | GIF search provider and its content-safety configuration | Determines API terms, moderation, attribution, and cost. |
+| D-03 | Static image size, dimensions, formats, and retention limits | Determines upload UX, storage cost, and validation rules. |
+| D-04 | Notification delivery service and retry policy | Determines reliability and platform integration. |
+| D-05 | Initial load-test target beyond the known 25-person room limit | Provides a capacity baseline before real traffic is available. |
 
 ## 8. In-scope and out-of-scope summary
 
@@ -253,6 +271,7 @@ These defaults make the requirements testable enough to continue design work. Th
 - Android and iOS home-screen widgets
 - Offline viewing of previously loaded countdowns
 - Essential moderation entry points, analytics, and operational safeguards
+- Default and personal event reminders
 
 ### Out of scope
 
@@ -263,7 +282,8 @@ These defaults make the requirements testable enough to continue design work. Th
 - Full web participation or desktop applications
 - Multiple simultaneous room owners
 - Guaranteed second-by-second background widget updates
-- Push reminders unless A-06 is changed before approval
+- Recurring events
+- User-uploaded animated GIF files
 - AI-generated content and unrestricted third-party media embedding
 
 ## 9. MVP acceptance criteria
@@ -275,7 +295,7 @@ These defaults make the requirements testable enough to continue design work. Th
 | AC-03 | Reject invalid date | Given an event instant in the past, when creation or editing is submitted, then the request is rejected with a corrective message. |
 | AC-04 | Installed-app invitation | Given a valid invite link and the app installed, when the link is opened, then the app shows the intended room preview rather than its generic home screen. |
 | AC-05 | Sign-in handoff | Given a signed-out invite recipient, when they authenticate successfully, then they return to the same room join flow. |
-| AC-06 | Join once | Given a valid invitation, when a user confirms joining more than once because of a retry, then exactly one membership exists. |
+| AC-06 | Join once | Given a valid invitation and an authenticated user, when the preview resolves or the request is retried, then the user joins without approval and exactly one membership exists. |
 | AC-07 | Room code | Given a valid room code, when an authenticated user submits it, then they reach the matching room preview and can join. |
 | AC-08 | Invalid invitation | Given an invalidated invite link or room code, when it is used, then membership is not created and the user sees an invalid-invite state. |
 | AC-09 | Co-host edit | Given a member promoted to co-host, when they submit a valid event change, then all connected authorized clients receive the new room revision. |
@@ -284,33 +304,32 @@ These defaults make the requirements testable enough to continue design work. Th
 | AC-12 | Time-zone consistency | Given members in different device time zones, when they view the room, then all countdowns reach zero at the same instant. |
 | AC-13 | Offline countdown | Given a previously loaded room and no connectivity, when the app is opened, then the cached countdown continues with an offline indicator. |
 | AC-14 | Widget setup | Given a joined room, when a user configures the widget, then it displays that room and opens the correct room when tapped. |
-| AC-15 | Completed event | Given the event instant has passed, when the room or widget refreshes, then it shows a completed state and never displays negative time. |
-| AC-16 | Member removal | Given the creator removes a member, when authorization is next checked, then that user cannot retrieve room data and their widget moves to an unavailable state. |
+| AC-15 | Completed event | Given the event instant has passed, when the room or widget refreshes, then it shows a celebration or completed state, never displays negative time, archives the room, and deletes it after 24 hours. |
+| AC-16 | Member removal | Given the creator or co-host removes a regular member, when authorization is next checked, then that user cannot retrieve room data and their widget becomes unavailable; a valid invitation permits rejoining. |
 | AC-17 | Invite rotation | Given the creator rotates invitation access, when an old link or code is used, then it cannot create a new membership; the new values continue to work. |
 | AC-18 | Delete room | Given creator confirmation, when a room is deleted, then member access is revoked, invites become invalid, and clients show the deleted-room state. |
 | AC-19 | Sign out | Given a signed-in user, when they sign out, then private cached room content and credentials are removed from accessible app surfaces and widgets. |
 | AC-20 | Analytics safety | Given all MVP funnel events, when analytics payloads are inspected, then no authentication token or full invite secret is present. |
+| AC-21 | Room capacity | Given a room already has 25 people including its creator, when another user attempts to join, then no membership is created and the room-full state is shown. |
+| AC-22 | User limits | Given a user owns 10 active rooms or has joined 25 additional active rooms, when they attempt the corresponding excess action, then it is rejected without partial state. |
+| AC-23 | Reminders | Given notification permission and default settings, when the event approaches, then the member receives reminders at 24 hours, 1 hour, and event time. |
+| AC-24 | Important edit | Given a creator or co-host changes the title, date, time, time zone, or location, when the update succeeds, then current members are notified. |
+| AC-25 | Account deletion prerequisites | Given a user still owns or belongs to a room, when account deletion is requested, then deletion is blocked until ownership is transferred and joined rooms are left. |
 
 ## 10. Definition of MVP complete
 
 The MVP is ready for release consideration when:
 
 - All confirmed functional requirements are implemented or explicitly deferred through an approved change.
-- AC-01 through AC-20 pass on the supported Android and iOS test matrix.
+- AC-01 through AC-25 pass on the supported Android and iOS test matrix.
 - No open critical security, privacy, data-loss, or authorization defect remains.
 - Deep-link association files and production domains are verified on both platforms.
 - Widget behavior and limitations are documented and tested on supported OS versions.
 - Monitoring, rate limiting, account deletion, data retention, and support paths are operational.
 - Analytics can measure the group-adoption funnel without exposing sensitive values.
 
-## 11. Knowledge gaps for the next review
+## 11. Knowledge gaps for later design documents
 
-Before this document becomes **Approved**, confirm or change the provisional assumptions in Section 7, especially:
-
-1. Whether automatic invite restoration after a fresh app install is required.
-2. Whether 50 members and 20 active rooms are suitable initial limits.
-3. Whether push reminders belong in the MVP.
-4. Whether GIF upload is mandatory at launch or may be feature-flagged.
-5. Minimum supported Android and iOS versions.
+The remaining questions in Section 7 do not change the approved user journeys. They will be resolved while preparing the UI/UX design, HLD, security design, and deployment plan.
 
 Technology selections, data models, endpoint contracts, UI layouts, and test implementation details belong in the later HLD, database, API, UI/UX, LLD, and test-plan documents.
