@@ -113,8 +113,8 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-INV-03:** When the application is installed, a valid supported invite link shall open the intended room join screen through an iOS Universal Link or Android App Link.
 - **FR-INV-04:** An unauthenticated invite recipient shall be asked to sign in and shall then be returned to the intended room join flow.
 - **FR-INV-05:** Before authentication or joining, the recipient shall see a safe preview containing the event title, cover image or theme, current countdown, and inviter identity. The full member list and private controls shall not be exposed.
-- **FR-INV-06:** A valid invite shall join an authenticated recipient immediately without creator approval. Joining shall be idempotent.
-- **FR-INV-07:** Submitting a valid room code shall show the same safe preview and join the authenticated user immediately.
+- **FR-INV-06:** A valid invite shall show an authenticated recipient a **Join countdown** confirmation. After confirmation, the user shall join immediately without creator approval. Joining shall be idempotent.
+- **FR-INV-07:** Submitting a valid room code shall show the same safe preview and require the same **Join countdown** confirmation before immediate joining.
 - **FR-INV-08:** Invalid, disabled, expired, or deleted-room invitations shall not grant room membership and shall show an appropriate explanation.
 - **FR-INV-09:** The creator shall be able to regenerate the invite link and room code together. Both previously issued values shall stop granting new access immediately.
 - **FR-INV-10:** When the app is not installed, the invite URL shall redirect directly to the platform-appropriate app-store listing. Automatic invite restoration after installation is not required for the MVP.
@@ -295,7 +295,7 @@ The product behaviour previously listed as provisional has now been confirmed an
 | AC-03 | Reject invalid date | Given an event instant in the past, when creation or editing is submitted, then the request is rejected with a corrective message. |
 | AC-04 | Installed-app invitation | Given a valid invite link and the app installed, when the link is opened, then the app shows the intended room preview rather than its generic home screen. |
 | AC-05 | Sign-in handoff | Given a signed-out invite recipient, when they authenticate successfully, then they return to the same room join flow. |
-| AC-06 | Join once | Given a valid invitation and an authenticated user, when the preview resolves or the request is retried, then the user joins without approval and exactly one membership exists. |
+| AC-06 | Join once | Given a valid invitation and an authenticated user, when the user confirms **Join countdown** or the request is retried, then the user joins without creator approval and exactly one membership exists. |
 | AC-07 | Room code | Given a valid room code, when an authenticated user submits it, then they reach the matching room preview and can join. |
 | AC-08 | Invalid invitation | Given an invalidated invite link or room code, when it is used, then membership is not created and the user sees an invalid-invite state. |
 | AC-09 | Co-host edit | Given a member promoted to co-host, when they submit a valid event change, then all connected authorized clients receive the new room revision. |
