@@ -47,12 +47,14 @@ flowchart TD
 ### UF-AUTH-01: First launch without an invite
 
 1. User opens Hyped!.
-2. App shows a short value proposition and Google/Apple sign-in choices.
-3. User chooses a provider and completes authentication.
-4. App creates or restores the internal account.
-5. App imports the available display name and profile photo.
-6. If no photo is available, the app creates an initials-based avatar.
-7. User reaches the room-list empty state with actions to create or join a countdown.
+2. App shows an interactive sample countdown.
+3. User changes the sample event theme and sees the countdown react with subtle motion.
+4. User continues to the Google/Apple sign-in choices.
+5. User chooses a provider and completes authentication.
+6. App creates or restores the internal account.
+7. App imports the available display name and profile photo.
+8. If no photo is available, the app creates an initials-based avatar.
+9. User reaches the room-list empty state with suggested event templates and a Join action.
 
 **Alternative states**
 
@@ -123,6 +125,7 @@ sequenceDiagram
     App->>API: Validate token
     API-->>App: Safe room preview
     App-->>Recipient: Show preview
+    Recipient->>App: Tap Join countdown
     App->>API: Join immediately
     API-->>App: Membership and room
     App-->>Recipient: Open countdown
@@ -130,15 +133,16 @@ sequenceDiagram
 
 The preview contains the event title, cover image or theme, live countdown, and inviter identity. It does not expose the full member list or private controls.
 
-After a valid preview, a signed-in recipient joins immediately without creator approval. Retried requests must not create duplicate memberships.
+After a valid preview, a signed-in recipient taps **Join countdown** and joins immediately without creator approval. Retried requests must not create duplicate memberships.
 
 ### UF-JOIN-02: App installed but user signed out
 
-1. Invite opens the safe room preview.
-2. App asks the recipient to sign in with Google or Apple.
-3. App retains the invite intent during the sign-in session.
-4. After successful sign-in, the server revalidates the invitation and capacity.
-5. User joins immediately and the room opens.
+1. On the user's first app launch, the interactive sample countdown appears with a clear **Skip to invite** action.
+2. After completing or skipping the demo, the invite opens the safe room preview.
+3. App asks the recipient to sign in with Google or Apple.
+4. App retains the invite intent during the sign-in session.
+5. After successful sign-in, the server revalidates the invitation and capacity.
+6. User confirms **Join countdown**, joins immediately, and the room opens.
 
 If sign-in is cancelled or fails, the preview remains available and no membership is created.
 
@@ -155,7 +159,8 @@ If sign-in is cancelled or fails, the preview remains available and no membershi
 2. User enters the room code and submits it.
 3. Server validates the code.
 4. App shows the safe preview.
-5. The submitted code acts as joining intent, so the user joins immediately and the room opens.
+5. User taps **Join countdown**.
+6. The user joins immediately without creator approval and the room opens.
 
 ### Join edge cases
 
@@ -357,7 +362,7 @@ Every relevant screen must define these states:
 
 - [ ] New user can authenticate and reach a useful empty state.
 - [ ] Creator can create and share a valid future countdown.
-- [ ] Installed-app invite opens the intended preview, survives sign-in, and joins immediately.
+- [ ] Installed-app invite opens the intended preview, survives sign-in, and joins immediately after the user's confirmation.
 - [ ] Not-installed invite routes to the correct app store.
 - [ ] Room-code entry reaches the same room safely.
 - [ ] Capacity and personal room limits prevent excess membership without partial state.
@@ -384,4 +389,3 @@ The following flows are outside the MVP and will be designed later:
 - Payments, premium themes, calendar integrations, and ticketing
 - User-uploaded animated GIF files
 - Guaranteed invite restoration after a fresh installation
-
