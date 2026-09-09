@@ -399,7 +399,7 @@ Hiding controls in Flutter is a usability measure, not authorization.
 ### 15.2 Service credentials and secrets
 
 - Secrets are stored in Google Secret Manager or the equivalent managed secret facility and injected into Cloud Run at runtime.
-- Firebase service credentials, token signing material, database credentials, R2 credentials, and GIF-provider credentials are never committed to Git.
+- Firebase service credentials, token signing material, database credentials, and R2 credentials are never committed to Git. Separate GIPHY Android/iOS keys are supplied through controlled mobile build configuration rather than source files.
 - Separate credentials and resources are used for development, staging, and production.
 - Database access uses TLS and a least-privileged application role.
 - R2 presigned operations are short lived and constrained to the intended object.
@@ -540,7 +540,7 @@ The detailed pipeline, migration execution, rollback, and release process will b
 | Decision | Target document |
 |---|---|
 | Exact tables, indexes, invitation hashing, analytics retention, and deletion constraints | `06-database-design.md` |
-| GIF provider selection and API terms | `07-api-spec.md` or an ADR |
+| GIPHY production-key approval, pricing, and final terms | `07-api-spec.md` or an ADR |
 | Complete endpoint schemas, pagination cursors, and error codes | `07-api-spec.md` |
 | Spring packages, classes, validation, transactions, and worker locking | `08-lld.md` |
 | Token lifetime, signing algorithm, key rotation, account linking, and detailed threat model | `09-security-design.md` |
