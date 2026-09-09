@@ -608,7 +608,7 @@ The following operations are atomic database transactions:
 - Archive room and create event-time work.
 - Begin deletion and durably enqueue external cleanup.
 
-External calls to FCM, R2, Firebase, or a GIF provider do not occur inside a database transaction. The transaction commits durable intent, and a worker performs the external call afterward.
+External calls to FCM, R2, or Firebase do not occur inside a database transaction. The transaction commits durable intent, and a worker performs the external call afterward. GIPHY calls are made directly by Flutter and do not participate in backend transactions.
 
 ## 17. Query and index strategy
 
@@ -761,7 +761,7 @@ No partitioning is required initially. Partitioning for analytics or outbox tabl
 - [ ] Exactly one creator membership matches each room owner.
 - [ ] Join and invitation rotation are idempotent.
 - [ ] Old invite tokens and codes become invalid atomically.
-- [ ] Raw credentials, identity tokens, refresh tokens, and invite secrets are never stored.
+- [ ] Raw provider credentials, identity tokens, refresh tokens, and plaintext invitation secrets are never stored.
 - [ ] Room edits use a monotonic revision and optimistic concurrency.
 - [ ] External calls never occur inside domain transactions.
 - [ ] Notification/lifecycle work is committed through a durable outbox.
