@@ -309,6 +309,8 @@ The MVP maintains one current invitation generation per room.
 | `generation` | `integer` | No | Starts at 1 and increments on rotation |
 | `link_token_hash` | `bytea` | No | Hash of high-entropy opaque URL token |
 | `room_code_hmac` | `bytea` | No | Keyed lookup for eight-character code |
+| `link_token_ciphertext` | `bytea` | No | Reversible protected value for authorized sharing |
+| `room_code_ciphertext` | `bytea` | No | Reversible protected value for authorized sharing |
 | `created_by_user_id` | `uuid` | No | Creator who created/rotated credentials |
 | `created_at` | `timestamptz` | No | Current generation time |
 | `updated_at` | `timestamptz` | No | Rotation time |
@@ -318,7 +320,8 @@ Constraints and indexes:
 - Unique on `link_token_hash`.
 - Unique on `room_code_hmac`.
 - `generation >= 1`.
-- Raw invite link tokens and room codes are returned once and never persisted.
+- Plaintext invite link tokens and room codes are never stored. Protected ciphertext is retained because current members must be able to view and share the active credentials.
+- Invitation ciphertext uses authenticated encryption and application key material held outside PostgreSQL backups.
 - The displayed hyphen is formatting and is removed before canonicalization.
 - Code alphabet excludes `0`, `O`, `1`, and `I`.
 - A keyed HMAC, rather than a fast unkeyed hash, prevents an offline table scan across the small room-code space.
@@ -334,13 +337,12 @@ Rotation updates both stored credential values and increments `generation` in on
 | `id` | `uuid` | No | Primary key |
 | `owner_user_id` | `uuid` | No | User who initiated upload/selection |
 | `scope` | `varchar(16)` | No | `room_cover` or `profile_photo` |
-| `source` | `varchar(16)` | No | `r2_upload` or `gif_provider` |
+| `source` | `varchar(16)` | No | `r2_upload` or `giphy` |
 | `status` | `varchar(16)` | No | `pending`, `validating`, `ready`, `rejected`, `deleting` |
 | `object_key` | `varchar(512)` | Yes | Opaque R2 key for uploaded image |
 | `preview_object_key` | `varchar(512)` | Yes | Safe static preview where required |
-| `provider` | `varchar(32)` | Yes | GIF provider identifier |
-| `provider_asset_id` | `varchar(255)` | Yes | Provider's stable asset ID |
-| `provider_url` | `varchar(2048)` | Yes | Approved delivery URL |
+| `provider` | `varchar(32)` | Yes | `giphy` for provider media |
+| `provider_asset_id` | `varchar(255)` | Yes | GIPHY's stable asset ID |
 | `mime_type` | `varchar(64)` | Yes | Verified type, not client claim |
 | `size_bytes` | `bigint` | Yes | Verified final object size |
 | `width_px` | `integer` | Yes | Verified decoded width |
@@ -350,7 +352,7 @@ Rotation updates both stored credential values and increments `generation` in on
 | `created_at` | `timestamptz` | No | Audit field |
 | `updated_at` | `timestamptz` | No | Audit field |
 
-Source-specific checks ensure that R2 assets have object metadata and GIF assets have provider metadata. The server-side final upload limit will be lower than or equal to the compressed-output limit set in the API specification.
+Source-specific checks ensure that R2 assets have object metadata and GIPHY assets have only provider identity metadata. GIPHY media URLs are not stored, cached, proxied, or rewritten. Uploaded images are JPEG, PNG, or WebP, no larger than 1.5 MB or 2048 pixels on either side after client processing; the server validates both limits.
 
 Indexes:
 
@@ -606,7 +608,7 @@ The following operations are atomic database transactions:
 - Archive room and create event-time work.
 - Begin deletion and durably enqueue external cleanup.
 
-External calls to FCM, R2, Firebase, or a GIF provider do not occur inside a database transaction. The transaction commits durable intent, and a worker performs the external call afterward.
+External calls to FCM, R2, or Firebase do not occur inside a database transaction. The transaction commits durable intent, and a worker performs the external call afterward. GIPHY calls are made directly by Flutter and do not participate in backend transactions.
 
 ## 17. Query and index strategy
 
@@ -759,7 +761,7 @@ No partitioning is required initially. Partitioning for analytics or outbox tabl
 - [ ] Exactly one creator membership matches each room owner.
 - [ ] Join and invitation rotation are idempotent.
 - [ ] Old invite tokens and codes become invalid atomically.
-- [ ] Raw credentials, identity tokens, refresh tokens, and invite secrets are never stored.
+- [ ] Raw provider credentials, identity tokens, refresh tokens, and plaintext invitation secrets are never stored.
 - [ ] Room edits use a monotonic revision and optimistic concurrency.
 - [ ] External calls never occur inside domain transactions.
 - [ ] Notification/lifecycle work is committed through a durable outbox.
@@ -779,10 +781,6 @@ The following decisions require later security, API, or implementation work but 
 
 - External per-user key technology and verifiable destruction procedure
 - Deletion-journal storage and encryption mechanism
-- Hyped! access and refresh token lifetimes
-- Final compressed-upload byte, pixel, and dimension limits
-- Approved static image MIME types
-- GIF provider and required attribution fields
 - Exact provider-profile-photo copying policy
 - Anonymous analytics HMAC rotation schedule
 - Operational audit-log location and retention

@@ -36,7 +36,7 @@ The MVP architecture shall:
 | Application sessions | Hyped!-issued short-lived access token and rotating refresh session after Firebase identity verification |
 | Push delivery | Firebase Cloud Messaging (FCM) |
 | Uploaded media | Cloudflare R2 object storage |
-| GIF discovery | Approved third-party GIF search provider; provider selected before implementation |
+| GIF discovery | Direct Flutter integration with GIPHY using separate Android and iOS keys |
 | API style | Versioned HTTPS REST APIs using JSON |
 | Change synchronization | FCM invalidation message followed by an authorized REST refresh |
 | Countdown ticks | Calculated locally from the stored event instant |
@@ -55,6 +55,7 @@ flowchart TD
     API --> Media["Cloudflare R2"]
     API --> Auth["Firebase Authentication"]
     API --> Push["Firebase Cloud Messaging"]
+    Mobile -->|Direct search and media delivery| Giphy["GIPHY API/CDN"]
     Scheduler["Cloud Scheduler"] -->|Authenticated worker call| API
     Links["Invite link domain"] --> Mobile
 ```
@@ -326,10 +327,12 @@ sequenceDiagram
 
 ### 12.3 GIF search
 
-- Spring Boot proxies searches to the approved GIF provider so provider credentials are not embedded in the mobile app.
-- Hyped! stores the chosen provider asset identifier, delivery URL metadata, dimensions, and attribution requirements rather than copying the GIF into R2.
+- Flutter calls GIPHY directly using separate Android and iOS API keys, as required by GIPHY's integration rules.
+- The GIF search surface displays the required **Powered by GIPHY** attribution and requests PG-rated results.
+- Hyped! stores only the chosen GIPHY asset identifier and provider name. It does not proxy, cache, rewrite, or copy GIPHY media URLs or files.
+- Clients resolve the current rendition directly from GIPHY. Small renditions are used for search previews and an appropriate larger rendition is used after selection.
 - Provider failure does not block preset themes or user image uploads.
-- Tenor and GIPHY will be compared before the API specification is finalized.
+- Tenor is not an MVP option because it stopped accepting new API clients in January 2026.
 
 ## 13. Notifications and scheduled lifecycle work
 
@@ -396,7 +399,7 @@ Hiding controls in Flutter is a usability measure, not authorization.
 ### 15.2 Service credentials and secrets
 
 - Secrets are stored in Google Secret Manager or the equivalent managed secret facility and injected into Cloud Run at runtime.
-- Firebase service credentials, token signing material, database credentials, R2 credentials, and GIF-provider credentials are never committed to Git.
+- Firebase service credentials, token signing material, database credentials, and R2 credentials are never committed to Git. Separate GIPHY Android/iOS keys are supplied through controlled mobile build configuration rather than source files.
 - Separate credentials and resources are used for development, staging, and production.
 - Database access uses TLS and a least-privileged application role.
 - R2 presigned operations are short lived and constrained to the intended object.
@@ -514,7 +517,7 @@ Redis, Kafka, Kubernetes, service mesh, and microservices are not part of the MV
 | Firebase Cloud Messaging | Push and invalidation delivery | Push delayed or lost | Refresh on app open/resume; durable outbox retry |
 | Cloudflare R2 | Uploaded media | Media/upload unavailable | Theme fallback and retry |
 | Cloud Scheduler | Periodic worker trigger | Reminders/lifecycle delayed | Idempotent overdue processing on next run |
-| GIF provider | GIF discovery/delivery | GIF search or display degraded | Presets and uploads remain usable |
+| GIPHY | Direct GIF discovery/delivery | GIF search or display degraded | Presets and uploads remain usable |
 | Apple/Google link association | Installed-app routing | Link opens browser/store path | Room-code fallback |
 
 Each dependency's quotas, terms, region availability, pricing, and data handling must be checked again before production launch.
@@ -537,7 +540,7 @@ The detailed pipeline, migration execution, rollback, and release process will b
 | Decision | Target document |
 |---|---|
 | Exact tables, indexes, invitation hashing, analytics retention, and deletion constraints | `06-database-design.md` |
-| GIF provider selection and API terms | `07-api-spec.md` or an ADR |
+| GIPHY production-key approval, pricing, and final terms | `07-api-spec.md` or an ADR |
 | Complete endpoint schemas, pagination cursors, and error codes | `07-api-spec.md` |
 | Spring packages, classes, validation, transactions, and worker locking | `08-lld.md` |
 | Token lifetime, signing algorithm, key rotation, account linking, and detailed threat model | `09-security-design.md` |
@@ -574,4 +577,3 @@ The detailed pipeline, migration execution, rollback, and release process will b
 - [Firebase pricing](https://firebase.google.com/pricing)
 - [Cloudflare R2 pricing](https://developers.cloudflare.com/r2/pricing/)
 - [Flutter deep linking](https://docs.flutter.dev/ui/navigation/deep-linking)
-
