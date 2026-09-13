@@ -1,7 +1,7 @@
 # Hyped! MVP Requirements
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-05  
+**Last updated:** 2026-09-14  
 **Related document:** [`01-problem-statement.md`](./01-problem-statement.md)
 
 ## 1. Purpose
@@ -16,6 +16,8 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 |---|---|
 | Client platforms | Android and iOS |
 | Authentication | Google Sign-In and Sign in with Apple |
+| Launch eligibility | Adults only (18+) for the initial India launch |
+| Legal acceptance | Explicit versioned Terms/content-rules acceptance after sign-in and before creating or joining |
 | Room visibility | Private and not publicly discoverable |
 | Ways to join | HTTPS invite link or human-enterable room code |
 | Editing permissions | Creator and creator-selected co-hosts |
@@ -66,6 +68,9 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-AUTH-09:** Authentication failures, cancellation, loss of connectivity, and unavailable providers shall produce clear and recoverable error states.
 - **FR-AUTH-10:** The user profile shall use the provider display name and photo when available and an initials-based avatar when a photo is unavailable.
 - **FR-AUTH-11:** A user shall be able to edit their Hyped! display name and profile photo without changing the provider account.
+- **FR-AUTH-12:** After sign-in, a user shall explicitly accept the current Terms of Service and content rules before creating or joining a room. Acceptance shall not be preselected and shall record the accepted versions and time.
+- **FR-AUTH-13:** Initial registration shall require the user to affirm that they are at least 18 years old. The initial India release shall not target children or enrol in child-directed store programmes.
+- **FR-AUTH-14:** In addition to in-app deletion, a public Hyped! web page shall allow a user to request account deletion after Google or Apple identity verification.
 
 ### 4.2 Countdown room creation
 
@@ -112,7 +117,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-INV-02:** A room member shall be able to view and share the room code.
 - **FR-INV-03:** When the application is installed, a valid supported invite link shall open the intended room join screen through an iOS Universal Link or Android App Link.
 - **FR-INV-04:** An unauthenticated invite recipient shall be asked to sign in and shall then be returned to the intended room join flow.
-- **FR-INV-05:** Before authentication or joining, the recipient shall see a safe preview containing the event title, cover image or theme, current countdown, and inviter identity. The full member list and private controls shall not be exposed.
+- **FR-INV-05:** Before authentication or joining, the recipient shall see only the event title, safe cover image or theme, event date, creator display name, and total member count. The full member list, location, description, private identifiers, and controls shall not be exposed.
 - **FR-INV-06:** A valid invite shall show an authenticated recipient a **Join countdown** confirmation. After confirmation, the user shall join immediately without creator approval. Joining shall be idempotent.
 - **FR-INV-07:** Submitting a valid room code shall show the same safe preview and require the same **Join countdown** confirmation before immediate joining.
 - **FR-INV-08:** Invalid, disabled, expired, or deleted-room invitations shall not grant room membership and shall show an appropriate explanation.
@@ -131,6 +136,10 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-MEM-06:** A room member shall be able to report a room or theme for review.
 - **FR-MEM-07:** A room shall allow no more than 25 active memberships, including the creator.
 - **FR-MEM-08:** A user shall not join more than 25 active rooms in addition to rooms they created; archived rooms shall not count toward this limit.
+- **FR-MEM-09:** A user shall be able to report another account or objectionable room content from the relevant member or room surface.
+- **FR-MEM-10:** A user shall be able to block another account immediately without notifying that account or revealing who blocked them.
+- **FR-MEM-11:** Blocking shall remove the blocked account from blocker-owned rooms, make the blocker leave rooms owned by the blocked account with safe ownership handling, and prevent either account from later joining a room owned by the other.
+- **FR-MEM-12:** If both accounts remain in a room owned by a third party, each shall see a hidden-profile representation for the other and shall not be able to perform direct role actions against the other.
 
 ### 4.7 Synchronization and offline behavior
 
@@ -149,6 +158,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **FR-THEME-04:** Countdown text shall remain readable over every supported theme through contrast controls, overlays, or validated combinations.
 - **FR-THEME-05:** If animated media cannot run on a home-screen widget, the widget shall use a safe static preview frame or theme color without changing the room's in-app theme.
 - **FR-THEME-06:** A failed or rejected upload shall not replace the last valid theme.
+- **FR-THEME-07:** An uploaded image shall remain private and unpublished until validation, sanitization, and automated moderation approve it. Uncertain results shall remain hidden while awaiting manual review.
 
 ### 4.9 Home-screen widgets
 
@@ -212,6 +222,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **NFR-SEC-07:** Logs and analytics shall not contain authentication tokens, full invite secrets, or unnecessary personal data.
 - **NFR-SEC-08:** User data export and deletion behavior shall be documented before public release.
 - **NFR-SEC-09:** Abuse-sensitive actions, including repeated join attempts, invite creation, reports, and media uploads, shall be rate-limited.
+- **NFR-SEC-10:** The release manifest and entitlements shall use only the system photo picker and contextual notification permission. Camera, location, contacts, tracking, advertising ID, and broad photo/storage permissions are outside the MVP.
 
 ### 5.4 Accessibility and usability
 
@@ -226,7 +237,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 - **NFR-COMP-01:** The MVP shall support and test Android 9/API 28 and newer and iOS 15 and newer.
 - **NFR-COMP-02:** Core room and countdown behavior shall be equivalent across Android and iOS even when widget rendering differs because of platform capabilities.
 - **NFR-MAIN-01:** Environment-specific configuration and secrets shall not be hard-coded in the mobile application or committed to source control.
-- **NFR-MAIN-02:** Database changes shall use versioned migrations and support rollback or forward recovery.
+- **NFR-MAIN-02:** Database changes shall use forward-only, backward-compatible expand-and-contract migrations. Application rollback shall not depend on a production down migration.
 - **NFR-MAIN-03:** External identity, storage, analytics, and link-domain dependencies shall be documented in the HLD and deployment documents.
 
 ### 5.6 Observability
@@ -315,13 +326,18 @@ The product behaviour previously listed as provisional has now been confirmed an
 | AC-23 | Reminders | Given notification permission and default settings, when the event approaches, then the member receives reminders at 24 hours, 1 hour, and event time. |
 | AC-24 | Important edit | Given a creator or co-host changes the title, date, time, time zone, or location, when the update succeeds, then current members are notified. |
 | AC-25 | Account deletion prerequisites | Given a user still owns or belongs to a room, when account deletion is requested, then deletion is blocked until ownership is transferred and joined rooms are left. |
+| AC-26 | Legal acceptance | Given a newly authenticated adult user, when they have not accepted the current Terms/content rules, then create and join remain unavailable until an explicit checkbox acceptance is recorded. |
+| AC-27 | Account block | Given two accounts share rooms, when one blocks the other, then the approved safe-room changes commit idempotently, future cross-owner joins are denied, and neither account is told who blocked them. |
+| AC-28 | Media moderation | Given an uploaded image, when automated moderation is uncertain, then the image remains private and cannot become a profile or room cover until manual approval. |
+| AC-29 | Public deletion request | Given a user verifies their Google or Apple identity on the public deletion page, when deletion prerequisites pass, then the same irreversible deletion workflow used by the app begins. |
+| AC-30 | Minimal permissions | Given the release manifests and entitlements, when inspected, then they request no permission beyond contextual notifications and system-picker access required by the MVP. |
 
 ## 10. Definition of MVP complete
 
 The MVP is ready for release consideration when:
 
 - All confirmed functional requirements are implemented or explicitly deferred through an approved change.
-- AC-01 through AC-25 pass on the supported Android and iOS test matrix.
+- AC-01 through AC-30 pass on the supported Android and iOS test matrix, subject to the explicitly documented initial happy-path test scope.
 - No open critical security, privacy, data-loss, or authorization defect remains.
 - Deep-link association files and production domains are verified on both platforms.
 - Widget behavior and limitations are documented and tested on supported OS versions.
