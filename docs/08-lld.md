@@ -124,7 +124,8 @@ Each feature expands into the same four internal packages only when needed. Smal
 | Component | Responsibility |
 |---|---|
 | `RequestContextFilter` | Validate/generate request ID, platform, and app-version context |
-| `AccessTokenAuthenticationFilter` | Parse and verify Hyped! bearer access token |
+| `AccessTokenAuthenticationFilter` | Parse and verify RS256 JWT claims and trusted `kid` |
+| `AccountStateFilter` | Immediately deny suspended, compromised, deleting, or deleted accounts |
 | `CurrentActor` | Immutable authenticated user/session/installation context |
 | `GlobalProblemHandler` | Map known exceptions to `application/problem+json` |
 | `FieldErrorMapper` | Convert Jakarta Validation errors to stable field codes |
@@ -217,6 +218,8 @@ The Firebase call occurs before the database transaction. The verified identity 
 
 The raw new refresh token exists only in request-local memory and the TLS response.
 
+Consumed token digests remain in `refresh_token_record` until the family expiry/investigation boundary. Normal family revocation blocks refresh immediately but does not invalidate an already issued one-hour JWT. Emergency account state is checked independently on every authenticated request.
+
 ### 7.4 Five-device limit
 
 - `installationId` identifies an app installation, not physical hardware.
@@ -224,6 +227,8 @@ The raw new refresh token exists only in request-local memory and the TLS respon
 - Creation of a new installation locks the user row before counting active installations.
 - A sixth installation returns `DEVICE_LIMIT_REACHED` and safe active-session summaries.
 - Revoking a session also invalidates its push registration.
+- Safe summaries contain normalized device name, platform, created/last-active times, and current-device marker.
+- A new installation emits a safe security push to the user's other active devices.
 
 ## 8. Profile module
 
@@ -439,8 +444,13 @@ stateDiagram-v2
     [*] --> Pending
     Pending --> Validating: Complete requested
     Pending --> Deleting: Authorization expired
-    Validating --> Ready: Verified
+    Validating --> Moderating: File safe
     Validating --> Rejected: Invalid
+    Moderating --> Ready: Approved
+    Moderating --> ManualReview: Uncertain
+    Moderating --> Rejected: Disallowed
+    ManualReview --> Ready: Reviewer approves
+    ManualReview --> Rejected: Reviewer rejects
     Ready --> Deleting: Unused or owner/room deleted
     Rejected --> Deleting: Cleanup due
     Deleting --> [*]
@@ -462,9 +472,11 @@ Finalization is a small saga because R2 inspection is external:
 
 1. Transactionally move `PENDING` to `VALIDATING` if caller owns the asset.
 2. Outside transaction, read bounded metadata/content needed for verification.
-3. Verify actual MIME, bytes, dimensions, decodability, animation absence, and requested SHA-256.
-4. Conditionally move `VALIDATING` to `READY` or `REJECTED`.
-5. Queue object deletion when rejected.
+3. Verify actual MIME, bytes, dimensions, bounded decodability, animation absence, and requested SHA-256; re-encode and strip EXIF/XMP/IPTC metadata.
+4. Conditionally move `VALIDATING` to `MODERATING` or `REJECTED`.
+5. Submit the sanitized private object to Google Vision SafeSearch outside the transaction.
+6. Move to `READY`, `MANUAL_REVIEW`, or `REJECTED` using a conditional idempotent transition.
+7. Queue object deletion when rejected. Only `READY` media may replace a profile photo or room theme.
 
 Repeated completion returns the current terminal state. It cannot create two assets.
 
@@ -1018,16 +1030,16 @@ Never log raw request bodies for authentication, invitation, upload authorizatio
 
 These belong to later security, testing, or deployment work:
 
-- Exact access-token signing algorithm and key rotation
-- External per-user key provider and cryptographic deletion proof
+- Exact RS256 key-rotation automation
+- External per-user key-registry configuration and cryptographic deletion proof
 - Deletion journal storage and replay implementation
 - Exact outbox batch size, lease, retry count, and late-reminder tolerance
 - Cloud Run memory, concurrency, and maximum-instance values
 - Database connection timeout and statement timeout values
-- R2 image-inspection library and malware/content scanning depth
+- R2 image-inspection/re-encoding library, sandbox limits, and manual moderation console
 - Final Android/iOS minimum versions
 - GIPHY production approval and pricing
-- Operational audit-log retention
+- Operational audit-log sink; security/audit retention is 30 days
 
 ## 33. LLD acceptance checklist
 
