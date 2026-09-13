@@ -1,7 +1,7 @@
 # Hyped! MVP Test Plan
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-13  
+**Last updated:** 2026-09-14  
 **Related documents:** [`02-requirements.md`](./02-requirements.md), [`07-api-spec.md`](./07-api-spec.md), [`08-lld.md`](./08-lld.md), [`09-security-design.md`](./09-security-design.md)
 
 ## 1. Purpose
@@ -36,11 +36,13 @@ The initial suite shall give reasonable evidence that:
 - Flyway creates the expected PostgreSQL schema.
 - The selected Spring Data JPA and native SQL happy paths work against PostgreSQL, not H2.
 - A user can sign in through the local identity substitute and maintain one device session.
+- A newly signed-in adult can explicitly accept the current Terms/content rules before creating or joining.
 - A creator can create, view, edit, share, archive, and delete a countdown.
 - A second user can preview an invitation, explicitly join, view the room, and leave.
 - Creator/co-host/member successful actions work for their intended roles.
 - Membership, owned-room, joined-room, and active-device limits do not exceed defined values in successful boundary scenarios.
 - Uploaded-image happy paths reach approved/ready state through local storage and moderation substitutes.
+- Reporting and account-level blocking complete the defined safe-room transition.
 - Fixed reminder preferences and successful outbox delivery behave as designed.
 - Flutter renders the selected light/dark screens, counts down locally, caches authorized state, and updates small/medium widgets.
 - The supported Android and iOS baselines can install, launch, and complete the critical smoke journey.
@@ -58,6 +60,7 @@ The initial suite shall give reasonable evidence that:
 - Selected golden tests for core light/dark surfaces and widgets
 - Local end-to-end happy journeys using emulators/mocks
 - Manual real-device smoke tests before release
+- One pre-launch production backup/restore exercise under the controls in `11-deployment.md`
 - Local formatting, static analysis, dependency/secret scans, and build checks
 - Performance measurement without thresholds
 
@@ -65,7 +68,7 @@ The initial suite shall give reasonable evidence that:
 
 - Dependency outage, timeout, retry, malformed response, and partial-failure scenarios
 - Security-negative and adversarial tests beyond checks inherent in the implemented happy paths
-- Chaos, soak, stress, failover, restore, and disaster-recovery exercises
+- Chaos, soak, stress, automated failover, and recurring disaster-recovery automation beyond the explicitly required restore exercise
 - Automated tests against Firebase, FCM, R2, Google Vision, Secret Manager, KMS, Cloud Run, Neon, GIPHY, or app-attestation production services
 - Hosted staging and per-pull-request environments
 - Continuous integration
@@ -276,8 +279,10 @@ Golden tests cover a small stable set in light and dark mode. Cosmetic golden dr
 1. Launch a clean install.
 2. Complete or skip the interactive demo as allowed.
 3. Sign in through the successful local identity substitute.
-4. Confirm profile defaults and Home.
-5. Confirm the device appears in Active Devices.
+4. Select the unselected 18+ affirmation and Terms/content-rules checkbox.
+5. Continue only after both acceptances are recorded.
+6. Confirm profile defaults and Home.
+7. Confirm the device appears in Active Devices.
 
 ### J-02 Create and share a countdown
 
@@ -335,7 +340,18 @@ Golden tests cover a small stable set in light and dark mode. Cosmetic golden dr
 4. Complete local profile/media/session/device cleanup and key deletion.
 5. Confirm the deleted account cannot restore the prior local session.
 
-All eight journeys must pass on the applicable local platform matrix. J-01, J-02, J-03, J-05, J-07, and basic sign-out are the minimum real-device smoke subset.
+Repeat the request-entry portion through the local public-web deletion page using the identity-verification fake and confirm it reaches the same deletion workflow.
+
+### J-09 Report and block
+
+1. Create two local users that share rooms owned by each account and by a third user.
+2. Submit one report from the member surface and receive its created status.
+3. Block the reported account and confirm the operation completes idempotently.
+4. Confirm the blocked account is removed from blocker-owned rooms and the blocker leaves blocked-account-owned rooms using valid safe ownership data.
+5. Confirm the third-party-owned room uses the hidden-profile representation and exposes no direct role action between the pair.
+6. Confirm no block notification or blocker identity is emitted.
+
+All nine journeys must pass on the applicable local platform matrix. J-01, J-02, J-03, J-05, J-07, J-09, and basic sign-out are the minimum real-device smoke subset.
 
 ## 13. Manual exploratory data
 
@@ -400,7 +416,8 @@ The script does not download credentials, deploy infrastructure, call cloud APIs
 7. Record performance observations and compare with the prior release.
 8. Review deferred-test debt and confirm no change makes a deferred scenario newly critical.
 9. Build immutable release artifacts from the verified commit.
-10. Follow the production deployment and smoke/rollback process in `11-deployment.md`.
+10. Confirm the pre-launch or current quarterly backup/restore exercise required by `11-deployment.md` has passed.
+11. Follow the production deployment and smoke/rollback process in `11-deployment.md`.
 
 Because no staging environment exists, the deployment plan must use a low-exposure rollout, minimal production smoke data, observability, and a fast rollback path. Production customer data must never become general-purpose test data.
 
@@ -418,6 +435,8 @@ A release candidate may proceed only when:
 - [ ] Performance observations and tool/device versions are recorded.
 - [ ] Test evidence points to the exact release commit.
 - [ ] Accepted risks and deferred tests are reviewed and visible.
+- [ ] Terms/content-rule acceptance, account blocking, public deletion entry, moderation, and minimal-permission checks pass.
+- [ ] The required pre-launch restore exercise and current store-compliance checklist pass before public release.
 
 There is no coverage percentage gate, hosted-environment gate, provider-live integration gate, or numeric performance gate for the initial MVP.
 
@@ -484,4 +503,3 @@ Generated reports, test databases, object-store data, keys, screenshots with per
 - [ ] Critical/high defects block release.
 - [ ] Real Android and iPhone smoke tests are recorded.
 - [ ] Deferred failure/security/provider tests remain explicit in the debt register.
-
