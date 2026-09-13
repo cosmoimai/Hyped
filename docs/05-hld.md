@@ -148,7 +148,7 @@ The backend is one deployable Spring Boot application divided into internal modu
 | Room | Create, read, edit, archive, and delete countdown rooms |
 | Membership | Join, leave, remove, promote, demote, transfer ownership, and enforce limits |
 | Invitation | Create, resolve, rotate, validate, rate-limit, and revoke invite credentials |
-| Theme and Media | Validate theme selection, issue upload instructions, finalize media, and delete orphaned objects |
+| Theme and Media | Validate theme selection, quarantine/sanitize/moderate uploads, issue private delivery URLs, and delete orphaned objects |
 | Notification | Store preferences, create durable delivery work, and send FCM messages |
 | Device | Register and retire FCM device tokens |
 | Lifecycle | Detect completed events, archive rooms, and permanently delete expired archives |
@@ -209,9 +209,11 @@ sequenceDiagram
 
 ### 8.2 Session model
 
-- Hyped! access tokens are short lived.
+- Hyped! access tokens are one-hour RS256 JWTs with no personal or room data.
 - Refresh tokens are random, rotated after use, stored only in platform secure storage on the device, and stored as hashes on the server.
-- Server-side session records allow logout, device revocation, member removal, and account deletion to take effect without waiting for a long-lived identity token to expire.
+- Logout and device revocation disable refresh immediately; an already issued access JWT may remain valid until its one-hour expiry.
+- Suspended, compromised, deleting, and deleted accounts are denied immediately through an authoritative account-state check.
+- Server-side session records support per-device token families, refresh-reuse detection, five-device management, and security alerts.
 - The backend checks current room membership and role on every private-room operation.
 
 ## 9. Core data ownership
