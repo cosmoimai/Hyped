@@ -464,9 +464,9 @@ Account states include `ACTIVE`, `LOCKED`, `SUSPENDED`, `COMPROMISED`, `DELETION
 
 ## 21. Secure development and supply chain
 
-- Protect `main`; require reviewed pull requests and passing checks.
+- Protect `main`; require reviewed pull requests. Automated required checks are added when CI is introduced.
 - Pin Maven and Flutter dependency lock state; do not use unbounded dynamic versions.
-- Run unit/integration tests, secret scanning, dependency vulnerability scanning, static analysis, and container-image scanning in CI.
+- Initially run unit/integration tests, secret scanning, dependency vulnerability scanning, static analysis, and build/image checks through `scripts/verify-local.sh`; migrate the same checks to CI later.
 - Use Testcontainers PostgreSQL for authorization, lockout, token rotation, and concurrency behaviour.
 - Generate an SBOM for release artifacts and retain build provenance where the platform supports it.
 - Build the runtime image from a minimal maintained base, run as non-root, use a read-only filesystem where compatible, and omit build tools from the final image.
@@ -475,7 +475,7 @@ Account states include `ACTIVE`, `LOCKED`, `SUSPENDED`, `COMPROMISED`, `DELETION
 
 ## 22. Security testing
 
-Before production, tests shall cover:
+The complete security suite shall eventually cover the cases below. The initial solo-developer MVP release automates successful flows only; negative, adversarial, provider-failure, and recovery cases remain explicit P0/P1 debt in `10-test-plan.md`:
 
 - JWT algorithm confusion, invalid signature, wrong issuer/audience, expired/not-yet-valid tokens, unknown `kid`, and rotation overlap
 - Refresh concurrency, replay after rotation, family-only revocation, installation mismatch, and five-device races
@@ -556,8 +556,8 @@ The following remain outside the initial MVP unless risk or launch requirements 
 - [ ] Uncertain images remain hidden until manual review.
 - [ ] Play Integrity and App Attest rollout has observe, warn, and enforce stages.
 - [ ] Security logs, analytics, notifications, and errors contain no prohibited data.
-- [ ] CI scans secrets, dependencies, source, and container images.
-- [ ] Security tests and incident runbooks pass before production launch.
+- [ ] The local verification script scans secrets, dependencies, source, and build/container artifacts; CI later runs the same checks.
+- [ ] Initial successful security flows pass and deferred negative/recovery tests are visible in the test-debt register.
 
 ## 27. Remaining implementation ADRs
 
@@ -570,4 +570,3 @@ These do not change the approved product policy but require concrete selection b
 - Exact JWT rotation automation and emergency key-revocation procedure
 - App Attest/Play Integrity fallback rules for supported OS versions
 - Backup recovery-point and recovery-time objectives
-
