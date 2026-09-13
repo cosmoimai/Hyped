@@ -533,7 +533,7 @@ The project uses separate local, development, staging, and production configurat
 - Staging mirrors production integration boundaries with conservative quotas.
 - Production uses isolated Firebase configuration, Neon project or branch policy, R2 bucket, secrets, and Cloud Run service.
 - Flyway or Liquibase applies versioned PostgreSQL migrations during a controlled deployment step, not concurrently from every autoscaled application instance.
-- CI builds, tests, scans, and packages the Spring Boot container and Flutter applications.
+- Initially, the solo developer runs one local verification script to build, test, scan, and package the Spring Boot and Flutter applications; CI is deferred.
 
 The detailed pipeline, migration execution, rollback, and release process will be defined in `11-deployment.md`.
 
@@ -546,7 +546,7 @@ The detailed pipeline, migration execution, rollback, and release process will b
 | Complete endpoint schemas, pagination cursors, and error codes | `07-api-spec.md` |
 | Spring packages, classes, validation, transactions, and worker locking | `08-lld.md` |
 | Token lifetime, signing algorithm, key rotation, account linking, and detailed threat model | `09-security-design.md` |
-| Load-test targets and end-to-end infrastructure tests | `10-test-plan.md` |
+| Local test scope, performance observations, device matrix, and deferred infrastructure tests | `10-test-plan.md` |
 | RPO/RTO, backup schedule, restore procedure, and exact production sizing | `11-deployment.md` |
 | Alert thresholds, dashboards, escalation, and incident recovery | `12-observability-runbook.md` |
 
