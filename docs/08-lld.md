@@ -1024,7 +1024,7 @@ Never log raw request bodies for authentication, invitation, upload authorizatio
 8. Implement device registration, reminder preferences, outbox, and worker tick.
 9. Implement widgets and FCM invalidation refresh.
 10. Implement reporting, analytics retention, account deletion, and restore-safety workflow.
-11. Complete integration, performance, accessibility, security, and failure testing.
+11. Complete the initial local happy-path, performance-observation, accessibility, and release verification scope; track failure/security-negative testing as post-MVP debt.
 
 ## 32. Deferred implementation decisions
 
@@ -1037,7 +1037,7 @@ These belong to later security, testing, or deployment work:
 - Cloud Run memory, concurrency, and maximum-instance values
 - Database connection timeout and statement timeout values
 - R2 image-inspection/re-encoding library, sandbox limits, and manual moderation console
-- Final Android/iOS minimum versions
+- Android 9/API 28 and iOS 15 are the minimum versions; later support changes require compatibility review
 - GIPHY production approval and pricing
 - Operational audit-log sink; security/audit retention is 30 days
 
