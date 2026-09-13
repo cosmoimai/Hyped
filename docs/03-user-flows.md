@@ -1,7 +1,7 @@
 # Hyped! MVP User Flows
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-05  
+**Last updated:** 2026-09-14  
 **Related documents:** [`01-problem-statement.md`](./01-problem-statement.md), [`02-requirements.md`](./02-requirements.md)
 
 ## 1. Purpose
@@ -41,6 +41,8 @@ flowchart TD
 - The event is stored as one exact instant in UTC together with its original IANA time zone.
 - Each member sees the event in their local time, with the original event time zone available for clarity.
 - Mutating actions require connectivity. Offline mode is read-only.
+- The initial India launch is for adults 18+ only.
+- A newly authenticated user must explicitly accept the current Terms/content rules and affirm 18+ eligibility before creating or joining.
 
 ## 4. App launch and authentication
 
@@ -54,7 +56,9 @@ flowchart TD
 6. App creates or restores the internal account.
 7. App imports the available display name and profile photo.
 8. If no photo is available, the app creates an initials-based avatar.
-9. User reaches the room-list empty state with suggested event templates and a Join action.
+9. If current acceptance is missing, app shows unselected Terms/content-rules and 18+ confirmations.
+10. User explicitly selects both and continues, or signs out without gaining create/join access.
+11. User reaches the room-list empty state with suggested event templates and a Join action.
 
 **Alternative states**
 
@@ -131,7 +135,7 @@ sequenceDiagram
     App-->>Recipient: Open countdown
 ```
 
-The preview contains the event title, cover image or theme, live countdown, and inviter identity. It does not expose the full member list or private controls.
+The preview contains only the event title, safe cover image or theme, event date, creator display name, and total member count. It does not expose location, description, profile photo, the full member list, private identifiers, or controls.
 
 After a valid preview, a signed-in recipient taps **Join countdown** and joins immediately without creator approval. Retried requests must not create duplicate memberships.
 
@@ -279,6 +283,20 @@ To prevent rejoining, the creator must regenerate the invitation after removal.
 
 Only the creator can regenerate invitations.
 
+### UF-SAFETY-01: Report and block an account
+
+1. User opens a member's overflow menu from a shared room.
+2. User may submit a controlled report reason and optional bounded details.
+3. User chooses **Block account** and reviews the room impact.
+4. User confirms; the backend applies one idempotent account-level block transaction.
+5. The blocked account is removed from rooms owned by the blocker.
+6. The blocker leaves rooms owned by the blocked account using safe ownership handling.
+7. In rooms owned by a third person, each side sees a hidden blocked-profile representation and no direct role actions.
+8. Neither user can subsequently join a room owned by the other.
+9. No notification is sent and the blocked account is not told who blocked them.
+
+The blocker can later unblock from Settings. Unblocking never restores memberships or roles.
+
 ## 12. Leave, transfer, delete, and account removal
 
 ### UF-LEAVE-01: Member or co-host leaves
@@ -318,6 +336,8 @@ Co-hosts cannot delete a room.
 5. System removes the account and personal/profile data according to the retention policy.
 
 Deletion cannot proceed while the user still owns or belongs to a room.
+
+The same workflow may begin from the public Hyped! deletion page. The user verifies a fresh Google or Apple identity, sees only safe prerequisite counts, and submits the irreversible request. If rooms block deletion, the page directs the user to resolve them in the app.
 
 ## 13. Event completion and automatic deletion
 
