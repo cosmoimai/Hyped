@@ -190,7 +190,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 
 - **NFR-PERF-01:** On a supported device and stable broadband or 4G connection, 95% of room-list and room-detail API requests shall complete within 2 seconds, excluding media transfer time.
 - **NFR-PERF-02:** The app shall present a visible loading, cached, empty, or error state within 500 milliseconds of navigation rather than appearing frozen.
-- **NFR-PERF-03:** A valid installed-app invite link shall reach the intended preview or sign-in handoff within 3 seconds for 95% of tests on a stable network.
+- **NFR-PERF-03:** A valid installed-app invite link to preview/sign-in handoff shall be measured and recorded on a stable network. The initial MVP has no numeric performance release threshold.
 - **NFR-PERF-04:** Countdown rendering shall not depend on a server request for each tick.
 
 ### 5.2 Availability and reliability
@@ -223,7 +223,7 @@ The MVP is intended to validate one core behavior: one person creates a countdow
 
 ### 5.5 Compatibility and maintainability
 
-- **NFR-COMP-01:** The release shall define and test an explicit minimum Android API level and iOS version before implementation begins.
+- **NFR-COMP-01:** The MVP shall support and test Android 9/API 28 and newer and iOS 15 and newer.
 - **NFR-COMP-02:** Core room and countdown behavior shall be equivalent across Android and iOS even when widget rendering differs because of platform capabilities.
 - **NFR-MAIN-01:** Environment-specific configuration and secrets shall not be hard-coded in the mobile application or committed to source control.
 - **NFR-MAIN-02:** Database changes shall use versioned migrations and support rollback or forward recovery.
@@ -252,11 +252,11 @@ The product behaviour previously listed as provisional has now been confirmed an
 
 | ID | Open input | Why it matters |
 |---|---|---|
-| D-01 | Minimum supported Android API level and iOS version | Determines device coverage and available widget APIs. |
+| D-01 | Resolved: Android 9/API 28 and iOS 15 minimum | Determines device coverage and available widget APIs. |
 | D-02 | GIF search provider and its content-safety configuration | Determines API terms, moderation, attribution, and cost. |
 | D-03 | Static image size, dimensions, formats, and retention limits | Determines upload UX, storage cost, and validation rules. |
 | D-04 | Notification delivery service and retry policy | Determines reliability and platform integration. |
-| D-05 | Initial load-test target beyond the known 25-person room limit | Provides a capacity baseline before real traffic is available. |
+| D-05 | Resolved: measure local performance without an initial pass/fail threshold | Provides a comparison baseline before real traffic is available. |
 
 ## 8. In-scope and out-of-scope summary
 
