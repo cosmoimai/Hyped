@@ -93,10 +93,11 @@ The backend creates a request ID if the client does not supply a valid one and r
 - Firebase Authentication completes Google or Apple sign-in.
 - Flutter sends the Firebase ID token once to the exchange endpoint.
 - Spring Boot verifies it and returns a Hyped! access token plus refresh token.
-- Access tokens last **one hour**.
+- Access tokens are **RS256 JWTs** and last **one hour**.
 - Refresh tokens last **30 days**, rotate on every successful refresh, and are stored in platform secure storage.
-- Reuse of an already rotated refresh token revokes its token family.
+- Reuse of an already rotated refresh token revokes only that device's token family.
 - One account supports at most **five active device installations**.
+- Normal logout/revocation disables refresh immediately; an issued access JWT may remain valid until expiry. Suspended or compromised accounts are denied immediately.
 
 ### 5.2 Authentication endpoints
 
@@ -119,6 +120,7 @@ The backend creates a request ID if the client does not supply a valid one and r
   "firebaseIdToken": "<token>",
   "installationId": "019b1f1d-48f0-7b33-99da-4a498fe22d11",
   "platform": "ANDROID",
+  "deviceName": "Pixel 10",
   "appVersion": "1.0.0+1"
 }
 ```
@@ -148,6 +150,7 @@ Validation and errors:
 - Sixth device: `409 DEVICE_LIMIT_REACHED`, with a safe list of current sessions so the user can revoke one.
 - Matching verified email on another account: `409 ACCOUNT_LINK_CONFIRMATION_REQUIRED`; accounts are never auto-merged.
 - Deleted account without a permitted new registration state: `410 ACCOUNT_DELETED`.
+- `deviceName` is normalized and limited to 80 characters; it is display metadata and never used as an authentication factor.
 
 ### 5.4 Refresh tokens
 
@@ -173,6 +176,7 @@ Errors:
 Session responses expose only:
 
 - `sessionId`
+- `deviceName`
 - `platform`
 - `createdAt`
 - `lastUsedAt`
@@ -227,7 +231,8 @@ Field validation example:
 | `202` | Destructive or asynchronous work accepted |
 | `204` | Successful action without response body |
 | `400` | Malformed JSON, header, cursor, or syntax |
-| `401` | Missing, invalid, expired, or revoked authentication |
+| `401` | Missing, invalid, or expired authentication |
+| `403` | Authenticated account suspended/compromised, or action forbidden |
 | `403` | Authenticated but not permitted |
 | `404` | Resource unavailable to caller; avoids private-resource enumeration |
 | `409` | State conflict, limit reached, duplicate/replayed condition |
@@ -697,22 +702,20 @@ Code canonicalization removes the hyphen and converts lowercase to uppercase. Va
     "title": "Goa trip",
     "eventAt": "2026-12-20T04:30:00Z",
     "eventTimeZone": "Asia/Kolkata",
-    "location": "North Goa",
     "theme": {
       "kind": "PRESET",
       "presetKey": "soft-blue-01"
     }
   },
   "inviter": {
-    "displayName": "Aarav",
-    "photo": null
+    "displayName": "Aarav"
   },
   "memberCount": 8,
   "requiresAuthentication": true
 }
 ```
 
-The preview excludes description, member list, user IDs, room ID, roles, invitation generation, and management controls. Public preview responses are `Cache-Control: no-store`.
+The preview excludes location, description, member list, profile photo by default, user IDs, room ID, roles, invitation generation, internal media keys, and management controls. A cover is returned only as a preview-safe representation or authorized 15-minute delivery URL. Public preview responses are `Cache-Control: no-store`.
 
 ### 12.7 Join
 
@@ -825,7 +828,7 @@ Success `201`:
 }
 ```
 
-The backend verifies R2 object metadata and safely decodes/inspects the file before returning `READY`. A `202 VALIDATING` response is allowed if validation becomes asynchronous.
+The backend verifies R2 object metadata, safely decodes and re-encodes the image, removes metadata, and performs automated moderation before returning `READY`. Processing uses `202` with `VALIDATING`, `MODERATING`, or `MANUAL_REVIEW`; uncertain images remain hidden until manual approval.
 
 Failure codes include:
 
@@ -839,6 +842,8 @@ Failure codes include:
 - `UPLOAD_EXPIRED`
 
 A rejected upload cannot replace the current profile photo or room theme.
+
+`GET /media/{mediaAssetId}` authorizes the caller and returns a private R2 signed GET URL valid for **15 minutes**. The URL is scoped to one object and is never logged or included in analytics.
 
 ## 15. GIPHY client integration contract
 

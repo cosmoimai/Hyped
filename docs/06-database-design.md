@@ -121,7 +121,9 @@ Stores the stable internal account and deletion state. It does not store raw pro
 | Column | Type | Null | Notes |
 |---|---|---:|---|
 | `id` | `uuid` | No | Primary key, UUIDv7 |
-| `status` | `varchar(20)` | No | `active`, `deletion_pending`, `deleted` |
+| `status` | `varchar(20)` | No | `active`, `locked`, `suspended`, `compromised`, `deletion_pending`, `deleted` |
+| `locked_until` | `timestamptz` | Yes | Configurable temporary authentication lock expiry |
+| `failed_auth_count` | `smallint` | No | Attributable consecutive failures; defaults to zero |
 | `pii_key_reference` | `varchar(255)` | Yes | Opaque external per-user key reference, never key material |
 | `deletion_requested_at` | `timestamptz` | Yes | Set after ownership/membership validation |
 | `pii_destroyed_at` | `timestamptz` | Yes | When personal data became cryptographically unreadable |
@@ -131,9 +133,11 @@ Stores the stable internal account and deletion state. It does not store raw pro
 
 Constraints:
 
-- `status` is limited to the three values above.
+- `status` is limited to the six values above.
 - `active` users have no `deleted_at`.
 - `deleted` users have `deleted_at` and `pii_destroyed_at`.
+- `locked` users have a future `locked_until`; successful authentication clears the counter and lock.
+- `suspended` and `compromised` users are denied immediately even when presenting an otherwise valid JWT.
 - A deleted account cannot create a new session.
 
 The row may be reduced to a non-identifying tombstone during the seven-day restore-safety window. After no retained database backup can resurrect the account, it may be physically deleted unless a pseudonymous legal or security record requires otherwise.
@@ -183,7 +187,6 @@ Constraints and indexes:
 | `id` | `uuid` | No | Primary key |
 | `user_id` | `uuid` | No | Foreign key to `app_user` |
 | `device_id` | `uuid` | Yes | Foreign key to `device_registration` |
-| `refresh_token_hash` | `bytea` | No | Unique one-way hash |
 | `token_family_id` | `uuid` | No | Groups rotating refresh tokens |
 | `issued_at` | `timestamptz` | No | Session creation time |
 | `last_used_at` | `timestamptz` | No | Rotation/activity time |
@@ -195,13 +198,31 @@ Constraints and indexes:
 
 Indexes:
 
-- Unique on `refresh_token_hash`.
+- Unique on `token_family_id`.
 - `(user_id, revoked_at)` for session revocation/listing.
 - `expires_at` for cleanup.
 
-Token lifetime is finalized in `09-security-design.md`.
+Access tokens are one-hour RS256 JWTs. Revoking this row immediately blocks refresh but does not ordinarily revoke an already issued JWT. Suspended or compromised account state is checked separately and denied immediately.
 
-### 6.5 `app.device_registration`
+### 6.5 `app.refresh_token_record`
+
+Stores current and consumed refresh-token digests so rotation reuse remains detectable.
+
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| `id` | `uuid` | No | Primary key |
+| `session_id` | `uuid` | No | Foreign key to `auth_session` |
+| `token_digest` | `bytea` | No | Unique keyed digest; never raw token |
+| `state` | `varchar(16)` | No | `active`, `consumed`, `revoked` |
+| `issued_at` | `timestamptz` | No | Rotation issue time |
+| `consumed_at` | `timestamptz` | Yes | First successful use |
+| `expires_at` | `timestamptz` | No | Maximum usable/detection boundary |
+| `replaced_by_id` | `uuid` | Yes | Self-reference to replacement record |
+| `created_at` | `timestamptz` | No | Audit field |
+
+Unique on `token_digest`; index `(session_id, state)`. Consumed records remain until family expiry plus the bounded security-investigation window. Rotation locks the session and presented record in one transaction.
+
+### 6.6 `app.device_registration`
 
 | Column | Type | Null | Notes |
 |---|---|---:|---|
@@ -209,6 +230,7 @@ Token lifetime is finalized in `09-security-design.md`.
 | `user_id` | `uuid` | No | Foreign key to `app_user` |
 | `platform` | `varchar(16)` | No | `android` or `ios` |
 | `installation_id` | `uuid` | No | App-install identifier |
+| `device_name` | `varchar(80)` | No | Normalized user-facing device label |
 | `fcm_token_ciphertext` | `bytea` | No | Encrypted using user-bound key capability |
 | `fcm_token_fingerprint` | `bytea` | No | Detects duplicate registrations without revealing token |
 | `notifications_enabled` | `boolean` | No | Last known application setting |
@@ -338,7 +360,7 @@ Rotation updates both stored credential values and increments `generation` in on
 | `owner_user_id` | `uuid` | No | User who initiated upload/selection |
 | `scope` | `varchar(16)` | No | `room_cover` or `profile_photo` |
 | `source` | `varchar(16)` | No | `r2_upload` or `giphy` |
-| `status` | `varchar(16)` | No | `pending`, `validating`, `ready`, `rejected`, `deleting` |
+| `status` | `varchar(24)` | No | `pending`, `validating`, `moderating`, `manual_review`, `ready`, `rejected`, `deleting` |
 | `object_key` | `varchar(512)` | Yes | Opaque R2 key for uploaded image |
 | `preview_object_key` | `varchar(512)` | Yes | Safe static preview where required |
 | `provider` | `varchar(32)` | Yes | `giphy` for provider media |
@@ -349,10 +371,13 @@ Rotation updates both stored credential values and increments `generation` in on
 | `height_px` | `integer` | Yes | Verified decoded height |
 | `content_hash` | `bytea` | Yes | Integrity/deduplication aid, not public |
 | `failure_code` | `varchar(32)` | Yes | Bounded safe reason |
+| `moderation_provider` | `varchar(32)` | Yes | `google_vision` for uploaded images |
+| `moderation_result` | `varchar(24)` | Yes | Bounded `approved`, `uncertain`, or `rejected` result |
+| `moderated_at` | `timestamptz` | Yes | Latest automated/manual decision time |
 | `created_at` | `timestamptz` | No | Audit field |
 | `updated_at` | `timestamptz` | No | Audit field |
 
-Source-specific checks ensure that R2 assets have object metadata and GIPHY assets have only provider identity metadata. GIPHY media URLs are not stored, cached, proxied, or rewritten. Uploaded images are JPEG, PNG, or WebP, no larger than 1.5 MB or 2048 pixels on either side after client processing; the server validates both limits.
+Source-specific checks ensure that R2 assets have object metadata and GIPHY assets have only provider identity metadata. GIPHY media URLs are not stored, cached, proxied, or rewritten. Uploaded images are JPEG, PNG, or WebP, no larger than 1.5 MB or 2048 pixels on either side after client processing; the server validates both limits. R2 uploads remain private and cannot be referenced until sanitization and automated moderation reach `ready`; uncertain results remain hidden in `manual_review`.
 
 Indexes:
 
@@ -582,6 +607,7 @@ Room content may remain encrypted inside a daily database backup until its norma
 | `app_user` | `user_profile` | Cascade after deletion preconditions |
 | `app_user` | `user_identity` | Cascade |
 | `app_user` | `auth_session` | Cascade after revocation/audit completion |
+| `auth_session` | `refresh_token_record` | Cascade after reuse-detection retention boundary |
 | `app_user` | `room` as owner | Restrict |
 | `app_user` | `room_member` | Restrict until user leaves |
 | `room` | `room_member` | Cascade during room deletion |
@@ -626,7 +652,7 @@ External calls to FCM, R2, or Firebase do not occur inside a database transactio
 | Due archive | Partial `room(status, event_at)` |
 | Due deletion | Partial `room(status, delete_after)` |
 | Due outbox | Partial `notification_outbox(available_at, created_at)` |
-| Expired sessions | `auth_session(expires_at)` |
+| Expired sessions/tokens | `auth_session(expires_at)` and `refresh_token_record(expires_at)` |
 | Analytics expiry | `product_event(expires_at)` |
 
 ### 17.2 Index rules
@@ -661,6 +687,7 @@ External calls to FCM, R2, or Firebase do not occur inside a database transactio
 | Current membership | Until leave, removal, room deletion, or account deletion | Restore must replay deletion journal |
 | Invitation credentials | Current generation only | Hashed/HMAC values; old generation overwritten |
 | Active session | Until expiry, logout, or revocation | Refresh secret stored only as hash |
+| Consumed refresh digest | Family expiry plus bounded investigation window | Digest cannot recreate raw token |
 | Invalid device token | Short diagnostic window, maximum 30 days | Encrypted token unreadable after user-key destruction |
 | Successful outbox row | Seven days | May exist in daily backup until expiry |
 | Terminal failed outbox row | 30 days for diagnosis | No secrets or free text |
@@ -779,11 +806,11 @@ No partitioning is required initially. Partitioning for analytics or outbox tabl
 
 The following decisions require later security, API, or implementation work but do not block this logical schema:
 
-- External per-user key technology and verifiable destruction procedure
+- External key-registry configuration and verifiable destruction procedure
 - Deletion-journal storage and encryption mechanism
 - Exact provider-profile-photo copying policy
 - Anonymous analytics HMAC rotation schedule
-- Operational audit-log location and retention
+- Operational audit-log location; security/audit retention is 30 days
 - Database recovery point and recovery time targets
 
 Each item must be resolved before the related production feature is enabled.
