@@ -1,7 +1,7 @@
 # Hyped! MVP API Specification
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-09  
+**Last updated:** 2026-09-14  
 **API style:** HTTPS REST with JSON  
 **Backend:** Spring Boot modular monolith  
 **Related documents:** [`02-requirements.md`](./02-requirements.md), [`03-user-flows.md`](./03-user-flows.md), [`05-hld.md`](./05-hld.md), [`06-database-design.md`](./06-database-design.md)
@@ -304,6 +304,11 @@ Rules:
 | `PATCH` | `/me` | Edit display name or profile photo reference |
 | `GET` | `/me/deletion-readiness` | List blockers before deletion |
 | `POST` | `/me/deletion-requests` | Request irreversible account deletion |
+| `GET` | `/me/policy-status` | Get current Terms/rules/18+ acceptance state |
+| `POST` | `/me/policy-acceptances` | Explicitly accept the current policies and affirm 18+ |
+| `GET` | `/me/blocks` | List accounts the current user blocked |
+| `PUT` | `/me/blocks/{userId}` | Block an account with safe-room handling |
+| `DELETE` | `/me/blocks/{userId}` | Unblock an account without restoring memberships |
 | `PUT` | `/devices/{installationId}` | Register/refresh an FCM token |
 | `DELETE` | `/devices/{installationId}` | Invalidate device push registration |
 
@@ -406,6 +411,35 @@ Errors:
 - Owned rooms remain: `409 OWNERSHIP_TRANSFER_REQUIRED`.
 - Joined rooms remain: `409 ROOMS_MUST_BE_LEFT`.
 - Recent authentication invalid: `401 RECENT_AUTHENTICATION_REQUIRED`.
+
+### 9.6 Policy status and acceptance
+
+`GET /me/policy-status` returns required and accepted Terms/content-rules versions plus whether the adult affirmation is complete. `POST /me/policy-acceptances` requires an `Idempotency-Key` and an explicit body:
+
+```json
+{
+  "termsVersion": "2026-09-14",
+  "contentRulesVersion": "2026-09-14",
+  "accepted": true,
+  "adultAffirmed": true
+}
+```
+
+The server rejects missing, false, stale, or unsupported versions. Create, join, and upload return `403 CURRENT_POLICY_ACCEPTANCE_REQUIRED` until the current acceptance exists. Authentication and policy/legal-page access remain available so the user can make a choice or sign out.
+
+### 9.7 Public web deletion entry
+
+The public Cloudflare Pages flow uses `POST /public/account-deletion/readiness` and `POST /public/account-deletion-requests`. Each request carries a freshly issued Firebase Google/Apple identity token in the JSON body and is `Cache-Control: no-store`; it does not require or return a general Hyped! access/refresh token.
+
+The backend verifies provider proof, applies exact-origin CORS for the production Hyped! domain, rate-limits the identity/IP combination, and invokes the same readiness/deletion application service as the in-app endpoints. Readiness returns only blocker counts and safe next steps. The request endpoint returns the same `202`, `409`, and recent-proof semantics as Section 9.5.
+
+### 9.8 Account blocking
+
+`PUT /me/blocks/{userId}` is idempotent and requires an `Idempotency-Key`. Its transaction creates the directional block, removes the target from blocker-owned rooms, makes the blocker leave target-owned rooms using safe ownership rules, cancels affected reminders, and emits access-invalidation work. Success returns counts only, never hidden room/account relationships.
+
+Future joins are denied with the normal safe unavailable response when either account owns the target room. In a third-party-owned shared room, member projections substitute `Blocked account` without a photo and direct role operations between the pair return `403 ACTION_UNAVAILABLE`.
+
+`DELETE /me/blocks/{userId}` removes the directional block after confirmation. It does not recreate memberships, restore roles, or notify the other account. `GET /me/blocks` lists only accounts blocked by the current user so they can manage their own choices; the reverse relationship is never disclosed.
 
 ## 10. Room resource
 
@@ -882,6 +916,8 @@ Headers: access token and `Idempotency-Key`.
 - Success returns `201 Created` with report ID and status only.
 - Reports are limited separately to five per account per day unless security operations adjust the threshold.
 - Eligible records are pseudonymized after account deletion and deleted after 90 days.
+- `subjectType` supports `ROOM`, `THEME`, and `ACCOUNT`; an account subject must be resolvable from the reporter's current room/member context.
+- Reporting and blocking are independent. The client may offer both actions, but neither silently implies the other.
 
 ## 17. Privacy-safe analytics
 
@@ -1028,6 +1064,13 @@ Mobile local caching is governed by authorization and offline requirements, not 
 | Account | `PATCH` | `/me` |
 | Account | `GET` | `/me/deletion-readiness` |
 | Account | `POST` | `/me/deletion-requests` |
+| Account | `GET` | `/me/policy-status` |
+| Account | `POST` | `/me/policy-acceptances` |
+| Account | `GET` | `/me/blocks` |
+| Account | `PUT` | `/me/blocks/{userId}` |
+| Account | `DELETE` | `/me/blocks/{userId}` |
+| Public deletion | `POST` | `/public/account-deletion/readiness` |
+| Public deletion | `POST` | `/public/account-deletion-requests` |
 | Device | `PUT` | `/devices/{installationId}` |
 | Device | `DELETE` | `/devices/{installationId}` |
 | Room | `GET` | `/rooms` |

@@ -1,7 +1,7 @@
 # Hyped! MVP UI/UX Design
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-06  
+**Last updated:** 2026-09-14  
 **Related documents:** [`02-requirements.md`](./02-requirements.md), [`03-user-flows.md`](./03-user-flows.md)
 
 ## 1. Purpose
@@ -152,6 +152,14 @@ Changing a theme cross-fades the background and gently updates the countdown sur
 - If an invite is pending, show a small **Joining: [event title]** context card.
 - Cancellation returns safely to the demo or invite preview.
 
+After the first successful sign-in, show a required eligibility and rules step before Home, Create, or Join:
+
+- An unselected checkbox confirming acceptance of the linked current Terms and content rules.
+- An unselected affirmation that the user is at least 18 years old.
+- A disabled **Continue** action until both confirmations are selected.
+- A safe sign-out option when the user does not agree.
+- If an invite is pending, retain it and return to its preview after acceptance.
+
 ### UI-04: Home
 
 **Hierarchy**
@@ -201,12 +209,11 @@ Changing a theme cross-fades the background and gently updates the countdown sur
 
 - Event title
 - Cover image/theme or safe fallback
-- Current adaptive countdown
-- Inviter display name and photo/fallback avatar
-- Event date, time, and time zone
-- Optional location
+- Event date
+- Creator display name
+- Total member count
 
-The full member list, description, room-management actions, and invite credentials are not exposed before joining.
+The current countdown may be derived locally from the returned event date only when it does not reveal extra fields. Location, description, profile photo, full member list, private identifiers, room-management actions, and invite credentials are not exposed before joining.
 
 **Actions**
 
@@ -327,12 +334,16 @@ Destructive actions are visually separated at the bottom and always require an i
 - Creator and co-hosts see Remove only for regular members.
 - Removing a member explains that they may rejoin with a valid invitation.
 - Creator is prompted to regenerate the invite when preventing re-entry matters.
+- Every eligible member row exposes **Report** and **Block** actions through its overflow menu.
+- Blocking uses an impact-specific confirmation that explains room removals/leaves without naming hidden third-party relationships.
+- In a third-party-owned shared room, a blocked account renders as **Blocked account** with no photo and no direct role actions.
+- The blocked person receives no notification and the UI never states who blocked them.
 
 ### UI-13: Personal reminders
 
 - Default selected reminders: 24 hours, 1 hour, and event time.
 - Each reminder can be toggled independently.
-- A custom reminder may replace or supplement defaults, subject to later notification-service design.
+- Custom reminder times are not available in the MVP.
 - If OS permission is denied, show an explanation and **Open Settings** without blocking room use.
 - Settings affect only the current user.
 
@@ -376,11 +387,11 @@ The app cannot silently place widgets. Guidance uses short platform-specific ste
 
 - Appearance: System, Light, Dark
 - Notification permission status and Settings route
-- Privacy Policy and Terms
+- Privacy Policy, Terms, Community Guidelines, support, and blocked accounts
 - Sign out
 - Delete account
 
-Account deletion displays unresolved prerequisites. Users must transfer owned rooms and leave joined rooms before re-authentication and final deletion.
+Account deletion displays unresolved prerequisites. Users must transfer owned rooms and leave joined rooms before re-authentication and final deletion. The screen also links to the public verified deletion-request page for store-policy discoverability.
 
 ### UI-19: Celebration and archive
 
@@ -632,4 +643,3 @@ Design small and medium Hyped! home-screen widgets using only the soft-blue bran
 - Custom per-member widget themes
 - Uploaded animated GIF files
 - Paid themes, subscriptions, or commerce
-

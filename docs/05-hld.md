@@ -1,7 +1,7 @@
 # Hyped! MVP High-Level Design
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-09  
+**Last updated:** 2026-09-14  
 **Related documents:** [`01-problem-statement.md`](./01-problem-statement.md), [`02-requirements.md`](./02-requirements.md), [`03-user-flows.md`](./03-user-flows.md), [`04-ui-ux-design.md`](./04-ui-ux-design.md)
 
 ## 1. Purpose
@@ -45,6 +45,9 @@ The MVP architecture shall:
 | Deployment region | Singapore for Spring Boot and PostgreSQL |
 | Initial market | India first, with global expansion later |
 | Architecture shape | Single deployable service with internal domain modules |
+| Runtime bounds | Cloud Run minimum 0, maximum 3, concurrency 20; HikariCP maximum 5 per instance |
+| Delivery | Terraform in Git; local immutable commit-SHA image pushed to Artifact Registry and deployed by digest |
+| Public web | Cloudflare Pages for legal/support/deletion pages; Cloudflare Worker for invite routing |
 
 ## 4. System context
 
@@ -154,6 +157,7 @@ The backend is one deployable Spring Boot application divided into internal modu
 | Lifecycle | Detect completed events, archive rooms, and permanently delete expired archives |
 | Analytics | Record privacy-safe product events and calculate basic adoption measures |
 | Moderation | Accept reports and preserve the minimum data needed for review |
+| Trust and Safety | Record policy acceptance, enforce 18+ eligibility, block accounts, and apply safe-room transitions |
 
 ### 7.1 API conventions
 
@@ -172,14 +176,14 @@ The initial Cloud Run service should use:
 
 - Request-based CPU allocation
 - Minimum instances set to `0`
-- A conservative maximum-instance cap to protect the database and budget
+- Maximum instances `3` and request concurrency `20` per instance to protect the database and budget
 - One vCPU and memory established through load testing, beginning at 512 MiB or 1 GiB
 - Java 21 and a current supported Spring Boot 3 release
 - HikariCP with minimum idle `0` and a small maximum pool, initially `5` connections per instance
 - Neon's pooled PostgreSQL connection endpoint
 - Startup, liveness, and readiness probes
 
-Exact memory, concurrency, maximum instances, and JVM heap settings must be measured before production instead of copied blindly from this starting point.
+Exact memory and JVM heap settings must be measured before production. Concurrency and maximum instances begin at the approved values and change only through a measured deployment decision.
 
 ## 8. Authentication and application sessions
 
@@ -437,8 +441,8 @@ The MVP targets 99.5% monthly backend availability, excluding announced maintena
 
 - Use Neon recovery features available to the selected plan.
 - Before production, validate restore procedures rather than assuming a successful backup is restorable.
-- If the selected free plan does not provide sufficient recovery, run a small scheduled encrypted logical backup to a restricted R2 backup bucket with a short retention period.
-- The precise recovery point objective, recovery time objective, backup frequency, retention, and restore runbook will be finalized in `11-deployment.md` and `12-observability-runbook.md`.
+- Cloud Scheduler starts a dedicated Cloud Run Job once daily to create a compressed, application-encrypted logical backup in a private R2 backup bucket with separate credentials and seven-day retention.
+- The MVP targets an RPO of 24 hours and an RTO of four hours. Restore testing occurs before public launch and every three months as defined in `11-deployment.md`.
 
 ## 17. Observability
 
@@ -530,12 +534,12 @@ The project uses separate local, development, staging, and production configurat
 
 - Local development may use Docker Compose PostgreSQL and provider emulators/mocks where practical.
 - Development may share low-cost managed infrastructure but cannot share production credentials or data.
-- Staging mirrors production integration boundaries with conservative quotas.
+- Staging is a reserved isolated configuration boundary but is not provisioned as an always-on environment initially.
 - Production uses isolated Firebase configuration, Neon project or branch policy, R2 bucket, secrets, and Cloud Run service.
-- Flyway or Liquibase applies versioned PostgreSQL migrations during a controlled deployment step, not concurrently from every autoscaled application instance.
+- A separate one-off Cloud Run Job applies forward-only Flyway migrations before application deployment; autoscaled application instances never migrate production concurrently.
 - Initially, the solo developer runs one local verification script to build, test, scan, and package the Spring Boot and Flutter applications; CI is deferred.
 
-The detailed pipeline, migration execution, rollback, and release process will be defined in `11-deployment.md`.
+The detailed pipeline, migration execution, rollback, and release process is defined in `11-deployment.md`.
 
 ## 23. Major decisions deferred to later documents
 
@@ -547,7 +551,6 @@ The detailed pipeline, migration execution, rollback, and release process will b
 | Spring packages, classes, validation, transactions, and worker locking | `08-lld.md` |
 | Token lifetime, signing algorithm, key rotation, account linking, and detailed threat model | `09-security-design.md` |
 | Local test scope, performance observations, device matrix, and deferred infrastructure tests | `10-test-plan.md` |
-| RPO/RTO, backup schedule, restore procedure, and exact production sizing | `11-deployment.md` |
 | Alert thresholds, dashboards, escalation, and incident recovery | `12-observability-runbook.md` |
 
 ## 24. Architecture acceptance checklist

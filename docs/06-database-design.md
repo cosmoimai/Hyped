@@ -1,7 +1,7 @@
 # Hyped! MVP Database Design
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-09  
+**Last updated:** 2026-09-14  
 **Database:** PostgreSQL on Neon  
 **Related documents:** [`02-requirements.md`](./02-requirements.md), [`03-user-flows.md`](./03-user-flows.md), [`05-hld.md`](./05-hld.md)
 
@@ -50,6 +50,8 @@ The database design shall:
 | Raw analytics | Retained for 30 days |
 | Moderation record | Pseudonymized and retained for 90 days |
 | Identity linking | Google and Apple identities link only after user confirmation |
+| Legal acceptance | Versioned explicit Terms/content-rules acceptance and 18+ affirmation |
+| Account blocking | Directional account-level record; symmetric cross-owner join prevention and transactional safe-room handling |
 
 ## 4. PostgreSQL conventions
 
@@ -99,6 +101,8 @@ erDiagram
     APP_USER ||--o{ USER_IDENTITY : has
     APP_USER ||--o{ AUTH_SESSION : opens
     APP_USER ||--o{ DEVICE_REGISTRATION : registers
+    APP_USER ||--o{ USER_POLICY_ACCEPTANCE : accepts
+    APP_USER ||--o{ USER_BLOCK : creates
     APP_USER ||--o{ ROOM : owns
     APP_USER ||--o{ ROOM_MEMBER : joins
     ROOM ||--|{ ROOM_MEMBER : contains
@@ -240,6 +244,42 @@ Unique on `token_digest`; index `(session_id, state)`. Consumed records remain u
 | `updated_at` | `timestamptz` | No | Audit field |
 
 Unique on `(user_id, installation_id)`. Invalid tokens are retained only briefly for diagnostic classification, then deleted.
+
+### 6.7 `app.user_policy_acceptance`
+
+Records explicit eligibility and legal acceptance without storing a date of birth.
+
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| `id` | `uuid` | No | Primary key |
+| `user_id` | `uuid` | No | Foreign key to `app_user` |
+| `terms_version` | `varchar(32)` | No | Exact accepted Terms version |
+| `content_rules_version` | `varchar(32)` | No | Exact accepted rules version |
+| `adult_affirmed` | `boolean` | No | Must be true for the initial 18+ launch |
+| `accepted_at` | `timestamptz` | No | Server acceptance time |
+| `created_at` | `timestamptz` | No | Audit field |
+
+Unique on `(user_id, terms_version, content_rules_version)`. Create, join, and upload operations check that the current required versions have been accepted. The checkbox state itself is never inferred from sign-in or preselected by the server.
+
+### 6.8 `app.user_block`
+
+Stores an account-level block without exposing it to the blocked account.
+
+| Column | Type | Null | Notes |
+|---|---|---:|---|
+| `id` | `uuid` | No | Primary key |
+| `blocker_user_id` | `uuid` | No | User who initiated the block |
+| `blocked_user_id` | `uuid` | No | Target account |
+| `created_at` | `timestamptz` | No | Server commit time |
+
+Constraints and indexes:
+
+- Unique on `(blocker_user_id, blocked_user_id)` for idempotency.
+- Check `blocker_user_id <> blocked_user_id`.
+- Index `(blocked_user_id, blocker_user_id)` so either direction can be checked efficiently.
+- The API never returns the blocker relationship to `blocked_user_id`.
+
+Creating the row and applying blocker-owned removal, blocked-owner leave, reminder cleanup, and required outbox invalidations occur in one transaction. Join checks deny when either directional block exists and the candidate/owner pair matches. Third-party-owned rooms retain both memberships but projection queries substitute a non-identifying blocked profile and role-mutation queries deny direct actions between the pair.
 
 ## 7. Room and membership tables
 
@@ -737,7 +777,7 @@ Rules:
 
 - Every schema change is a versioned, immutable migration.
 - Applied migrations are never edited; a new migration corrects mistakes.
-- CI applies migrations to an empty database and to a representative previous schema.
+- Local release verification applies migrations to an empty database and to a representative previous schema; the same checks move to CI when CI is introduced.
 - Production migration runs as a controlled deployment step, not from every autoscaled application instance.
 - Backward-compatible expand/migrate/contract changes span multiple releases.
 - New required columns first allow null/default/backfill before constraints become strict.

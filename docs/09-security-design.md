@@ -1,7 +1,7 @@
 # Hyped! MVP Security Design
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-13  
+**Last updated:** 2026-09-14  
 **Related documents:** [`05-hld.md`](./05-hld.md), [`06-database-design.md`](./06-database-design.md), [`07-api-spec.md`](./07-api-spec.md), [`08-lld.md`](./08-lld.md)
 
 ## 1. Purpose
@@ -43,6 +43,9 @@ The MVP shall:
 | R2 access | Private bucket with authorized 15-minute signed delivery URLs |
 | Upload moderation | Automated before publication; uncertain images stay hidden for manual review |
 | Mobile attestation | Play Integrity and App Attest with gradual enforcement |
+| Legal eligibility | Explicit current Terms/content-rules acceptance plus 18+ affirmation before create/join |
+| User blocking | Account-level block with immediate, idempotent safe-room handling |
+| Mobile permissions | System photo picker and contextual notification permission only |
 
 ## 4. Trust boundaries
 
@@ -252,6 +255,16 @@ Controls:
 - Use the same `404 ROOM_UNAVAILABLE` shape for missing and unauthorized private rooms where disclosure would help enumeration.
 - Recheck authorization inside the same transaction used for a role, membership, invitation, or deletion mutation.
 - Widget snapshots contain only the minimum last-authorized display data and are cleared on logout or access loss.
+
+### 10.1 Eligibility, consent, and account blocking
+
+- Authentication may establish an account before consent, but create, join, and upload mutations require accepted current Terms/content-rules versions plus an 18+ affirmation.
+- Consent is explicit, unselected by default, versioned, timestamped, and audited without unnecessary device data.
+- Blocking is account-level and enforced from an authoritative pair record rather than a client-side hidden list.
+- A block transaction removes the target from blocker-owned rooms, makes the blocker leave target-owned rooms using safe ownership checks, cancels affected reminders, and prevents future joins across either account's rooms.
+- A third-party-owned shared room may retain both memberships, but profile projection becomes a non-identifying blocked representation and direct role actions between the pair are denied.
+- Block creation is idempotent, takes effect immediately, emits no notification, and never reveals who blocked whom.
+- Reporting and blocking are separate operations; a user may do either or both.
 
 ## 11. Invitations and public previews
 
@@ -472,6 +485,7 @@ Account states include `ACTIVE`, `LOCKED`, `SUSPENDED`, `COMPROMISED`, `DELETION
 - Build the runtime image from a minimal maintained base, run as non-root, use a read-only filesystem where compatible, and omit build tools from the final image.
 - Apply security updates through a defined severity-based SLA; immediately assess known exploited vulnerabilities affecting exposed components.
 - Production deployment uses immutable image digests and a dedicated deployment identity.
+- Android manifests and iOS entitlements are inspected for transitive additions. The MVP permits only system-picker image access and contextual notification permission; camera, location, contacts, tracking, advertising ID, and broad photo/storage access require a new approved design.
 
 ## 22. Security testing
 

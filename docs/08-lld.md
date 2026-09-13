@@ -1,7 +1,7 @@
 # Hyped! MVP Low-Level Design
 
 **Status:** Draft for review  
-**Last updated:** 2026-09-09  
+**Last updated:** 2026-09-14  
 **Backend:** Java 21, Spring Boot 3, Maven  
 **Mobile:** Flutter, Riverpod, Drift, Dio, Freezed, json_serializable, go_router  
 **Related documents:** [`05-hld.md`](./05-hld.md), [`06-database-design.md`](./06-database-design.md), [`07-api-spec.md`](./07-api-spec.md)
@@ -112,6 +112,7 @@ com.hyped.app
 ├── notification
 ├── lifecycle
 ├── moderation
+├── trustandsafety
 └── analytics
 ```
 
@@ -181,6 +182,7 @@ AuthController
 | `AccessTokenIssuer` | `issue(UserId, SessionId, InstallationId, Instant)` |
 | `RefreshTokenService` | `createFamily()`, `rotate()`, `detectReuseAndRevokeFamily()` |
 | `SessionRepository` | `findByRefreshHashForUpdate()`, `countActiveDevices()`, `revokeFamily()` |
+| `PolicyAcceptanceService` | `status()`, `acceptCurrentPolicies()` |
 
 ### 7.2 Exchange flow
 
@@ -572,6 +574,10 @@ Exact retry counts and timing are configuration values tested in `10-test-plan.m
 
 `ReportService.create` confirms current membership, validates controlled reason and optional 500-character detail, rate-limits to five reports per day, and creates an idempotent report. Account deletion removes reporter identity and makes user-key-encrypted detail unreadable. Retention cleanup deletes the pseudonymized row at 90 days.
 
+`AccountBlockService.block` locks both user rows in stable identifier order, creates the directional block idempotently, applies all blocker-owned removals and blocked-owner leaves, cancels reminders, and writes invalidation work in one transaction. Join and role services query `UserBlockRepository` in either direction. Member projections replace a blocked profile in third-party-owned rooms without exposing the reverse relationship. Unblocking deletes only the block row and never restores membership or roles.
+
+`CurrentPolicyGuard` protects create, join, and upload application services by requiring current versioned Terms/content-rules acceptance and the 18+ affirmation. The guard does not block authentication, policy reads, sign-out, support, or deletion.
+
 ### 15.2 Analytics
 
 `ProductAnalyticsService.ingest`:
@@ -839,6 +845,7 @@ remaining = max(Duration.zero, eventAtUtc - correctedCurrentInstant)
 ```text
 /demo
 /sign-in
+/policy-acceptance
 /home
 /create/details
 /create/style
@@ -850,6 +857,7 @@ remaining = max(Duration.zero, eventAtUtc - correctedCurrentInstant)
 /rooms/:roomId/reminders
 /profile
 /settings
+/settings/blocked-users
 ```
 
 ### 24.2 Redirect rules
@@ -858,6 +866,7 @@ remaining = max(Duration.zero, eventAtUtc - correctedCurrentInstant)
 - First launch with invitation: demo with **Skip to invite**, then safe preview/sign-in/join flow.
 - Authenticated home/room routes proceed normally.
 - Signed-out private route redirects to sign-in with a bounded pending destination.
+- Authenticated users missing current policy/18+ acceptance are redirected to `/policy-acceptance` before create, join, or upload; pending invite intent is preserved.
 - Account deletion pending redirects to a restricted deletion status/logout path.
 - Unknown/deleted room resolves to safe unavailable UI.
 
