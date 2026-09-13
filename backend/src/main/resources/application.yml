@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: hyped-backend
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/hyped}
+    username: ${DATABASE_USERNAME:hyped}
+    password: ${DATABASE_PASSWORD:hyped}
+    hikari:
+      maximum-pool-size: ${DATABASE_POOL_MAX_SIZE:5}
+      minimum-idle: ${DATABASE_POOL_MIN_IDLE:0}
+      connection-timeout: 5000
+  flyway:
+    enabled: true
+    create-schemas: true
+    default-schema: flyway
+    schemas: flyway,app,ops,analytics
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_schema: app
+        jdbc:
+          time_zone: UTC
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  shutdown: graceful
+  forward-headers-strategy: framework
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+
+info:
+  app:
+    name: Hyped! Backend
+    version: "@project.version@"
+

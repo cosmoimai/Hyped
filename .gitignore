@@ -1,0 +1,25 @@
+# Java and Maven
+backend/target/
+.mvn/timing.properties
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Operating systems
+.DS_Store
+Thumbs.db
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+backend/src/main/resources/application-local.yml
+
+# Local verification output
+build/verification/
+
