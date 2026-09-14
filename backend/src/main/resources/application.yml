@@ -33,6 +33,17 @@ server:
   shutdown: graceful
   forward-headers-strategy: framework
 
+hyped:
+  tokens:
+    enabled: ${TOKEN_SIGNING_ENABLED:false}
+    issuer: ${TOKEN_ISSUER:}
+    audience: ${TOKEN_AUDIENCE:}
+    key-id: ${TOKEN_KEY_ID:}
+    public-key: ${TOKEN_RSA_PUBLIC_KEY:}
+    private-key: ${TOKEN_RSA_PRIVATE_KEY:}
+    access-token-lifetime: ${ACCESS_TOKEN_LIFETIME:1h}
+    refresh-token-lifetime: ${REFRESH_TOKEN_LIFETIME:30d}
+
 management:
   endpoints:
     web:
@@ -53,4 +64,3 @@ info:
   app:
     name: Hyped! Backend
     version: "@project.version@"
-
