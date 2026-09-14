@@ -174,9 +174,6 @@ CREATE TABLE app.refresh_token_record (
     CONSTRAINT refresh_token_record_id_session_unique
         UNIQUE (id, session_id),
 
-        CONSTRAINT refresh_token_record_id_session_unique
-        UNIQUE (id, session_id),
-
     CONSTRAINT refresh_token_record_replacement_fk
         FOREIGN KEY (replaced_by_id, session_id)
         REFERENCES app.refresh_token_record (id, session_id)
