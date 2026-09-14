@@ -9,6 +9,11 @@ import java.util.Optional;
 
 public interface AuthSessionRepository {
 
+    Optional<AuthSession> findById(SessionId sessionId);
+
+    /** Requires an active transaction; locks the owner-scoped session until transaction completion. */
+    Optional<AuthSession> findByIdAndUserIdForUpdate(SessionId sessionId, UserId userId);
+
     Optional<AuthSession> findByIdAndUserId(SessionId sessionId, UserId userId);
 
     /** Returns unrevoked, unexpired sessions ordered by lastUsedAt descending. */

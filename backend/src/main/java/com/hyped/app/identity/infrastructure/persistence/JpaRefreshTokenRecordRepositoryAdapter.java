@@ -41,6 +41,19 @@ class JpaRefreshTokenRecordRepositoryAdapter implements RefreshTokenRecordReposi
     }
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void flush() {
+        repository.flush();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void revokeBySessionId(SessionId sessionId) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        repository.revokeBySessionId(sessionId.value());
+    }
+
+    @Override
     public List<RefreshTokenRecord> findBySessionId(SessionId sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         return repository.findBySessionIdOrderByIssuedAtAscIdAsc(sessionId.value())

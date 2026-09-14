@@ -10,6 +10,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 @Repository
 @Transactional(readOnly = true)
@@ -21,6 +22,20 @@ class JpaAuthSessionRepositoryAdapter implements AuthSessionRepository {
     JpaAuthSessionRepositoryAdapter(SpringDataAuthSessionRepository repository, AuthSessionPersistenceMapper mapper) {
         this.repository = repository;
         this.mapper = mapper;
+    }
+
+    @Override
+    public Optional<AuthSession> findById(SessionId sessionId) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        return repository.findById(sessionId.value()).map(mapper::toDomain);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Optional<AuthSession> findByIdAndUserIdForUpdate(SessionId sessionId, UserId userId) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        Objects.requireNonNull(userId, "userId");
+        return repository.findByIdAndUserIdForUpdate(sessionId.value(), userId.value()).map(mapper::toDomain);
     }
 
     @Override
