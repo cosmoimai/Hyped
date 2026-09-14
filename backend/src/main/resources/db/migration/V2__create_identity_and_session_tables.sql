@@ -13,13 +13,25 @@ CREATE TABLE app.app_user (
         status IN ('active', 'locked', 'suspended', 'compromised', 'deletion_pending', 'deleted')
     ),
     CONSTRAINT app_user_failed_auth_count_check CHECK (failed_auth_count >= 0),
-    CONSTRAINT app_user_active_check CHECK (status <> 'active' OR deleted_at IS NULL),
-    CONSTRAINT app_user_deleted_check CHECK (
-        status <> 'deleted' OR (deleted_at IS NOT NULL AND pii_destroyed_at IS NOT NULL)
+    CONSTRAINT app_user_deletion_state_check CHECK (
+        (
+            status = 'deleted'
+            AND deleted_at IS NOT NULL
+            AND pii_destroyed_at IS NOT NULL
+        )
+        OR
+        (
+            status <> 'deleted'
+            AND deleted_at IS NULL
+            AND pii_destroyed_at IS NULL
+        )
     ),
-    -- Lock expiry and account eligibility for new sessions are checked by the service transaction.
-    -- A CHECK against now() would not remain valid as time passes.
-    CONSTRAINT app_user_locked_check CHECK (status <> 'locked' OR locked_until IS NOT NULL)
+    CONSTRAINT app_user_locked_state_check CHECK (
+        (status = 'locked') = (locked_until IS NOT NULL)
+    ),
+    CONSTRAINT app_user_timestamp_check CHECK (
+        updated_at >= created_at
+    )
 );
 
 CREATE TABLE app.user_identity (
@@ -37,7 +49,16 @@ CREATE TABLE app.user_identity (
     CONSTRAINT user_identity_subject_length_check CHECK (octet_length(provider_subject_hmac) = 32),
     CONSTRAINT user_identity_email_length_check CHECK (octet_length(email_hmac) = 32),
     CONSTRAINT user_identity_provider_subject_unique UNIQUE (provider, provider_subject_hmac),
-    CONSTRAINT user_identity_user_provider_unique UNIQUE (user_id, provider)
+    CONSTRAINT user_identity_user_provider_unique UNIQUE (user_id, provider),
+    CONSTRAINT user_identity_email_pair_check CHECK (
+        (email_ciphertext IS NULL) = (email_hmac IS NULL)
+    ),
+    CONSTRAINT user_identity_verified_email_check CHECK (
+        NOT email_verified OR email_hmac IS NOT NULL
+    ),
+    CONSTRAINT user_identity_verification_time_check CHECK (
+        last_verified_at >= linked_at
+    )
 );
 
 CREATE TABLE app.device_registration (
@@ -89,7 +110,21 @@ CREATE TABLE app.auth_session (
     CONSTRAINT auth_session_token_family_unique UNIQUE (token_family_id),
     CONSTRAINT auth_session_expiry_check CHECK (expires_at > issued_at),
     CONSTRAINT auth_session_revocation_check CHECK (
-        (revoked_at IS NULL) = (revoke_reason IS NULL)
+            (revoked_at IS NULL) = (revoke_reason IS NULL)
+    ),
+    CONSTRAINT auth_session_activity_time_check CHECK (
+        last_used_at >= issued_at
+        AND last_used_at <= expires_at
+    ),
+    CONSTRAINT auth_session_revoked_time_check CHECK (
+        revoked_at IS NULL OR revoked_at >= issued_at
+    ),
+    CONSTRAINT auth_session_reason_length_check CHECK (
+        revoke_reason IS NULL
+        OR char_length(revoke_reason) BETWEEN 1 AND 32
+    ),
+    CONSTRAINT auth_session_timestamp_check CHECK (
+        updated_at >= created_at
     )
 );
 
@@ -108,7 +143,7 @@ CREATE TABLE app.refresh_token_record (
     issued_at timestamptz NOT NULL,
     consumed_at timestamptz,
     expires_at timestamptz NOT NULL,
-    replaced_by_id uuid REFERENCES app.refresh_token_record (id),
+    replaced_by_id uuid,
     created_at timestamptz NOT NULL,
     CONSTRAINT refresh_token_record_digest_unique UNIQUE (token_digest),
     CONSTRAINT refresh_token_record_digest_length_check CHECK (octet_length(token_digest) = 32),
@@ -116,11 +151,43 @@ CREATE TABLE app.refresh_token_record (
     CONSTRAINT refresh_token_record_expiry_check CHECK (expires_at > issued_at),
     -- Revocation preserves consumption history for tokens already used in rotation.
     CONSTRAINT refresh_token_record_consumption_check CHECK (
-        (state = 'active' AND consumed_at IS NULL)
-        OR (state = 'consumed' AND consumed_at IS NOT NULL)
+        (
+            state = 'active'
+            AND consumed_at IS NULL
+            AND replaced_by_id IS NULL
+        )
+        OR
+        (
+            state = 'consumed'
+            AND consumed_at IS NOT NULL
+            AND replaced_by_id IS NOT NULL
+        )
         OR state = 'revoked'
-    )
+    ),
+    CONSTRAINT refresh_token_record_consumed_time_check CHECK (
+        consumed_at IS NULL
+        OR (
+            consumed_at >= issued_at
+            AND consumed_at <= expires_at
+        )
+    ),
+    CONSTRAINT refresh_token_record_id_session_unique
+        UNIQUE (id, session_id),
+
+        CONSTRAINT refresh_token_record_id_session_unique
+        UNIQUE (id, session_id),
+
+    CONSTRAINT refresh_token_record_replacement_fk
+        FOREIGN KEY (replaced_by_id, session_id)
+        REFERENCES app.refresh_token_record (id, session_id)
 );
 
-CREATE INDEX refresh_token_record_session_state_idx ON app.refresh_token_record (session_id, state);
-CREATE INDEX refresh_token_record_replacement_idx ON app.refresh_token_record (replaced_by_id);
+CREATE UNIQUE INDEX refresh_token_record_one_active_per_session_idx
+    ON app.refresh_token_record (session_id)
+    WHERE state = 'active';
+
+CREATE INDEX refresh_token_record_session_state_idx
+    ON app.refresh_token_record (session_id, state);
+
+CREATE INDEX refresh_token_record_replacement_idx
+    ON app.refresh_token_record (replaced_by_id);
