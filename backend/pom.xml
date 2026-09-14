@@ -131,6 +131,7 @@
           <consoleOutput>true</consoleOutput>
           <failOnViolation>true</failOnViolation>
           <includeTestSourceDirectory>true</includeTestSourceDirectory>
+          <excludeGeneratedSources>true</excludeGeneratedSources>
         </configuration>
         <executions>
           <execution>
