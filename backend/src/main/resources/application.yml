@@ -34,6 +34,10 @@ server:
   forward-headers-strategy: framework
 
 hyped:
+  firebase:
+    enabled: ${FIREBASE_IDENTITY_ENABLED:false}
+    project-id: ${FIREBASE_PROJECT_ID:}
+    clock-skew: ${FIREBASE_IDENTITY_CLOCK_SKEW:60s}
   tokens:
     enabled: ${TOKEN_SIGNING_ENABLED:false}
     issuer: ${TOKEN_ISSUER:}
