@@ -6,13 +6,11 @@ import com.hyped.app.identity.domain.UserId;
 import java.util.Objects;
 import java.util.Optional;
 
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Repository
-@Component 
 class JpaUserAccountRepositoryAdapter implements UserAccountRepository {
 
     private final SpringDataUserAccountRepository repository;
