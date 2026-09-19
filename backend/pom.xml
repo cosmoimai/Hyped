@@ -23,13 +23,34 @@
     <archunit.version>1.4.1</archunit.version>
     <wiremock.version>3.13.1</wiremock.version>
     <firebase-admin.version>9.10.0</firebase-admin.version>
+    <google-cloud-libraries-bom.version>26.86.0</google-cloud-libraries-bom.version>
   </properties>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>com.google.cloud</groupId>
+        <artifactId>libraries-bom</artifactId>
+        <version>${google-cloud-libraries-bom.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
 
   <dependencies>
     <dependency>
       <groupId>com.google.firebase</groupId>
       <artifactId>firebase-admin</artifactId>
       <version>${firebase-admin.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-kms</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-firestore</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>

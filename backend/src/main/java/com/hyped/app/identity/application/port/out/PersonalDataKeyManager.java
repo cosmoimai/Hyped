@@ -8,8 +8,16 @@ import com.hyped.app.identity.domain.UserId;
  * Implementations must validate references without interpreting or normalizing them.
  */
 public interface PersonalDataKeyManager {
+    /**
+     * Provisions or returns the existing external key reference before a database transaction starts.
+     * A future account-creation orchestrator must call destroyKey when its later transaction fails and
+     * the account has no previously committed key reference.
+     */
     String createKey(UserId userId);
 
-    /** Idempotent: a missing key is already destroyed and must never be recreated. */
+    /**
+     * Idempotent cleanup and cryptographic destruction path. A missing key is already destroyed and
+     * must never be recreated.
+     */
     void destroyKey(UserId userId, String keyReference);
 }
