@@ -34,6 +34,10 @@ server:
   forward-headers-strategy: framework
 
 hyped:
+  identity-crypto:
+    enabled: ${IDENTITY_CRYPTO_ENABLED:false}
+    environment: ${IDENTITY_CRYPTO_ENVIRONMENT:local}
+    lookup-hmac-key: ${IDENTITY_LOOKUP_HMAC_KEY:}
   firebase:
     enabled: ${FIREBASE_IDENTITY_ENABLED:false}
     project-id: ${FIREBASE_PROJECT_ID:}
