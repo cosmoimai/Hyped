@@ -3,6 +3,7 @@ package com.hyped.app.identity.infrastructure.crypto;
 import com.hyped.app.identity.application.exception.PersonalDataProtectionException;
 import com.hyped.app.identity.application.exception.PersonalDataProtectionException.Reason;
 import com.hyped.app.identity.application.model.PersonalDataField;
+import com.hyped.app.identity.application.model.ProvisionedPersonalDataKey;
 import com.hyped.app.identity.application.port.out.PersonalDataCipher;
 import com.hyped.app.identity.application.port.out.PersonalDataKeyManager;
 import com.hyped.app.identity.domain.UserId;
@@ -43,11 +44,13 @@ final class KmsFirestorePersonalDataProtectionAdapter implements PersonalDataKey
     }
 
     @Override
-    public String createKey(UserId userId) {
+    public ProvisionedPersonalDataKey provisionKey(UserId userId) {
         Objects.requireNonNull(userId, "userId");
         Optional<PersonalDataKeyRecord> existing = providerCall(() -> registry.find(userId));
         if (existing.isPresent()) {
-            return requireUsable(existing.orElseThrow(), userId, existing.orElseThrow().keyReference()).keyReference();
+            PersonalDataKeyRecord record = existing.orElseThrow();
+            String reference = requireUsable(record, userId, record.keyReference()).keyReference();
+            return new ProvisionedPersonalDataKey(reference, false);
         }
 
         byte[] plaintextDek = new byte[DEK_LENGTH];
@@ -63,7 +66,8 @@ final class KmsFirestorePersonalDataProtectionAdapter implements PersonalDataKey
                     userId, newReference(), properties.environment(), properties.kms().keyName(), wrappedDek,
                     PersonalDataKeyStatus.ACTIVE, clock.instant(), null);
             PersonalDataKeyRecord selected = providerCall(() -> registry.createIfAbsent(candidate));
-            return requireUsable(selected, userId, selected.keyReference()).keyReference();
+            String reference = requireUsable(selected, userId, selected.keyReference()).keyReference();
+            return new ProvisionedPersonalDataKey(reference, reference.equals(candidate.keyReference()));
         } finally {
             Arrays.fill(plaintextDek, (byte) 0);
             Arrays.fill(wrappingContext, (byte) 0);

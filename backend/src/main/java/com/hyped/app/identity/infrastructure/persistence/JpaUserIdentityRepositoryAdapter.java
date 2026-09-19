@@ -5,6 +5,7 @@ import com.hyped.app.identity.domain.IdentityProvider;
 import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.identity.domain.UserIdentity;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;
@@ -41,6 +42,17 @@ class JpaUserIdentityRepositoryAdapter implements UserIdentityRepository {
         Objects.requireNonNull(userId, "userId");
         Objects.requireNonNull(provider, "provider");
         return repository.existsByUserIdAndProvider(userId.value(), provider);
+    }
+
+    @Override
+    @Transactional
+    public boolean createIfProviderSubjectAbsent(UserIdentity identity) {
+        Objects.requireNonNull(identity, "identity");
+        return repository.createIfProviderSubjectAbsent(
+                identity.id().value(), identity.userId().value(),
+                identity.provider().name().toLowerCase(Locale.ROOT), identity.providerSubjectHmac(),
+                identity.emailCiphertext(), identity.emailHmac(), identity.emailVerified(),
+                identity.linkedAt(), identity.lastVerifiedAt(), identity.createdAt()) > 0;
     }
 
     @Override

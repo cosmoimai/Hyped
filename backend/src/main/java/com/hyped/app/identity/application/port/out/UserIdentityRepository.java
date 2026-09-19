@@ -15,5 +15,11 @@ public interface UserIdentityRepository {
 
     boolean existsByUserIdAndProvider(UserId userId, IdentityProvider provider);
 
+    /**
+     * Inserts without replacing an identity. Returns false when the authoritative provider-subject
+     * uniqueness constraint is already owned by a concurrent transaction. Requires an active transaction.
+     */
+    boolean createIfProviderSubjectAbsent(UserIdentity identity);
+
     UserIdentity save(UserIdentity identity);
 }
