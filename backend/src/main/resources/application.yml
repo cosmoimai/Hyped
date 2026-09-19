@@ -81,3 +81,7 @@ info:
   app:
     name: Hyped! Backend
     version: "@project.version@"
+
+logging:
+  level:
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO

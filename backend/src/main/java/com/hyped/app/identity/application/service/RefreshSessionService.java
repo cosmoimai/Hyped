@@ -96,7 +96,7 @@ public class RefreshSessionService {
         IssuedAccessToken accessToken = issuer.issue(session.userId(), session.id(), device.installationId());
         GeneratedRefreshToken replacement = new GeneratedRefreshToken(generated.tokenValue(),
                 generated.issuedAt(), expiresAt);
-        return new RefreshSessionResult.Success(new SessionTokenPair(accessToken, replacement));
+        return new RefreshSessionResult.Success(new SessionTokenPair(session.id(), accessToken, replacement));
     }
 
     private static RefreshSessionResult denied(String code) {

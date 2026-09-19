@@ -15,13 +15,20 @@ import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.time.Clock;
+import java.time.Duration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.converter.RsaKeyConverters;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtIssuerValidator;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 
 @Configuration(proxyBeanMethods = false)
 @EnableConfigurationProperties(TokenProperties.class)
@@ -62,5 +69,25 @@ public class TokenConfiguration {
     @ConditionalOnProperty(prefix = "hyped.tokens", name = "enabled", havingValue = "true")
     AccessTokenIssuer accessTokenIssuer(JwtEncoder encoder, Clock clock, TokenProperties properties) {
         return new Rs256AccessTokenIssuer(encoder, clock, properties);
+    }
+
+    @Bean
+    @ConditionalOnProperty(prefix = "hyped.tokens", name = "enabled", havingValue = "true")
+    JwtDecoder jwtDecoder(TokenProperties properties, Clock clock) throws IOException {
+        RSAPublicKey publicKey;
+        try (InputStream publicInput = properties.publicKey().getInputStream()) {
+            publicKey = RsaKeyConverters.x509().convert(publicInput);
+        }
+        if (publicKey == null || publicKey.getModulus().bitLength() < 2048) {
+            throw new IllegalArgumentException("Token verification requires an RSA public key of at least 2048 bits");
+        }
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withPublicKey(publicKey)
+                .signatureAlgorithm(SignatureAlgorithm.RS256)
+                .build();
+        JwtTimestampValidator timestamp = new JwtTimestampValidator(Duration.ofSeconds(60));
+        timestamp.setClock(clock);
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                timestamp, new JwtIssuerValidator(properties.issuer()), new AccessTokenValidator(properties)));
+        return decoder;
     }
 }

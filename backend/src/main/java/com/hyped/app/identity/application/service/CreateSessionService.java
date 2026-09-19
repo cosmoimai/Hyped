@@ -94,7 +94,7 @@ public class CreateSessionService {
                 refreshToken.issuedAt(), null, refreshToken.expiresAt(), null, refreshToken.issuedAt()));
         IssuedAccessToken accessToken = accessTokenIssuer.issue(
                 command.userId(), session.id(), command.installationId());
-        return new CreateSessionResult.Success(new SessionTokenPair(accessToken, refreshToken));
+        return new CreateSessionResult.Success(new SessionTokenPair(session.id(), accessToken, refreshToken));
     }
 
     private CreateSessionResult unavailableAccountResult(UserAccount account, Instant now) {
