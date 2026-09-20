@@ -33,6 +33,34 @@ server:
   shutdown: graceful
   forward-headers-strategy: framework
 
+hyped:
+  identity-crypto:
+    enabled: ${IDENTITY_CRYPTO_ENABLED:false}
+    environment: ${IDENTITY_CRYPTO_ENVIRONMENT:local}
+    lookup-hmac-key: ${IDENTITY_LOOKUP_HMAC_KEY:}
+  personal-data:
+    enabled: ${PERSONAL_DATA_PROTECTION_ENABLED:false}
+    environment: ${PERSONAL_DATA_ENVIRONMENT:}
+    kms:
+      key-name: ${PERSONAL_DATA_KMS_KEY_NAME:}
+    firestore:
+      project-id: ${PERSONAL_DATA_FIRESTORE_PROJECT_ID:}
+      database-id: ${PERSONAL_DATA_FIRESTORE_DATABASE_ID:}
+      collection: ${PERSONAL_DATA_FIRESTORE_COLLECTION:}
+  firebase:
+    enabled: ${FIREBASE_IDENTITY_ENABLED:false}
+    project-id: ${FIREBASE_PROJECT_ID:}
+    clock-skew: ${FIREBASE_IDENTITY_CLOCK_SKEW:60s}
+  tokens:
+    enabled: ${TOKEN_SIGNING_ENABLED:false}
+    issuer: ${TOKEN_ISSUER:}
+    audience: ${TOKEN_AUDIENCE:}
+    key-id: ${TOKEN_KEY_ID:}
+    public-key: ${TOKEN_RSA_PUBLIC_KEY:}
+    private-key: ${TOKEN_RSA_PRIVATE_KEY:}
+    access-token-lifetime: ${ACCESS_TOKEN_LIFETIME:1h}
+    refresh-token-lifetime: ${REFRESH_TOKEN_LIFETIME:30d}
+
 management:
   endpoints:
     web:
@@ -54,3 +82,6 @@ info:
     name: Hyped! Backend
     version: "@project.version@"
 
+logging:
+  level:
+    org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO

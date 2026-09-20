@@ -34,6 +34,18 @@ The public probes are:
 
 All other routes are denied until their authentication and authorization contracts are implemented.
 
+## Firebase identity verification
+
+Firebase is disabled by default. To enable the verification adapter, set
+`FIREBASE_IDENTITY_ENABLED=true` and `FIREBASE_PROJECT_ID` to the expected Firebase
+project. The adapter uses Application Default Credentials and a managed, named
+Firebase app; no credentials belong in this repository or `application.yml`.
+
+Verification checks revocation and accepts only Google and Apple sign-in identities.
+`FIREBASE_IDENTITY_CLOCK_SKEW` defaults to `60s` and accepts zero to 300 whole seconds.
+This provides the verification boundary only; there is no authentication exchange endpoint yet.
+Firebase unit tests mock the SDK and do not contact Google.
+
 ## Package boundaries
 
 Feature modules live directly below `com.hyped.app` and expand only when implementation begins:
@@ -47,4 +59,3 @@ feature/
 ```
 
 ArchUnit enforces the internal dependency direction. Cross-feature access must use an application facade/port or durable outbox event.
-
