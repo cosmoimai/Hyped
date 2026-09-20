@@ -3,6 +3,7 @@ package com.hyped.app.identity.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -13,7 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.hyped.app.common.api.ApiProblemWriter;
 import com.hyped.app.common.api.GlobalProblemHandler;
 import com.hyped.app.common.api.RequestContextFilter;
-import com.hyped.app.common.security.AccountStateFilter;
 import com.hyped.app.common.security.SecurityConfiguration;
 import com.hyped.app.common.security.SecurityProblemHandlers;
 import com.hyped.app.identity.application.exception.IdentityTokenVerificationException;
@@ -43,6 +43,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -57,7 +59,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = AuthenticationController.class, properties = "hyped.tokens.enabled=true")
 @Import({SecurityConfiguration.class, ApiProblemWriter.class, GlobalProblemHandler.class,
-        RequestContextFilter.class, SecurityProblemHandlers.class, AccountStateFilter.class})
+        RequestContextFilter.class, SecurityProblemHandlers.class})
 @ExtendWith(OutputCaptureExtension.class)
 class AuthenticationControllerTest {
     private static final Instant NOW = Instant.parse("2026-09-19T12:00:00Z");
@@ -230,14 +232,28 @@ class AuthenticationControllerTest {
         verify(logoutService).logout(USER_ID, SESSION_ID);
     }
 
-    @Test
-    void deniesCompromisedAccountOnProtectedRequest() throws Exception {
-        when(accounts.findById(USER_ID)).thenReturn(Optional.of(account(AccountStatus.COMPROMISED)));
+    @ParameterizedTest
+    @EnumSource(value = AccountStatus.class, names = {"SUSPENDED", "COMPROMISED"})
+    void deniesUnavailableAccountOnProtectedRequest(AccountStatus status) throws Exception {
+        when(accounts.findById(USER_ID)).thenReturn(Optional.of(account(status)));
 
         mvc.perform(post("/api/v1/auth/logout")
                         .header("Authorization", "Bearer " + VALID_ACCESS_TOKEN))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("ACCOUNT_COMPROMISED"));
+                .andExpect(jsonPath("$.code").value("ACCOUNT_" + status.name()));
+
+        verify(accounts).findById(USER_ID);
+        verifyNoInteractions(logoutService);
+    }
+
+    @Test
+    void deniesRouteThatHasNotBeenExplicitlyEnabled() throws Exception {
+        mvc.perform(post("/api/v1/not-enabled")
+                        .header("Authorization", "Bearer " + VALID_ACCESS_TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+
+        verify(accounts).findById(USER_ID);
     }
 
     @Test
@@ -253,6 +269,7 @@ class AuthenticationControllerTest {
 
         assertThat(response).doesNotContain(rawToken).doesNotContain("invalid access token");
         assertThat(output).doesNotContain(rawToken).doesNotContain("invalid access token");
+        verifyNoInteractions(accounts);
     }
 
     @Test

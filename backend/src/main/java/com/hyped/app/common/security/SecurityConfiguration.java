@@ -2,14 +2,16 @@ package com.hyped.app.common.security;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
+import com.hyped.app.common.api.ApiProblemWriter;
+import com.hyped.app.identity.application.port.out.UserAccountRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
-import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
 import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -21,8 +23,10 @@ public class SecurityConfiguration {
     SecurityFilterChain apiSecurity(
             HttpSecurity http,
             SecurityProblemHandlers problemHandlers,
-            AccountStateFilter accountStateFilter,
+            UserAccountRepository accounts,
+            ApiProblemWriter problems,
             BearerTokenResolver bearerTokenResolver) throws Exception {
+        AccountStateFilter accountStateFilter = new AccountStateFilter(accounts, problems);
         return http
                 .csrf(csrf -> csrf.disable())
                 .cors(withDefaults())
@@ -40,7 +44,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout")
                         .authenticated()
                         .anyRequest()
-                        .authenticated())
+                        .denyAll())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .bearerTokenResolver(bearerTokenResolver)
                         .authenticationEntryPoint(problemHandlers)
