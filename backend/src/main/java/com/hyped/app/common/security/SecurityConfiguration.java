@@ -43,6 +43,10 @@ public class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout")
                         .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/sessions")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/auth/sessions/*")
+                        .authenticated()
                         .anyRequest()
                         .denyAll())
                 .oauth2ResourceServer(resourceServer -> resourceServer

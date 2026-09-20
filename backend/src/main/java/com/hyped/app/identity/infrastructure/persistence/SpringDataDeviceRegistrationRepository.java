@@ -28,4 +28,22 @@ interface SpringDataDeviceRegistrationRepository extends JpaRepository<DeviceReg
             """, nativeQuery = true)
     int invalidate(@Param("id") UUID id, @Param("userId") UUID userId,
             @Param("invalidatedAt") Instant invalidatedAt);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = """
+            UPDATE app.device_registration d
+            SET invalidated_at = :now, updated_at = GREATEST(d.updated_at, :now)
+            WHERE d.user_id = :userId
+                AND d.invalidated_at IS NULL
+                AND d.created_at <= :now
+                AND NOT EXISTS (
+                    SELECT 1
+                    FROM app.auth_session s
+                    WHERE s.user_id = d.user_id
+                        AND s.device_id = d.id
+                        AND s.revoked_at IS NULL
+                        AND s.expires_at > :now
+                )
+            """, nativeQuery = true)
+    int invalidateWithoutActiveSession(@Param("userId") UUID userId, @Param("now") Instant now);
 }

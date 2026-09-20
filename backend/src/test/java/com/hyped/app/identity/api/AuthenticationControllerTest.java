@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -17,6 +20,7 @@ import com.hyped.app.common.api.RequestContextFilter;
 import com.hyped.app.common.security.SecurityConfiguration;
 import com.hyped.app.common.security.SecurityProblemHandlers;
 import com.hyped.app.identity.application.exception.IdentityTokenVerificationException;
+import com.hyped.app.identity.application.model.ActiveSessionSummary;
 import com.hyped.app.identity.application.model.AuthenticationExchangeResult;
 import com.hyped.app.identity.application.model.AuthenticationUserProfile;
 import com.hyped.app.identity.application.model.DeviceSummary;
@@ -28,7 +32,9 @@ import com.hyped.app.identity.application.port.out.UserAccountRepository;
 import com.hyped.app.identity.application.service.AuthenticationExchangeService;
 import com.hyped.app.identity.application.service.AuthenticationProfileReader;
 import com.hyped.app.identity.application.service.LogoutSessionService;
+import com.hyped.app.identity.application.service.ListActiveSessionsService;
 import com.hyped.app.identity.application.service.RefreshSessionService;
+import com.hyped.app.identity.application.service.RevokeSessionService;
 import com.hyped.app.identity.domain.AccountStatus;
 import com.hyped.app.identity.domain.DeviceId;
 import com.hyped.app.identity.domain.DevicePlatform;
@@ -82,6 +88,12 @@ class AuthenticationControllerTest {
 
     @MockitoBean
     private LogoutSessionService logoutService;
+
+    @MockitoBean
+    private ListActiveSessionsService listSessionsService;
+
+    @MockitoBean
+    private RevokeSessionService revokeSessionService;
 
     @MockitoBean
     private AuthenticationProfileReader profiles;
@@ -230,6 +242,63 @@ class AuthenticationControllerTest {
                 .andExpect(header().string("Cache-Control", "no-store"));
 
         verify(logoutService).logout(USER_ID, SESSION_ID);
+    }
+
+    @Test
+    void listsSafeActiveSessionsAndMarksCurrent() throws Exception {
+        SessionId otherSession = new SessionId(UUID.randomUUID());
+        when(listSessionsService.list(USER_ID, SESSION_ID)).thenReturn(List.of(
+                new ActiveSessionSummary(SESSION_ID, "Current iPhone", DevicePlatform.IOS,
+                        NOW.minusSeconds(100), NOW, true),
+                new ActiveSessionSummary(otherSession, "Older Pixel", DevicePlatform.ANDROID,
+                        NOW.minusSeconds(300), NOW.minusSeconds(200), false)));
+
+        mvc.perform(get("/api/v1/auth/sessions")
+                        .header("Authorization", "Bearer " + VALID_ACCESS_TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.items[0].sessionId").value(SESSION_ID.toString()))
+                .andExpect(jsonPath("$.items[0].deviceName").value("Current iPhone"))
+                .andExpect(jsonPath("$.items[0].platform").value("IOS"))
+                .andExpect(jsonPath("$.items[0].isCurrent").value(true))
+                .andExpect(jsonPath("$.items[1].sessionId").value(otherSession.toString()))
+                .andExpect(jsonPath("$.items[1].isCurrent").value(false))
+                .andExpect(jsonPath("$.nextCursor").doesNotExist())
+                .andExpect(jsonPath("$.items[0].fcmToken").doesNotExist())
+                .andExpect(jsonPath("$.items[0].tokenDigest").doesNotExist())
+                .andExpect(jsonPath("$.items[0].provider").doesNotExist())
+                .andExpect(jsonPath("$.items[0].ipAddress").doesNotExist());
+    }
+
+    @Test
+    void deletesOwnedSessionIdempotently() throws Exception {
+        SessionId removed = new SessionId(UUID.randomUUID());
+        when(revokeSessionService.revoke(USER_ID, removed)).thenReturn(true, true);
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mvc.perform(delete("/api/v1/auth/sessions/{sessionId}", removed)
+                            .header("Authorization", "Bearer " + VALID_ACCESS_TOKEN))
+                    .andExpect(status().isNoContent())
+                    .andExpect(header().string("Cache-Control", "no-store"));
+        }
+
+        verify(revokeSessionService, times(2)).revoke(USER_ID, removed);
+    }
+
+    @Test
+    void sessionRoutesRejectMissingAndInvalidJwt() throws Exception {
+        mvc.perform(get("/api/v1/auth/sessions"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"));
+
+        String invalidToken = "invalid-session-management-token";
+        when(decoder.decode(invalidToken)).thenThrow(new BadJwtException("invalid access token"));
+        mvc.perform(delete("/api/v1/auth/sessions/{sessionId}", UUID.randomUUID())
+                        .header("Authorization", "Bearer " + invalidToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("ACCESS_TOKEN_INVALID"));
+
+        verifyNoInteractions(listSessionsService, revokeSessionService);
     }
 
     @ParameterizedTest

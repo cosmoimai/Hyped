@@ -160,6 +160,22 @@ class CreateSessionServiceIntegrationTest {
     }
 
     @Test
+    void expiredSessionsDoNotLeaveRegistrationsConsumingAllDeviceSlots() {
+        UserId userId = user(AccountStatus.ACTIVE, null, 0);
+        for (int index = 1; index <= 5; index++) {
+            success(service.create(command(userId, installation(), "Expired device " + index)));
+        }
+        assertThat(devices.countActiveByUserId(userId)).isEqualTo(5);
+
+        clock.set(NOW.plus(Duration.ofDays(31)));
+        CreateSessionResult result = service.create(command(userId, installation(), "Replacement device"));
+
+        assertThat(result).isInstanceOf(CreateSessionResult.Success.class);
+        assertThat(devices.countActiveByUserId(userId)).isEqualTo(1);
+        assertThat(sessions.findActiveByUserId(userId, clock.instant())).hasSize(1);
+    }
+
+    @Test
     void expiredLockIsClearedWhenSessionIsCreated() {
         UserId userId = user(AccountStatus.LOCKED, NOW.minusSeconds(1), 5);
 

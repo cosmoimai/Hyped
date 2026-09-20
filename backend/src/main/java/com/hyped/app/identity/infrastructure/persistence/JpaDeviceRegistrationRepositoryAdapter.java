@@ -67,4 +67,12 @@ class JpaDeviceRegistrationRepositoryAdapter implements DeviceRegistrationReposi
         Objects.requireNonNull(invalidatedAt, "invalidatedAt");
         return repository.invalidate(deviceId.value(), userId.value(), invalidatedAt) > 0;
     }
+
+    @Override
+    @Transactional
+    public long invalidateWithoutActiveSession(UserId userId, Instant now) {
+        Objects.requireNonNull(userId, "userId");
+        Objects.requireNonNull(now, "now");
+        return repository.invalidateWithoutActiveSession(userId.value(), now);
+    }
 }

@@ -13,14 +13,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class LogoutSessionService {
-
+public class RevokeSessionService {
     private final AuthSessionRepository sessions;
     private final RefreshTokenRecordRepository tokens;
     private final DeviceRegistrationRepository devices;
     private final Clock clock;
 
-    public LogoutSessionService(
+    public RevokeSessionService(
             AuthSessionRepository sessions,
             RefreshTokenRecordRepository tokens,
             DeviceRegistrationRepository devices,
@@ -31,9 +30,9 @@ public class LogoutSessionService {
         this.clock = clock;
     }
 
-    /** Returns false for an absent or differently owned session. Repeated logout is idempotent. */
+    /** Unknown and differently owned sessions both return false. Repeated revocation is safe. */
     @Transactional
-    public boolean logout(UserId userId, SessionId sessionId) {
+    public boolean revoke(UserId userId, SessionId sessionId) {
         Objects.requireNonNull(userId, "userId");
         Objects.requireNonNull(sessionId, "sessionId");
         AuthSession session = sessions.findByIdAndUserIdForUpdate(sessionId, userId).orElse(null);
@@ -41,7 +40,7 @@ public class LogoutSessionService {
             return false;
         }
         Instant now = clock.instant();
-        SessionRevocation.revoke(session, now, "logout", sessions, tokens);
+        SessionRevocation.revoke(session, now, "device_removed", sessions, tokens);
         if (session.deviceId() != null) {
             devices.invalidate(session.deviceId(), userId, now);
         }

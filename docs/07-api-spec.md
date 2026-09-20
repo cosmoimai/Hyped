@@ -173,6 +173,24 @@ Errors:
 
 ### 5.5 Session list
 
+`GET /auth/sessions` returns active, unrevoked sessions ordered by `lastUsedAt desc`:
+
+```json
+{
+  "items": [
+    {
+      "sessionId": "019b1f21-31ca-749e-b9b9-96d4c0efec40",
+      "deviceName": "Pixel 10",
+      "platform": "ANDROID",
+      "createdAt": "2026-09-09T10:30:00Z",
+      "lastUsedAt": "2026-09-09T11:30:00Z",
+      "isCurrent": true
+    }
+  ],
+  "nextCursor": null
+}
+```
+
 Session responses expose only:
 
 - `sessionId`
@@ -183,6 +201,16 @@ Session responses expose only:
 - `isCurrent`
 
 They do not expose FCM tokens, provider tokens, IP history, or refresh-token hashes.
+
+`DELETE /auth/sessions/{sessionId}` returns `204` and revokes that session's refresh tokens. It also invalidates
+the associated device registration so the installation no longer consumes a device slot. Unknown sessions and
+sessions owned by another user have the same idempotent `204` response.
+
+Logout invalidates the current installation immediately. Before enforcing the five-device limit, identity exchange
+also reclaims registrations that have no unrevoked, unexpired session, so expired sessions cannot permanently consume
+slots. These session-management routes require an existing Hyped! access token. When all five installations still
+have live sessions, the sixth installation cannot revoke one through these routes; a future Firebase-reverified
+replacement operation is required before the product can claim standalone recovery from that case.
 
 ## 6. Error contract
 

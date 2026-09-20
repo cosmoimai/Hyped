@@ -72,6 +72,7 @@ public class CreateSessionService {
             return unavailable;
         }
 
+        devices.invalidateWithoutActiveSession(command.userId(), now);
         DeviceRegistration existing = devices
                 .findByUserAndInstallation(command.userId(), command.installationId()).orElse(null);
         if ((existing == null || !existing.isActive())

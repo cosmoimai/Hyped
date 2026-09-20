@@ -26,4 +26,10 @@ public interface DeviceRegistrationRepository {
      * including when the supplied timestamp precedes device creation.
      */
     boolean invalidate(DeviceId deviceId, UserId userId, Instant invalidatedAt);
+
+    /**
+     * Invalidates active registrations that have no unrevoked, unexpired session.
+     * The caller must hold the user lock when this is used before device-limit enforcement.
+     */
+    long invalidateWithoutActiveSession(UserId userId, Instant now);
 }
