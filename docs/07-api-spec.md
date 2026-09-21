@@ -108,6 +108,7 @@ The backend creates a request ID if the client does not supply a valid one and r
 | `POST` | `/auth/logout` | Access token | Revoke current session |
 | `GET` | `/auth/sessions` | Access token | List active devices/sessions |
 | `DELETE` | `/auth/sessions/{sessionId}` | Access token | Revoke another session |
+| `POST` | `/auth/devices/{deviceId}/revoke` | Firebase ID token in body | Free a device slot during sign-in |
 | `POST` | `/auth/link/prepare` | Access token | Start confirmed provider linking |
 | `POST` | `/auth/link/confirm` | Access token plus proof | Confirm Google/Apple account link |
 
@@ -208,9 +209,20 @@ sessions owned by another user have the same idempotent `204` response.
 
 Logout invalidates the current installation immediately. Before enforcing the five-device limit, identity exchange
 also reclaims registrations that have no unrevoked, unexpired session, so expired sessions cannot permanently consume
-slots. These session-management routes require an existing Hyped! access token. When all five installations still
-have live sessions, the sixth installation cannot revoke one through these routes; a future Firebase-reverified
-replacement operation is required before the product can claim standalone recovery from that case.
+slots. The session-management routes require an existing Hyped! access token.
+
+A sixth installation that receives `DEVICE_LIMIT_REACHED` can select a `deviceId` from that error's safe device list
+and call `POST /auth/devices/{deviceId}/revoke` with a fresh Firebase ID token in this body:
+
+```json
+{
+  "firebaseIdToken": "<token>"
+}
+```
+
+The server verifies the Firebase token, resolves the exact provider identity, and atomically revokes sessions and
+refresh tokens for that user's selected device before invalidating its registration. It always returns `204`, whether
+the device is already invalid, unknown, or belongs to another account. The sixth installation can then retry exchange.
 
 ## 6. Error contract
 

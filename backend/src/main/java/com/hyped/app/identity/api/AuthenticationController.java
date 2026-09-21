@@ -13,8 +13,10 @@ import com.hyped.app.identity.application.service.AuthenticationProfileReader;
 import com.hyped.app.identity.application.service.LogoutSessionService;
 import com.hyped.app.identity.application.service.ListActiveSessionsService;
 import com.hyped.app.identity.application.service.RefreshSessionService;
+import com.hyped.app.identity.application.service.RecoverDeviceService;
 import com.hyped.app.identity.application.service.RevokeSessionService;
 import com.hyped.app.identity.domain.AccountStatus;
+import com.hyped.app.identity.domain.DeviceId;
 import com.hyped.app.identity.domain.DevicePlatform;
 import com.hyped.app.identity.domain.InstallationId;
 import com.hyped.app.identity.domain.SessionId;
@@ -49,6 +51,7 @@ public class AuthenticationController {
     private final LogoutSessionService logoutService;
     private final ListActiveSessionsService listSessionsService;
     private final RevokeSessionService revokeSessionService;
+    private final RecoverDeviceService recoverDeviceService;
     private final AuthenticationProfileReader profiles;
 
     public AuthenticationController(
@@ -57,12 +60,14 @@ public class AuthenticationController {
             LogoutSessionService logoutService,
             ListActiveSessionsService listSessionsService,
             RevokeSessionService revokeSessionService,
+            RecoverDeviceService recoverDeviceService,
             AuthenticationProfileReader profiles) {
         this.exchangeService = exchangeService;
         this.refreshService = refreshService;
         this.logoutService = logoutService;
         this.listSessionsService = listSessionsService;
         this.revokeSessionService = revokeSessionService;
+        this.recoverDeviceService = recoverDeviceService;
         this.profiles = profiles;
     }
 
@@ -128,6 +133,13 @@ public class AuthenticationController {
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
+    @PostMapping("/devices/{deviceId}/revoke")
+    public ResponseEntity<Void> recoverDevice(
+            @PathVariable UUID deviceId, @Valid @RequestBody DeviceRecoveryRequest request) {
+        recoverDeviceService.recover(request.firebaseIdToken(), new DeviceId(deviceId));
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+    }
+
     private static ApiProblemException deviceLimit(List<DeviceSummary> devices) {
         List<DeviceLimitItem> safeDevices = devices.stream().map(DeviceLimitItem::from).toList();
         return new ApiProblemException(HttpStatus.CONFLICT, "DEVICE_LIMIT_REACHED", "Device limit reached",
@@ -190,6 +202,15 @@ public class AuthenticationController {
         @Override
         public String toString() {
             return "RefreshRequest[refreshToken=[REDACTED], installationId=" + installationId + "]";
+        }
+    }
+
+    public record DeviceRecoveryRequest(
+            @NotBlank @Size(max = 16384) String firebaseIdToken) {
+
+        @Override
+        public String toString() {
+            return "DeviceRecoveryRequest[firebaseIdToken=[REDACTED]]";
         }
     }
 

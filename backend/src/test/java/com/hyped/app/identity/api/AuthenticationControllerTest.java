@@ -34,6 +34,7 @@ import com.hyped.app.identity.application.service.AuthenticationProfileReader;
 import com.hyped.app.identity.application.service.LogoutSessionService;
 import com.hyped.app.identity.application.service.ListActiveSessionsService;
 import com.hyped.app.identity.application.service.RefreshSessionService;
+import com.hyped.app.identity.application.service.RecoverDeviceService;
 import com.hyped.app.identity.application.service.RevokeSessionService;
 import com.hyped.app.identity.domain.AccountStatus;
 import com.hyped.app.identity.domain.DeviceId;
@@ -94,6 +95,9 @@ class AuthenticationControllerTest {
 
     @MockitoBean
     private RevokeSessionService revokeSessionService;
+
+    @MockitoBean
+    private RecoverDeviceService recoverDeviceService;
 
     @MockitoBean
     private AuthenticationProfileReader profiles;
@@ -283,6 +287,21 @@ class AuthenticationControllerTest {
         }
 
         verify(revokeSessionService, times(2)).revoke(USER_ID, removed);
+    }
+
+    @Test
+    void recoversDeviceWithFirebaseProofWithoutAccessJwt(CapturedOutput output) throws Exception {
+        DeviceId deviceId = new DeviceId(UUID.randomUUID());
+        when(recoverDeviceService.recover(IDENTITY_TOKEN, deviceId)).thenReturn(true);
+
+        mvc.perform(post("/api/v1/auth/devices/{deviceId}/revoke", deviceId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"firebaseIdToken\":\"" + IDENTITY_TOKEN + "\"}"))
+                .andExpect(status().isNoContent())
+                .andExpect(header().string("Cache-Control", "no-store"));
+
+        verify(recoverDeviceService).recover(IDENTITY_TOKEN, deviceId);
+        assertThat(output).doesNotContain(IDENTITY_TOKEN);
     }
 
     @Test

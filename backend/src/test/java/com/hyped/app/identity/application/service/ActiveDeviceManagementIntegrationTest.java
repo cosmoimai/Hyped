@@ -55,6 +55,9 @@ class ActiveDeviceManagementIntegrationTest {
     private RevokeSessionService revokeService;
 
     @Autowired
+    private RecoverDeviceTransactionService recoverDeviceTransactions;
+
+    @Autowired
     private UserAccountRepository users;
 
     @Autowired
@@ -107,6 +110,25 @@ class ActiveDeviceManagementIntegrationTest {
         assertThat(devices.countActiveByUserId(owner)).isZero();
         assertThat(sessions.findById(other.session().id())).contains(other.session());
         assertThat(devices.findByIdAndUserId(other.device().id(), otherUser).orElseThrow().isActive()).isTrue();
+    }
+
+    @Test
+    void firebaseRecoveryTransactionIsOwnerScopedAtomicAndRepeatable() {
+        UserId owner = user();
+        Fixture fixture = fixture(owner, "Old phone", DevicePlatform.ANDROID, NOW.minusSeconds(60));
+        UserId otherUser = user();
+
+        assertThat(recoverDeviceTransactions.revokeDevice(otherUser, fixture.device().id())).isFalse();
+        assertThat(devices.findByIdAndUserId(fixture.device().id(), owner).orElseThrow().isActive()).isTrue();
+
+        assertThat(recoverDeviceTransactions.revokeDevice(owner, fixture.device().id())).isTrue();
+        assertThat(recoverDeviceTransactions.revokeDevice(owner, fixture.device().id())).isFalse();
+
+        assertThat(sessions.findById(fixture.session().id()).orElseThrow().revokeReason())
+                .isEqualTo("device_recovery");
+        assertThat(tokens.findBySessionId(fixture.session().id()))
+                .allMatch(token -> token.state() == RefreshTokenState.REVOKED);
+        assertThat(devices.countActiveByUserId(owner)).isZero();
     }
 
     private UserId user() {

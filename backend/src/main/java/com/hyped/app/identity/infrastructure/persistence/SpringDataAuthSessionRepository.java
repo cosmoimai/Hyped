@@ -17,4 +17,13 @@ interface SpringDataAuthSessionRepository extends JpaRepository<AuthSessionEntit
 
     List<AuthSessionEntity> findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByLastUsedAtDesc(
             UUID userId, Instant now);
+
+    @Query(value = """
+            SELECT * FROM app.auth_session
+            WHERE device_id = :deviceId AND user_id = :userId
+            ORDER BY id
+            FOR UPDATE
+            """, nativeQuery = true)
+    List<AuthSessionEntity> findByDeviceIdAndUserIdForUpdate(
+            @Param("deviceId") UUID deviceId, @Param("userId") UUID userId);
 }
