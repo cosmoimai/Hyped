@@ -23,3 +23,10 @@ backend/src/main/resources/application-local.yml
 # Local verification output
 build/verification/
 
+# Flutter generated output and local provider configuration
+frontend/.dart_tool/
+frontend/build/
+frontend/.flutter-plugins*
+frontend/android/app/google-services.json
+frontend/ios/Runner/GoogleService-Info.plist
+frontend/ios/Flutter/ephemeral/
