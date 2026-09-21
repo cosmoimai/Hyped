@@ -184,6 +184,9 @@ class RefreshSessionServiceIntegrationTest {
         assertThat(tokens.findBySessionId(fixture.session().id()))
                 .allMatch(token -> token.state() == RefreshTokenState.REVOKED);
         assertThat(sessions.findById(fixture.session().id()).orElseThrow().revokeReason()).isEqualTo("logout");
+        assertThat(devices.findByIdAndUserId(fixture.device().id(), fixture.session().userId())
+                .orElseThrow().isActive()).isFalse();
+        assertThat(devices.countActiveByUserId(fixture.session().userId())).isZero();
         assertThat(refresh(fixture)).isEqualTo(new RefreshSessionResult.ReauthenticationRequired("SESSION_EXPIRED"));
         assertThat(decoder().decode(access.tokenValue()).getExpiresAt()).isEqualTo(NOW.plus(Duration.ofHours(1)));
     }

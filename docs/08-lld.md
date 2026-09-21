@@ -229,8 +229,16 @@ Consumed token digests remain in `refresh_token_record` until the family expiry/
 - Creation of a new installation locks the user row before counting active installations.
 - A sixth installation returns `DEVICE_LIMIT_REACHED` and safe active-session summaries.
 - Revoking a session also invalidates its push registration.
+- Logout invalidates the current device registration in the same transaction as session-family revocation.
+- Before counting devices during exchange, registrations without an unrevoked, unexpired session are invalidated
+  while the user row is locked. This reclaims slots left by expired sessions or interrupted lifecycle work.
 - Safe summaries contain normalized device name, platform, created/last-active times, and current-device marker.
 - A new installation emits a safe security push to the user's other active devices.
+- `GET /auth/sessions` and `DELETE /auth/sessions/{sessionId}` require an existing access JWT.
+- If all five sessions remain live, the sixth device uses the safe `deviceId` returned by exchange and a fresh
+  Firebase token with `POST /auth/devices/{deviceId}/revoke`. Provider verification and identity lookup happen before
+  the database transaction. The transaction locks the user and owned device sessions, revokes their refresh tokens,
+  and invalidates the registration. Foreign, unknown, and already invalid devices receive the same idempotent result.
 
 ## 8. Profile module
 

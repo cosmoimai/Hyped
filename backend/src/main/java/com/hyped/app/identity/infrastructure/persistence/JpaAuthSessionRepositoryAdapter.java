@@ -2,6 +2,7 @@ package com.hyped.app.identity.infrastructure.persistence;
 
 import com.hyped.app.identity.application.port.out.AuthSessionRepository;
 import com.hyped.app.identity.domain.AuthSession;
+import com.hyped.app.identity.domain.DeviceId;
 import com.hyped.app.identity.domain.SessionId;
 import com.hyped.app.identity.domain.UserId;
 import java.time.Instant;
@@ -50,6 +51,15 @@ class JpaAuthSessionRepositoryAdapter implements AuthSessionRepository {
         Objects.requireNonNull(userId, "userId");
         Objects.requireNonNull(now, "now");
         return repository.findByUserIdAndRevokedAtIsNullAndExpiresAtAfterOrderByLastUsedAtDesc(userId.value(), now)
+                .stream().map(mapper::toDomain).toList();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<AuthSession> findByDeviceIdAndUserIdForUpdate(DeviceId deviceId, UserId userId) {
+        Objects.requireNonNull(deviceId, "deviceId");
+        Objects.requireNonNull(userId, "userId");
+        return repository.findByDeviceIdAndUserIdForUpdate(deviceId.value(), userId.value())
                 .stream().map(mapper::toDomain).toList();
     }
 

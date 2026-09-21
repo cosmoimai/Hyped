@@ -35,6 +35,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/exchange", "/api/v1/auth/refresh")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/devices/*/revoke")
+                        .permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/api/v1/system/health",
@@ -42,6 +44,10 @@ public class SecurityConfiguration {
                                 "/actuator/health/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/sessions")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/auth/sessions/*")
                         .authenticated()
                         .anyRequest()
                         .denyAll())

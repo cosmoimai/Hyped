@@ -4,14 +4,19 @@ import com.hyped.app.common.api.ApiProblemException;
 import com.hyped.app.identity.application.model.AuthenticationExchangeCommand;
 import com.hyped.app.identity.application.model.AuthenticationExchangeResult;
 import com.hyped.app.identity.application.model.AuthenticationUserProfile;
+import com.hyped.app.identity.application.model.ActiveSessionSummary;
 import com.hyped.app.identity.application.model.DeviceSummary;
 import com.hyped.app.identity.application.model.RefreshSessionResult;
 import com.hyped.app.identity.application.model.SessionTokenPair;
 import com.hyped.app.identity.application.service.AuthenticationExchangeService;
 import com.hyped.app.identity.application.service.AuthenticationProfileReader;
 import com.hyped.app.identity.application.service.LogoutSessionService;
+import com.hyped.app.identity.application.service.ListActiveSessionsService;
 import com.hyped.app.identity.application.service.RefreshSessionService;
+import com.hyped.app.identity.application.service.RecoverDeviceService;
+import com.hyped.app.identity.application.service.RevokeSessionService;
 import com.hyped.app.identity.domain.AccountStatus;
+import com.hyped.app.identity.domain.DeviceId;
 import com.hyped.app.identity.domain.DevicePlatform;
 import com.hyped.app.identity.domain.InstallationId;
 import com.hyped.app.identity.domain.SessionId;
@@ -29,6 +34,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -41,16 +49,25 @@ public class AuthenticationController {
     private final AuthenticationExchangeService exchangeService;
     private final RefreshSessionService refreshService;
     private final LogoutSessionService logoutService;
+    private final ListActiveSessionsService listSessionsService;
+    private final RevokeSessionService revokeSessionService;
+    private final RecoverDeviceService recoverDeviceService;
     private final AuthenticationProfileReader profiles;
 
     public AuthenticationController(
             AuthenticationExchangeService exchangeService,
             RefreshSessionService refreshService,
             LogoutSessionService logoutService,
+            ListActiveSessionsService listSessionsService,
+            RevokeSessionService revokeSessionService,
+            RecoverDeviceService recoverDeviceService,
             AuthenticationProfileReader profiles) {
         this.exchangeService = exchangeService;
         this.refreshService = refreshService;
         this.logoutService = logoutService;
+        this.listSessionsService = listSessionsService;
+        this.revokeSessionService = revokeSessionService;
+        this.recoverDeviceService = recoverDeviceService;
         this.profiles = profiles;
     }
 
@@ -94,6 +111,32 @@ public class AuthenticationController {
     public ResponseEntity<Void> logout(@AuthenticationPrincipal Jwt jwt) {
         logoutService.logout(new UserId(UUID.fromString(jwt.getSubject())),
                 new SessionId(UUID.fromString(jwt.getClaimAsString("sid"))));
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+    }
+
+    @GetMapping("/sessions")
+    public ResponseEntity<SessionListResponse> sessions(@AuthenticationPrincipal Jwt jwt) {
+        UserId userId = new UserId(UUID.fromString(jwt.getSubject()));
+        SessionId currentSessionId = new SessionId(UUID.fromString(jwt.getClaimAsString("sid")));
+        List<SessionResponse> items = listSessionsService.list(userId, currentSessionId).stream()
+                .map(SessionResponse::from)
+                .toList();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+                .body(new SessionListResponse(items, null));
+    }
+
+    @DeleteMapping("/sessions/{sessionId}")
+    public ResponseEntity<Void> revokeSession(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID sessionId) {
+        UserId userId = new UserId(UUID.fromString(jwt.getSubject()));
+        revokeSessionService.revoke(userId, new SessionId(sessionId));
+        return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
+    }
+
+    @PostMapping("/devices/{deviceId}/revoke")
+    public ResponseEntity<Void> recoverDevice(
+            @PathVariable UUID deviceId, @Valid @RequestBody DeviceRecoveryRequest request) {
+        recoverDeviceService.recover(request.firebaseIdToken(), new DeviceId(deviceId));
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 
@@ -162,6 +205,15 @@ public class AuthenticationController {
         }
     }
 
+    public record DeviceRecoveryRequest(
+            @NotBlank @Size(max = 16384) String firebaseIdToken) {
+
+        @Override
+        public String toString() {
+            return "DeviceRecoveryRequest[firebaseIdToken=[REDACTED]]";
+        }
+    }
+
     public record TokenPairResponse(
             String accessToken,
             Instant accessTokenExpiresAt,
@@ -219,6 +271,26 @@ public class AuthenticationController {
     public record DeviceLimitItem(UUID deviceId, String deviceName, DevicePlatform platform, Instant lastActiveAt) {
         static DeviceLimitItem from(DeviceSummary device) {
             return new DeviceLimitItem(device.id().value(), device.name(), device.platform(), device.lastActiveAt());
+        }
+    }
+
+    public record SessionListResponse(List<SessionResponse> items, String nextCursor) {
+        public SessionListResponse {
+            items = List.copyOf(items);
+        }
+    }
+
+    public record SessionResponse(
+            UUID sessionId,
+            String deviceName,
+            DevicePlatform platform,
+            Instant createdAt,
+            Instant lastUsedAt,
+            boolean isCurrent) {
+
+        static SessionResponse from(ActiveSessionSummary session) {
+            return new SessionResponse(session.sessionId().value(), session.deviceName(), session.platform(),
+                    session.createdAt(), session.lastUsedAt(), session.current());
         }
     }
 }
