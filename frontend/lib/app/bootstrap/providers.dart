@@ -14,8 +14,14 @@ import 'package:hyped/features/authentication/domain/identity_provider.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
 
 final tokenStoreProvider = Provider<TokenStore>(
-  (ref) =>
-      SecureTokenStore(const FlutterSecureStorage(aOptions: AndroidOptions())),
+  (ref) => SecureTokenStore(
+    const FlutterSecureStorage(
+      aOptions: AndroidOptions(),
+      iOptions: IOSOptions(
+        accessibility: KeychainAccessibility.first_unlock_this_device,
+      ),
+    ),
+  ),
 );
 
 final sessionInvalidationProvider = Provider<SessionInvalidationSignal>(

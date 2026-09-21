@@ -29,13 +29,17 @@ class AuthController extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      _set(
-        AuthState(
-          await _repository.hasSession()
-              ? AuthStatus.authenticated
-              : AuthStatus.signedOut,
+      final restored = await _repository.restoreSession(DateTime.now().toUtc());
+      _set(switch (restored) {
+        SessionRestoreResult.missing => const AuthState(AuthStatus.signedOut),
+        SessionRestoreResult.authenticated => const AuthState(
+          AuthStatus.authenticated,
         ),
-      );
+        SessionRestoreResult.refreshFailed => const AuthState(
+          AuthStatus.failure,
+          message: 'Your session expired. Please sign in again.',
+        ),
+      });
     } catch (_) {
       _set(
         const AuthState(
@@ -71,6 +75,13 @@ class AuthController extends ChangeNotifier {
   }
 
   void retry() => _set(const AuthState(AuthStatus.signedOut));
+
+  void reportSignInFailure() => _set(
+    const AuthState(
+      AuthStatus.failure,
+      message: 'Sign-in could not be completed. Please try again.',
+    ),
+  );
 
   void _set(AuthState next) {
     _state = next;

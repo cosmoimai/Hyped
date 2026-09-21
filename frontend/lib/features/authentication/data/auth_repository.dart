@@ -6,16 +6,38 @@ class AuthRepository {
   AuthRepository(this._api, this._tokens);
   final AuthApi _api;
   final TokenStore _tokens;
-  Future<bool> hasSession() async => await _tokens.read() != null;
+  Future<SessionRestoreResult> restoreSession(DateTime now) async {
+    final stored = await _tokens.read();
+    if (stored == null) return SessionRestoreResult.missing;
+    if (stored.accessTokenExpiresAt.isAfter(now)) {
+      return SessionRestoreResult.authenticated;
+    }
+    if (!stored.refreshTokenExpiresAt.isAfter(now)) {
+      await _tokens.clear();
+      return SessionRestoreResult.refreshFailed;
+    }
+    try {
+      final refreshed = await _api.refresh(
+        stored.refreshToken,
+        await _tokens.installationId(),
+      );
+      await _tokens.write(refreshed);
+      return SessionRestoreResult.authenticated;
+    } catch (_) {
+      await _tokens.clear();
+      return SessionRestoreResult.refreshFailed;
+    }
+  }
+
   Future<void> signIn(IdentityProvider provider) async {
     final firebaseToken = await provider.firebaseIdToken();
-    final tokens = await _api.exchange(
+    final exchange = await _api.exchange(
       firebaseIdToken: firebaseToken,
       installationId: await _tokens.installationId(),
       deviceName: 'Hyped mobile device',
       appVersion: '0.1.0+1',
     );
-    await _tokens.write(tokens);
+    await _tokens.write(exchange.tokens);
   }
 
   Future<void> logout() async {
@@ -26,3 +48,5 @@ class AuthRepository {
     }
   }
 }
+
+enum SessionRestoreResult { missing, authenticated, refreshFailed }

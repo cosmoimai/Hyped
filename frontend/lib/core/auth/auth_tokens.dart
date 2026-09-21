@@ -27,3 +27,54 @@ class AuthTokens {
   @override
   String toString() => 'AuthTokens([REDACTED], sessionId: $sessionId)';
 }
+
+class AuthUser {
+  const AuthUser({
+    required this.id,
+    required this.displayName,
+    required this.photo,
+    required this.profileRevision,
+  });
+  final String id;
+  final String displayName;
+  final AuthPhoto? photo;
+  final int profileRevision;
+  factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
+    id: json['id'] as String,
+    displayName: json['displayName'] as String,
+    photo: json['photo'] == null
+        ? null
+        : AuthPhoto.fromJson(json['photo'] as Map<String, dynamic>),
+    profileRevision: json['profileRevision'] as int,
+  );
+}
+
+class AuthPhoto {
+  const AuthPhoto({this.mediaAssetId, this.url});
+  final String? mediaAssetId;
+  final String? url;
+  factory AuthPhoto.fromJson(Map<String, dynamic> json) => AuthPhoto(
+    mediaAssetId: json['mediaAssetId'] as String?,
+    url: json['url'] as String?,
+  );
+}
+
+class AuthExchangeResponse {
+  const AuthExchangeResponse({
+    required this.tokens,
+    required this.user,
+    required this.isNewAccount,
+  });
+  final AuthTokens tokens;
+  final AuthUser user;
+  final bool isNewAccount;
+  factory AuthExchangeResponse.fromJson(Map<String, dynamic> json) =>
+      AuthExchangeResponse(
+        tokens: AuthTokens.fromJson(json),
+        user: AuthUser.fromJson(json['user'] as Map<String, dynamic>),
+        isNewAccount: json['isNewAccount'] as bool,
+      );
+
+  @override
+  String toString() => 'AuthExchangeResponse([REDACTED])';
+}

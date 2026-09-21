@@ -9,7 +9,14 @@ flutter run --dart-define=HYPED_API_BASE_URL=http://10.0.2.2:8080/api/v1
 
 Use an HTTPS local proxy URL for an iOS simulator; App Transport Security is
 kept enabled. Staging and production builds must supply their HTTPS URL with
-`HYPED_API_BASE_URL`.
+`HYPED_API_BASE_URL`. Release startup rejects the development URL and every
+non-HTTPS URL.
+
+Release signing is intentionally absent. Create an untracked
+`android/key.properties`, reference an externally stored upload keystore from a
+local or CI Gradle configuration, and verify the release certificate matches
+the selected Firebase project. The project has no debug-signing fallback for
+release builds.
 
 ## Firebase and provider setup
 
@@ -56,7 +63,17 @@ Install full Xcode and a working CocoaPods toolchain before building iOS:
 ## Verification
 
 ```bash
-dart format --output=none --set-exit-if-changed lib test
+cd frontend
+flutter pub get
+dart format --output=none --set-exit-if-changed .
 flutter analyze
 flutter test
+flutter build apk --debug
+```
+
+A production build must include its HTTPS endpoint explicitly:
+
+```bash
+flutter build appbundle --release \
+  --dart-define=HYPED_API_BASE_URL=https://api.example.com/api/v1
 ```

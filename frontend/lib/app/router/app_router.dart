@@ -15,6 +15,7 @@ GoRouter createRouter(AuthController auth) => GoRouter(
       return path == '/splash' ? null : '/splash';
     }
     if (auth.state.isAuthenticated) return path == '/home' ? null : '/home';
+    if (status == AuthStatus.failure && path == '/splash') return '/sign-in';
     if (path == '/splash') return '/onboarding';
     if (path == '/home') return '/sign-in';
     return null;

@@ -11,8 +11,12 @@ class SignInScreen extends ConsumerWidget {
     final controller = ref.watch(authControllerProvider);
     final loading = controller.state.status == AuthStatus.authenticating;
     Future<void> signIn(SignInProvider kind) async {
-      final provider = await ref.read(identityProviderFactoryProvider)(kind);
-      await controller.signIn(provider);
+      try {
+        final provider = await ref.read(identityProviderFactoryProvider)(kind);
+        await controller.signIn(provider);
+      } catch (_) {
+        controller.reportSignInFailure();
+      }
     }
 
     return Scaffold(
@@ -42,7 +46,10 @@ class SignInScreen extends ConsumerWidget {
               ],
               const SizedBox(height: 28),
               if (loading)
-                const CircularProgressIndicator()
+                Semantics(
+                  label: 'Signing in',
+                  child: const CircularProgressIndicator(),
+                )
               else ...[
                 FilledButton(
                   onPressed: () => signIn(SignInProvider.google),

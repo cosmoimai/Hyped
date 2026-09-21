@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hyped/core/auth/auth_tokens.dart';
 import 'package:hyped/features/authentication/data/auth_api.dart';
 import 'package:hyped/features/authentication/data/auth_repository.dart';
 import 'package:hyped/features/authentication/domain/identity_provider.dart';
@@ -24,7 +25,7 @@ void main() {
           deviceName: any(named: 'deviceName'),
           appVersion: any(named: 'appVersion'),
         ),
-      ).thenAnswer((_) async => tokens());
+      ).thenAnswer((_) async => exchangeResponse());
       final repository = AuthRepository(api, store);
 
       await repository.signIn(identity);
@@ -50,5 +51,67 @@ void main() {
 
     expect(store.value, isNull);
     expect(store.clearCount, 1);
+  });
+
+  test('startup distinguishes missing and valid credentials', () async {
+    final api = MockAuthApi();
+    expect(
+      await AuthRepository(
+        api,
+        MemoryTokenStore(),
+      ).restoreSession(DateTime.utc(2026)),
+      SessionRestoreResult.missing,
+    );
+    final valid = tokens();
+    expect(
+      await AuthRepository(
+        api,
+        MemoryTokenStore(valid),
+      ).restoreSession(DateTime.utc(2026, 1, 1)),
+      SessionRestoreResult.authenticated,
+    );
+    verifyNever(() => api.refresh(any(), any()));
+  });
+
+  test('startup refreshes an expired access token', () async {
+    final api = MockAuthApi();
+    final expired = AuthTokens(
+      accessToken: 'old-access',
+      refreshToken: 'old-refresh',
+      accessTokenExpiresAt: DateTime.utc(2026),
+      refreshTokenExpiresAt: DateTime.utc(2026, 2),
+      sessionId: 'session',
+    );
+    final store = MemoryTokenStore(expired);
+    when(
+      () => api.refresh('old-refresh', any()),
+    ).thenAnswer((_) async => tokens('new'));
+
+    expect(
+      await AuthRepository(api, store).restoreSession(DateTime.utc(2026, 1, 2)),
+      SessionRestoreResult.authenticated,
+    );
+    expect(store.value?.accessToken, 'access-new');
+  });
+
+  test('startup refresh failure clears storage and requires sign-in', () async {
+    final api = MockAuthApi();
+    final expired = AuthTokens(
+      accessToken: 'old-access',
+      refreshToken: 'old-refresh',
+      accessTokenExpiresAt: DateTime.utc(2026),
+      refreshTokenExpiresAt: DateTime.utc(2026, 2),
+      sessionId: 'session',
+    );
+    final store = MemoryTokenStore(expired);
+    when(
+      () => api.refresh(any(), any()),
+    ).thenThrow(const AuthenticationApiException());
+
+    expect(
+      await AuthRepository(api, store).restoreSession(DateTime.utc(2026, 1, 2)),
+      SessionRestoreResult.refreshFailed,
+    );
+    expect(store.value, isNull);
   });
 }

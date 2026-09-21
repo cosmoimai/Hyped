@@ -16,6 +16,7 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: SplashScreen()));
     expect(find.text('Hyped!'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.bySemanticsLabel('Loading Hyped'), findsOneWidget);
   });
 
   testWidgets('sign-in displays Google and Apple actions', (tester) async {
@@ -34,7 +35,9 @@ void main() {
     tester,
   ) async {
     final repository = MockScreenRepository();
-    when(repository.hasSession).thenAnswer((_) async => true);
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.authenticated);
     final controller = AuthController(repository);
     await controller.initialize();
     await tester.pumpWidget(

@@ -12,7 +12,9 @@ class MockRouterRepository extends Mock implements AuthRepository {}
 void main() {
   testWidgets('signed-out private route redirects to sign-in', (tester) async {
     final repository = MockRouterRepository();
-    when(repository.hasSession).thenAnswer((_) async => false);
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.missing);
     final auth = AuthController(repository);
     await auth.initialize();
     final router = createRouter(auth);
@@ -30,7 +32,9 @@ void main() {
 
   testWidgets('authenticated user is redirected to home', (tester) async {
     final repository = MockRouterRepository();
-    when(repository.hasSession).thenAnswer((_) async => true);
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.authenticated);
     final auth = AuthController(repository);
     await auth.initialize();
     final router = createRouter(auth);
@@ -44,5 +48,32 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Your countdowns will live here'), findsOneWidget);
+  });
+
+  testWidgets('authentication expiry redirects home to sign-in', (
+    tester,
+  ) async {
+    final repository = MockRouterRepository();
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.authenticated);
+    final signal = SessionInvalidationSignal();
+    final auth = AuthController(repository, signal);
+    await auth.initialize();
+    final router = createRouter(auth);
+    addTearDown(router.dispose);
+    addTearDown(signal.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authControllerProvider.overrideWith((ref) => auth)],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Your countdowns will live here'), findsOneWidget);
+
+    signal.invalidate();
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome to Hyped!'), findsOneWidget);
   });
 }

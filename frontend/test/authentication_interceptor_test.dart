@@ -22,6 +22,43 @@ void main() {
     expect((await dio.get<dynamic>('/private')).statusCode, 200);
   });
 
+  test('never attaches authorization to exchange or refresh', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
+    final store = MemoryTokenStore(tokens());
+    final refresher = FakeRefresher(tokens('two'));
+    final adapter = DioAdapter(dio: dio);
+    dio.httpClientAdapter = adapter;
+    dio.interceptors.add(AuthenticationInterceptor(dio, store, refresher));
+    final authorizationHeaders = <Object?>[];
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          authorizationHeaders.add(options.headers['Authorization']);
+          handler.next(options);
+        },
+      ),
+    );
+    adapter.onPost(
+      '/auth/exchange',
+      (server) => server.reply(200, {}),
+      data: {'proof': 'redacted'},
+    );
+    adapter.onPost(
+      '/auth/refresh',
+      (server) => server.reply(401, {}),
+      data: {'credential': 'redacted'},
+    );
+
+    await dio.post<dynamic>('/auth/exchange', data: {'proof': 'redacted'});
+    await expectLater(
+      dio.post<dynamic>('/auth/refresh', data: {'credential': 'redacted'}),
+      throwsA(isA<DioException>()),
+    );
+    expect(refresher.calls, 0);
+    expect(store.value?.accessToken, 'access-one');
+    expect(authorizationHeaders, [null, null]);
+  });
+
   test('concurrent 401 responses share one refresh and retry once', () async {
     final dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
     final store = MemoryTokenStore(tokens());
@@ -79,5 +116,44 @@ void main() {
     expect(store.value, isNull);
     expect(store.clearCount, 1);
     expect(invalidated, isTrue);
+  });
+
+  test('retry preserves request details and stops after another 401', () async {
+    final dio = Dio(BaseOptions(baseUrl: 'https://api.test'));
+    final store = MemoryTokenStore(tokens());
+    final refresher = FakeRefresher(tokens('two'));
+    final adapter = DioAdapter(dio: dio);
+    dio.httpClientAdapter = adapter;
+    dio.interceptors.add(AuthenticationInterceptor(dio, store, refresher));
+    const body = {'name': 'safe-value'};
+    const query = {'revision': 7};
+    adapter.onPatch(
+      '/private',
+      (server) => server.reply(401, {}),
+      data: body,
+      queryParameters: query,
+      headers: {'X-Command': 'same', 'Authorization': 'Bearer access-one'},
+    );
+    adapter.onPatch(
+      '/private',
+      (server) => server.reply(401, {}),
+      data: body,
+      queryParameters: query,
+      headers: {'X-Command': 'same', 'Authorization': 'Bearer access-two'},
+    );
+
+    await expectLater(
+      dio.patch<dynamic>(
+        '/private',
+        data: body,
+        queryParameters: query,
+        options: Options(headers: {'X-Command': 'same'}),
+      ),
+      throwsA(isA<DioException>()),
+    );
+
+    expect(refresher.calls, 1);
+    expect(store.value, isNull);
+    expect(store.clearCount, 1);
   });
 }

@@ -30,3 +30,10 @@ frontend/.flutter-plugins*
 frontend/android/app/google-services.json
 frontend/ios/Runner/GoogleService-Info.plist
 frontend/ios/Flutter/ephemeral/
+frontend/lib/firebase_options*.dart
+frontend/android/key.properties
+frontend/**/*.jks
+frontend/**/*.keystore
+frontend/**/*.p8
+frontend/**/*.pem
+frontend/**/*.key

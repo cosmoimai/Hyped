@@ -11,6 +11,18 @@ AuthTokens tokens([String suffix = 'one']) => AuthTokens(
   sessionId: 'session-$suffix',
 );
 
+AuthExchangeResponse exchangeResponse([String suffix = 'one']) =>
+    AuthExchangeResponse(
+      tokens: tokens(suffix),
+      user: const AuthUser(
+        id: 'user-id',
+        displayName: 'Hyped User',
+        photo: null,
+        profileRevision: 1,
+      ),
+      isNewAccount: false,
+    );
+
 class MemoryTokenStore implements TokenStore {
   MemoryTokenStore([this.value]);
   AuthTokens? value;

@@ -17,12 +17,28 @@ void main() {
   });
 
   test('restores authenticated and signed-out states', () async {
-    when(repository.hasSession).thenAnswer((_) async => true);
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.authenticated);
     await controller.initialize();
     expect(controller.state.status, AuthStatus.authenticated);
-    when(repository.hasSession).thenAnswer((_) async => false);
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.missing);
     await controller.initialize();
     expect(controller.state.status, AuthStatus.signedOut);
+  });
+
+  test('failed startup refresh exposes a safe sign-in error', () async {
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.refreshFailed);
+    await controller.initialize();
+    expect(controller.state.status, AuthStatus.failure);
+    expect(
+      controller.state.message,
+      'Your session expired. Please sign in again.',
+    );
   });
 
   test('sign-in exposes loading, success and retryable failure', () async {
