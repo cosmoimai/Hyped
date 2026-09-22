@@ -19,7 +19,7 @@ void main() {
     expect(find.bySemanticsLabel('Loading Hyped'), findsOneWidget);
   });
 
-  testWidgets('sign-in displays Google and Apple actions', (tester) async {
+  testWidgets('sign-in displays the Android Google action', (tester) async {
     final controller = AuthController(MockScreenRepository());
     await tester.pumpWidget(
       ProviderScope(
@@ -28,7 +28,7 @@ void main() {
       ),
     );
     expect(find.text('Continue with Google'), findsOneWidget);
-    expect(find.text('Continue with Apple'), findsOneWidget);
+    expect(find.text('Continue with Apple'), findsNothing);
   });
 
   testWidgets('authenticated home displays empty state and logout', (

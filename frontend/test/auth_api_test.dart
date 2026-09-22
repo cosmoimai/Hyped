@@ -9,6 +9,7 @@ void main() {
     final authenticatedDio = Dio(BaseOptions(baseUrl: 'https://api.test'));
     final adapter = DioAdapter(dio: publicDio);
     publicDio.httpClientAdapter = adapter;
+    publicDio.httpClientAdapter = adapter;
     final api = AuthApi(publicDio, authenticatedDio);
     adapter.onPost(
       '/auth/exchange',
@@ -73,6 +74,55 @@ void main() {
 
     expect(failure, isA<AuthenticationApiException>());
     expect(failure.toString(), isNot(contains('raw-secret')));
+  });
+
+  test('device limit maps the backend safe recovery-device payload', () async {
+    final publicDio = Dio(BaseOptions(baseUrl: 'https://api.example/api/v1'));
+    final authenticatedDio = Dio(
+      BaseOptions(baseUrl: 'https://api.example/api/v1'),
+    );
+    final adapter = DioAdapter(dio: publicDio);
+    adapter.onPost(
+      '/auth/exchange',
+      (server) => server.reply(409, {
+        'type': 'about:blank',
+        'title': 'Device limit reached',
+        'status': 409,
+        'code': 'DEVICE_LIMIT_REACHED',
+        'detail': 'This account already has five active devices.',
+        'devices': [
+          {
+            'deviceId': '019b1f1d-48f0-7b33-99da-4a498fe22d11',
+            'deviceName': 'Pixel 10',
+            'platform': 'ANDROID',
+            'lastActiveAt': '2026-09-09T10:30:00Z',
+          },
+        ],
+      }),
+      data: {
+        'firebaseIdToken': 'firebase-proof',
+        'installationId': '019b1f1d-48f0-7b33-99da-4a498fe22d11',
+        'platform': 'ANDROID',
+        'deviceName': 'Pixel 10',
+        'appVersion': '0.1.0+1',
+      },
+    );
+
+    await expectLater(
+      AuthApi(publicDio, authenticatedDio).exchange(
+        firebaseIdToken: 'firebase-proof',
+        installationId: '019b1f1d-48f0-7b33-99da-4a498fe22d11',
+        deviceName: 'Pixel 10',
+        appVersion: '0.1.0+1',
+      ),
+      throwsA(
+        isA<DeviceLimitReachedException>().having(
+          (error) => error.devices.single.deviceName,
+          'device name',
+          'Pixel 10',
+        ),
+      ),
+    );
   });
 }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/authentication/data/auth_repository.dart';
+import 'package:hyped/features/authentication/data/auth_api.dart';
 import 'package:hyped/features/authentication/domain/identity_provider.dart';
 
 enum AuthStatus {
@@ -11,9 +12,10 @@ enum AuthStatus {
 }
 
 class AuthState {
-  const AuthState(this.status, {this.message});
+  const AuthState(this.status, {this.message, this.recoveryDevices = const []});
   final AuthStatus status;
   final String? message;
+  final List<RecoveryDevice> recoveryDevices;
   bool get isAuthenticated => status == AuthStatus.authenticated;
 }
 
@@ -55,6 +57,23 @@ class AuthController extends ChangeNotifier {
     try {
       await _repository.signIn(provider);
       _set(const AuthState(AuthStatus.authenticated));
+    } on IdentitySelectionCancelledException {
+      _set(const AuthState(AuthStatus.signedOut));
+    } on FirebaseConfigurationException {
+      _set(
+        const AuthState(
+          AuthStatus.failure,
+          message: 'Google sign-in is not configured for this build.',
+        ),
+      );
+    } on DeviceLimitReachedException catch (error) {
+      _set(
+        AuthState(
+          AuthStatus.failure,
+          message: 'This account already has five active devices.',
+          recoveryDevices: error.devices,
+        ),
+      );
     } catch (_) {
       _set(
         const AuthState(

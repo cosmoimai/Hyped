@@ -18,26 +18,55 @@ local or CI Gradle configuration, and verify the release certificate matches
 the selected Firebase project. The project has no debug-signing fallback for
 release builds.
 
-## Firebase and provider setup
+## Android Firebase and Google sign-in setup
 
 No credentials or generated Firebase configuration are committed.
 
-1. Install FlutterFire CLI: `dart pub global activate flutterfire_cli`.
-2. Create separate Firebase projects for development, staging, and production.
-3. From `frontend/`, run `flutterfire configure` for the selected environment.
-   Select Android package `com.hyped.hyped` and iOS bundle `com.hyped.hyped`.
-4. Place the generated Android `google-services.json` in `android/app/` and
-   iOS `GoogleService-Info.plist` in `ios/Runner/`. Keep environment-specific
-   files outside Git and inject them in local or CI build setup.
-5. Enable Google and Apple providers in Firebase Authentication.
+1. Create a Firebase project for the target environment. In **Project settings
+   > Your apps**, add an Android app whose package name is exactly
+   `com.hyped.hyped`.
+2. Get the debug certificate fingerprints from `frontend/android/`:
 
-### Android Google sign-in
+   ```bash
+   ./gradlew signingReport
+   ```
 
-1. Register local debug and release signing-certificate SHA-1 and SHA-256
-   fingerprints in the matching Firebase Android app.
-2. Download the refreshed `google-services.json`.
-3. Configure the Google Services Gradle plugin as directed by FlutterFire.
-4. Verify the application ID and OAuth client belong to the same environment.
+   Add the debug variant's SHA-1 and SHA-256 values to the Firebase Android
+   app. Add the controlled release certificate fingerprints separately for
+   staging or production.
+3. In **Authentication > Sign-in method**, enable the Google provider and pick
+   the support email. Confirm the generated Android and web OAuth clients are
+   in the same Google Cloud/Firebase project.
+4. Download the refreshed `google-services.json` and place it at
+   `frontend/android/app/google-services.json`. The file is ignored by Git.
+   The Google Services Gradle plugin is applied only when this file exists, so
+   an unconfigured checkout still builds and shows a configuration message if
+   Google sign-in is selected.
+5. Configure backend verification with Application Default Credentials for the
+   same project. For local development, keep the downloaded service-account
+   JSON outside this repository and run:
+
+   ```bash
+   export GOOGLE_APPLICATION_CREDENTIALS=/absolute/private/path/firebase-admin.json
+   export FIREBASE_IDENTITY_ENABLED=true
+   export FIREBASE_PROJECT_ID=your-firebase-project-id
+   cd ../backend && ./mvnw spring-boot:run
+   ```
+
+   In deployed environments, use the workload identity/service account of the
+   runtime instead of a JSON key.
+6. Start the Android emulator and backend, then run from `frontend/`:
+
+   ```bash
+   flutter run -d emulator-5554 \
+     --dart-define=HYPED_API_BASE_URL=http://10.0.2.2:8080/api/v1
+   ```
+
+   Select **Continue with Google**, choose an account, confirm the app reaches
+   Home, then sign out and confirm it returns to sign-in. For a physical device,
+   use an HTTPS URL reachable by the phone, install a build signed by a
+   certificate registered in Firebase, and repeat the same sign-in/sign-out
+   check.
 
 ### iOS Google and Apple sign-in
 
