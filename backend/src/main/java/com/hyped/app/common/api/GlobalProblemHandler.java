@@ -2,6 +2,7 @@ package com.hyped.app.common.api;
 
 import com.hyped.app.identity.application.exception.IdentityTokenVerificationException;
 import com.hyped.app.identity.application.exception.PersonalDataProtectionException;
+import com.hyped.app.room.application.RoomOperationException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Comparator;
@@ -74,6 +75,19 @@ public class GlobalProblemHandler {
         return response(request, HttpStatus.SERVICE_UNAVAILABLE, "DEPENDENCY_UNAVAILABLE",
                 "Service temporarily unavailable", "A required service is temporarily unavailable.",
                 true, List.of(), List.of());
+    }
+
+    @ExceptionHandler(RoomOperationException.class)
+    ResponseEntity<ApiProblem> roomOperation(RoomOperationException exception, HttpServletRequest request) {
+        HttpStatus status = switch (exception.kind()) {
+            case NOT_FOUND -> HttpStatus.NOT_FOUND;
+            case FORBIDDEN -> HttpStatus.FORBIDDEN;
+            case CONFLICT -> HttpStatus.CONFLICT;
+            case PRECONDITION_FAILED -> HttpStatus.PRECONDITION_FAILED;
+            case VALIDATION -> HttpStatus.UNPROCESSABLE_ENTITY;
+        };
+        return response(request, status, exception.code(), exception.title(), exception.getMessage(),
+                false, List.of(), List.of());
     }
 
     @ExceptionHandler(Exception.class)
