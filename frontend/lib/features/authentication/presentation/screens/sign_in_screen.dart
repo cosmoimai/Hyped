@@ -39,6 +39,12 @@ class SignInScreen extends ConsumerWidget {
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
                   textAlign: TextAlign.center,
                 ),
+                for (final device in controller.state.recoveryDevices)
+                  ListTile(
+                    leading: const Icon(Icons.devices),
+                    title: Text(device.deviceName),
+                    subtitle: Text(device.platform.toLowerCase()),
+                  ),
                 TextButton(
                   onPressed: controller.retry,
                   child: const Text('Try again'),
@@ -54,14 +60,6 @@ class SignInScreen extends ConsumerWidget {
                 FilledButton(
                   onPressed: () => signIn(SignInProvider.google),
                   child: const Text('Continue with Google'),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () => signIn(SignInProvider.apple),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                  ),
-                  child: const Text('Continue with Apple'),
                 ),
               ],
             ],

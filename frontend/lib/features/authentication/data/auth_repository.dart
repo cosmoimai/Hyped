@@ -1,11 +1,19 @@
 import 'package:hyped/core/secure_storage/token_store.dart';
 import 'package:hyped/features/authentication/data/auth_api.dart';
 import 'package:hyped/features/authentication/domain/identity_provider.dart';
+import 'package:hyped/features/authentication/domain/device_metadata.dart';
 
 class AuthRepository {
-  AuthRepository(this._api, this._tokens);
+  AuthRepository(
+    this._api,
+    this._tokens,
+    this._metadata, [
+    IdentityProvider? identityProvider,
+  ]) : _identityProvider = identityProvider;
   final AuthApi _api;
   final TokenStore _tokens;
+  final DeviceMetadataProvider _metadata;
+  IdentityProvider? _identityProvider;
   Future<SessionRestoreResult> restoreSession(DateTime now) async {
     final stored = await _tokens.read();
     if (stored == null) return SessionRestoreResult.missing;
@@ -31,20 +39,27 @@ class AuthRepository {
 
   Future<void> signIn(IdentityProvider provider) async {
     final firebaseToken = await provider.firebaseIdToken();
+    final metadata = await _metadata.load();
     final exchange = await _api.exchange(
       firebaseIdToken: firebaseToken,
       installationId: await _tokens.installationId(),
-      deviceName: 'Hyped mobile device',
-      appVersion: '0.1.0+1',
+      deviceName: metadata.deviceName,
+      appVersion: metadata.appVersion,
     );
     await _tokens.write(exchange.tokens);
+    _identityProvider = provider;
   }
 
   Future<void> logout() async {
     try {
       if (await _tokens.read() != null) await _api.logout();
     } finally {
-      await _tokens.clear();
+      try {
+        await _identityProvider?.signOut();
+      } finally {
+        _identityProvider = null;
+        await _tokens.clear();
+      }
     }
   }
 }

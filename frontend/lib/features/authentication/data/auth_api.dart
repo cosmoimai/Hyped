@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:hyped/core/api/token_refresher.dart';
 import 'package:hyped/core/auth/auth_tokens.dart';
@@ -19,14 +18,14 @@ class AuthApi implements TokenRefresher {
         data: {
           'firebaseIdToken': firebaseIdToken,
           'installationId': installationId,
-          'platform': Platform.isIOS ? 'IOS' : 'ANDROID',
+          'platform': 'ANDROID',
           'deviceName': deviceName,
           'appVersion': appVersion,
         },
       );
       return AuthExchangeResponse.fromJson(response.data!);
-    } on DioException {
-      throw const AuthenticationApiException();
+    } on DioException catch (error) {
+      throw _mapException(error);
     }
   }
 
@@ -50,10 +49,60 @@ class AuthApi implements TokenRefresher {
       throw const AuthenticationApiException();
     }
   }
+
+  Exception _mapException(DioException error) {
+    final data = error.response?.data;
+    if (data is Map<String, dynamic> &&
+        data['code'] == 'DEVICE_LIMIT_REACHED') {
+      final devices = data['devices'];
+      if (devices is List) {
+        return DeviceLimitReachedException(
+          devices
+              .whereType<Map>()
+              .map(
+                (item) =>
+                    RecoveryDevice.fromJson(Map<String, dynamic>.from(item)),
+              )
+              .toList(growable: false),
+        );
+      }
+    }
+    return const AuthenticationApiException();
+  }
 }
 
 class AuthenticationApiException implements Exception {
   const AuthenticationApiException();
   @override
   String toString() => 'Authentication request failed';
+}
+
+class DeviceLimitReachedException implements Exception {
+  const DeviceLimitReachedException(this.devices);
+
+  final List<RecoveryDevice> devices;
+
+  @override
+  String toString() => 'The active-device limit was reached';
+}
+
+class RecoveryDevice {
+  const RecoveryDevice({
+    required this.deviceId,
+    required this.deviceName,
+    required this.platform,
+    required this.lastActiveAt,
+  });
+
+  final String deviceId;
+  final String deviceName;
+  final String platform;
+  final DateTime lastActiveAt;
+
+  factory RecoveryDevice.fromJson(Map<String, dynamic> json) => RecoveryDevice(
+    deviceId: json['deviceId'] as String,
+    deviceName: json['deviceName'] as String,
+    platform: json['platform'] as String,
+    lastActiveAt: DateTime.parse(json['lastActiveAt'] as String),
+  );
 }

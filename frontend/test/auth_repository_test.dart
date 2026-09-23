@@ -26,7 +26,11 @@ void main() {
           appVersion: any(named: 'appVersion'),
         ),
       ).thenAnswer((_) async => exchangeResponse());
-      final repository = AuthRepository(api, store);
+      final repository = AuthRepository(
+        api,
+        store,
+        FakeDeviceMetadataProvider(),
+      );
 
       await repository.signIn(identity);
 
@@ -35,22 +39,58 @@ void main() {
         () => api.exchange(
           firebaseIdToken: 'firebase-proof',
           installationId: '019b1f1d-48f0-7b33-99da-4a498fe22d11',
-          deviceName: 'Hyped mobile device',
+          deviceName: 'Pixel Test',
           appVersion: '0.1.0+1',
         ),
       ).called(1);
+      verifyNever(identity.signOut);
     },
   );
 
   test('logout clears credentials when remote revocation fails', () async {
     final api = MockAuthApi();
+    final identity = MockProvider();
     final store = MemoryTokenStore(tokens());
     when(api.logout).thenThrow(StateError('unavailable'));
+    when(identity.signOut).thenAnswer((_) async {});
 
-    await expectLater(AuthRepository(api, store).logout(), throwsStateError);
+    await expectLater(
+      AuthRepository(
+        api,
+        store,
+        FakeDeviceMetadataProvider(),
+        identity,
+      ).logout(),
+      throwsStateError,
+    );
 
     expect(store.value, isNull);
     expect(store.clearCount, 1);
+    verify(identity.signOut).called(1);
+  });
+
+  test('logout signs out Google and clears credentials', () async {
+    final api = MockAuthApi();
+    final identity = MockProvider();
+    final store = MemoryTokenStore();
+    when(identity.firebaseIdToken).thenAnswer((_) async => 'firebase-proof');
+    when(identity.signOut).thenAnswer((_) async {});
+    when(
+      () => api.exchange(
+        firebaseIdToken: any(named: 'firebaseIdToken'),
+        installationId: any(named: 'installationId'),
+        deviceName: any(named: 'deviceName'),
+        appVersion: any(named: 'appVersion'),
+      ),
+    ).thenAnswer((_) async => exchangeResponse());
+    when(api.logout).thenAnswer((_) async {});
+    final repository = AuthRepository(api, store, FakeDeviceMetadataProvider());
+
+    await repository.signIn(identity);
+    await repository.logout();
+
+    verify(identity.signOut).called(1);
+    expect(store.value, isNull);
   });
 
   test('startup distinguishes missing and valid credentials', () async {
@@ -59,6 +99,7 @@ void main() {
       await AuthRepository(
         api,
         MemoryTokenStore(),
+        FakeDeviceMetadataProvider(),
       ).restoreSession(DateTime.utc(2026)),
       SessionRestoreResult.missing,
     );
@@ -67,6 +108,7 @@ void main() {
       await AuthRepository(
         api,
         MemoryTokenStore(valid),
+        FakeDeviceMetadataProvider(),
       ).restoreSession(DateTime.utc(2026, 1, 1)),
       SessionRestoreResult.authenticated,
     );
@@ -88,7 +130,11 @@ void main() {
     ).thenAnswer((_) async => tokens('new'));
 
     expect(
-      await AuthRepository(api, store).restoreSession(DateTime.utc(2026, 1, 2)),
+      await AuthRepository(
+        api,
+        store,
+        FakeDeviceMetadataProvider(),
+      ).restoreSession(DateTime.utc(2026, 1, 2)),
       SessionRestoreResult.authenticated,
     );
     expect(store.value?.accessToken, 'access-new');
@@ -109,7 +155,11 @@ void main() {
     ).thenThrow(const AuthenticationApiException());
 
     expect(
-      await AuthRepository(api, store).restoreSession(DateTime.utc(2026, 1, 2)),
+      await AuthRepository(
+        api,
+        store,
+        FakeDeviceMetadataProvider(),
+      ).restoreSession(DateTime.utc(2026, 1, 2)),
       SessionRestoreResult.refreshFailed,
     );
     expect(store.value, isNull);

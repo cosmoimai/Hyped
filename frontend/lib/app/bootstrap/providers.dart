@@ -1,13 +1,14 @@
 import 'package:dio/dio.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hyped/core/api/api_environment.dart';
 import 'package:hyped/core/api/authentication_interceptor.dart';
 import 'package:hyped/core/secure_storage/token_store.dart';
 import 'package:hyped/features/authentication/data/auth_api.dart';
+import 'package:hyped/features/authentication/data/android_device_metadata_provider.dart';
 import 'package:hyped/features/authentication/data/auth_repository.dart';
 import 'package:hyped/features/authentication/data/firebase_identity_providers.dart';
 import 'package:hyped/features/authentication/domain/identity_provider.dart';
@@ -26,6 +27,14 @@ final tokenStoreProvider = Provider<TokenStore>(
 
 final sessionInvalidationProvider = Provider<SessionInvalidationSignal>(
   (ref) => SessionInvalidationSignal(),
+);
+
+final googleIdentityProviderProvider = Provider<GoogleIdentityProvider>(
+  (ref) => GoogleIdentityProvider(
+    DefaultFirebaseBootstrap(),
+    DefaultGoogleAccountSelector(GoogleSignIn.instance),
+    DefaultFirebaseCredentialAuthenticator(),
+  ),
 );
 
 final authApiProvider = Provider<AuthApi>((ref) {
@@ -50,8 +59,12 @@ final authApiProvider = Provider<AuthApi>((ref) {
 });
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) =>
-      AuthRepository(ref.read(authApiProvider), ref.read(tokenStoreProvider)),
+  (ref) => AuthRepository(
+    ref.read(authApiProvider),
+    ref.read(tokenStoreProvider),
+    AndroidDeviceMetadataProvider(DeviceInfoPlugin()),
+    ref.read(googleIdentityProviderProvider),
+  ),
 );
 
 final authControllerProvider = ChangeNotifierProvider<AuthController>((ref) {
@@ -66,12 +79,8 @@ final authControllerProvider = ChangeNotifierProvider<AuthController>((ref) {
 final identityProviderFactoryProvider =
     Provider<Future<IdentityProvider> Function(SignInProvider)>((ref) {
       return (provider) async {
-        if (Firebase.apps.isEmpty) await Firebase.initializeApp();
         return switch (provider) {
-          SignInProvider.google => GoogleIdentityProvider(
-            FirebaseAuth.instance,
-          ),
-          SignInProvider.apple => AppleIdentityProvider(FirebaseAuth.instance),
+          SignInProvider.google => ref.read(googleIdentityProviderProvider),
         };
       };
     });

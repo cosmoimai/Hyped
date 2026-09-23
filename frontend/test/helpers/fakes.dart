@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:hyped/core/api/token_refresher.dart';
 import 'package:hyped/core/auth/auth_tokens.dart';
 import 'package:hyped/core/secure_storage/token_store.dart';
+import 'package:hyped/features/authentication/domain/device_metadata.dart';
 
 AuthTokens tokens([String suffix = 'one']) => AuthTokens(
   accessToken: 'access-$suffix',
@@ -44,6 +45,12 @@ class MemoryTokenStore implements TokenStore {
     value = tokens;
     writeCount++;
   }
+}
+
+class FakeDeviceMetadataProvider implements DeviceMetadataProvider {
+  @override
+  Future<DeviceMetadata> load() async =>
+      const DeviceMetadata(deviceName: 'Pixel Test', appVersion: '0.1.0+1');
 }
 
 class FakeRefresher implements TokenRefresher {
