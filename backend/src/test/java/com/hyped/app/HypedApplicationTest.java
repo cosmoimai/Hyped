@@ -37,7 +37,7 @@ class HypedApplicationTest {
                 WHERE table_schema = 'app' AND table_type = 'BASE TABLE'
                 """, String.class))
                 .contains("app_user", "user_identity", "device_registration",
-                        "auth_session", "refresh_token_record", "user_profile");
+                        "auth_session", "refresh_token_record", "user_profile", "room", "room_member");
     }
 
     @Test

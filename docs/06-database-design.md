@@ -327,7 +327,7 @@ Contains only current membership. Leaving or removal deletes the active membersh
 |---|---|---:|---|
 | `room_id` | `uuid` | No | Foreign key to `room` |
 | `user_id` | `uuid` | No | Foreign key to `app_user` |
-| `role` | `varchar(16)` | No | `creator`, `co_host`, `member` |
+| `role` | `varchar(16)` | No | `owner`, `co_host`, `member` |
 | `joined_via` | `varchar(16)` | No | `created`, `invite_link`, `room_code` |
 | `joined_at` | `timestamptz` | No | Membership creation time |
 | `updated_at` | `timestamptz` | No | Role-change time |
@@ -336,8 +336,9 @@ Keys and constraints:
 
 - Primary key `(room_id, user_id)` prevents duplicate joining.
 - `role` is limited to the three values above.
-- Exactly one active `creator` membership exists per room, enforced with a unique partial index on `room_id where role = 'creator'`.
-- The creator membership user must equal `room.owner_user_id`, enforced transactionally and checked by consistency tests.
+- Exactly one `owner` membership exists per room, enforced with a unique partial index on `room_id where role = 'owner'`.
+- A deferred composite foreign key requires `(room.id, room.owner_user_id)` to identify a current membership. Services
+  lock and update that membership's role in the same transaction, and consistency tests verify it is the `owner` row.
 - Foreign-key deletion behaviour is explicit; account deletion cannot cascade through owned active rooms because ownership must first be transferred.
 
 Indexes:

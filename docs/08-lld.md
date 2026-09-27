@@ -275,7 +275,7 @@ Zero updated rows produce `PROFILE_REVISION_MISMATCH` unless authorization/accou
 | `RoomDetails` | Title, location, and description validation |
 | `RoomTheme` | Valid preset/gradient/upload/GIPHY choice |
 | `RoomRevision` | Positive monotonic revision |
-| `RoomStatus` | `ACTIVE`, `ARCHIVED`, `DELETING` transitions |
+| `RoomStatus` | `ACTIVE`, `ARCHIVED`, `DELETING` transitions; archive sets deletion eligibility 24 hours later |
 | `RoomPermissions` | Role-derived allowed actions returned to client |
 
 ### 9.2 Application components
@@ -406,7 +406,9 @@ The service:
 7. Writes member-change invalidations.
 8. Commits all changes together.
 
-The unique creator index guarantees there is never more than one committed creator membership.
+The unique owner index and deferred owner-membership foreign key guarantee one committed owner membership aligned
+with `room.owner_user_id`. Ownership transfer demotes the old owner before promoting the new owner and commits both
+role changes with the room owner update.
 
 ## 11. Invitation module
 

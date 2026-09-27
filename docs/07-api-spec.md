@@ -491,9 +491,8 @@ Future joins are denied with the normal safe unavailable response when either ac
 | `POST` | `/rooms` | Signed-in user | Create room |
 | `GET` | `/rooms/{roomId}` | Current member | Get room snapshot |
 | `PATCH` | `/rooms/{roomId}` | Creator or co-host | Edit room/theme |
-| `DELETE` | `/rooms/{roomId}` | Creator | Delete room |
-| `POST` | `/rooms/{roomId}/ownership-transfer` | Creator | Transfer ownership |
-| `POST` | `/rooms/{roomId}/leave` | Member or co-host | Leave room |
+| `DELETE` | `/rooms/{roomId}` | Owner | Archive room for delayed deletion |
+| `POST` | `/rooms/{roomId}/ownership-transfer` | Owner | Transfer ownership |
 
 ### 10.2 Room summary
 
@@ -507,20 +506,16 @@ Future joins are denied with the normal safe unavailable response when either ac
   "role": "MEMBER",
   "memberCount": 8,
   "revision": 4,
-  "theme": {
-    "kind": "PRESET",
-    "presetKey": "soft-blue-01",
-    "overlayKey": "dark-soft"
-  },
   "updatedAt": "2026-09-09T10:30:00Z"
 }
 ```
 
 ### 10.3 List rooms
 
-`GET /rooms?status=ACTIVE&limit=20&cursor=<opaque>`
+`GET /rooms?status=ACTIVE&limit=20`
 
 Allowed status filters: `ACTIVE`, `ARCHIVED`, or omitted for both. Archived rooms remain available only during their 24-hour archive window.
+The initial room foundation returns at most 50 records. Cursor pagination is introduced with the broader room lifecycle.
 
 ### 10.4 Create room
 
@@ -535,23 +530,19 @@ Headers: `Idempotency-Key`.
   "eventLocalTime": "10:00",
   "eventTimeZone": "Asia/Kolkata",
   "location": "North Goa",
-  "description": "Our first group trip",
-  "theme": {
-    "kind": "PRESET",
-    "presetKey": "soft-blue-01",
-    "overlayKey": "dark-soft"
-  }
+  "description": "Our first group trip"
 }
 ```
 
 Success: `201 Created`, `Location: /api/v1/rooms/{roomId}`, and `ETag: "room-1"`.
 
-The response includes:
+The room-foundation response includes:
 
 - Full authorized room snapshot
-- Creator membership
-- Active invitation link and formatted room code
-- Default reminder preferences
+- Owner membership role
+
+Invitation credentials and reminder preferences are added by their respective modules; room creation never returns
+placeholder or unprotected invitation material when those modules are unavailable.
 
 ### 10.5 Event validation
 
@@ -567,7 +558,10 @@ The response includes:
 - Recurrence fields: rejected as unknown/unsupported.
 - User at ten active owned rooms: `409 OWNED_ROOM_LIMIT_REACHED`.
 
-### 10.6 Theme input variants
+### 10.6 Theme input variants (deferred)
+
+Theme persistence is outside the room-and-membership foundation. Until the theme module is implemented, room create and
+update requests reject theme fields as unsupported rather than silently discarding them.
 
 Preset:
 
@@ -618,9 +612,6 @@ Only server-approved preset and overlay keys are accepted. A GIPHY asset ID is a
 - Room fields
 - Current user's role
 - Total member count
-- Current theme reference
-- Personal reminder settings
-- Current user permissions
 - Archive/delete timing where applicable
 
 The API does not send a ticking countdown value. It sends `eventAt` and `serverNow`, allowing the client to detect unreasonable device-clock drift while rendering locally.
@@ -646,18 +637,21 @@ The API does not send a ticking countdown value. It sends `eventAt` and `serverN
 - Success increments revision once, even if several fields change.
 - Important field changes create member notification work.
 
-### 10.9 Delete room
+### 10.9 Archive room and delayed deletion
 
 `DELETE /rooms/{roomId}` returns `202 Accepted`.
 
 ```json
 {
   "roomId": "019b1f33-e664-7ef4-985e-76b3ac298620",
-  "status": "DELETING"
+  "status": "ARCHIVED",
+  "archivedAt": "2026-09-09T10:30:00Z",
+  "deleteAfter": "2026-09-10T10:30:00Z"
 }
 ```
 
-The room becomes inaccessible immediately. Database/media cleanup and member notifications complete asynchronously and idempotently.
+The operation is idempotent. The room remains readable to current members during the 24-hour recovery window, rejects
+all mutations and joins, and becomes eligible for asynchronous physical deletion at `deleteAfter`.
 
 ### 10.10 Transfer ownership
 
@@ -669,17 +663,15 @@ The room becomes inaccessible immediately. Database/media cleanup and member not
 }
 ```
 
-The target must be a current member or co-host. Success returns the updated room and both affected memberships. The previous creator becomes a co-host by default.
+The target must be a current member or co-host. Success returns the updated room and both affected memberships. The previous owner becomes a co-host by default.
 
 ## 11. Members and roles
 
 | Method | Path | Authorization | Purpose |
 |---|---|---|---|
-| `GET` | `/rooms/{roomId}/members` | Current member | List current members |
-| `PATCH` | `/rooms/{roomId}/members/{userId}` | Creator | Promote/demote permitted user |
-| `DELETE` | `/rooms/{roomId}/members/{userId}` | Creator/co-host within role rules | Remove member |
+| `PATCH` | `/rooms/{roomId}/members/{userId}` | Owner | Promote/demote permitted user |
 
-Member response:
+Role-change response:
 
 ```json
 {
@@ -701,12 +693,10 @@ Role update:
 
 Rules:
 
-- Only creator can promote/demote co-hosts.
-- Creator and co-host can remove regular members.
-- Only creator can remove/demote a co-host.
-- Creator cannot remove themselves through this route.
-- Removed users may immediately rejoin with current valid credentials.
-- Removal succeeds immediately on the server and emits invalidation/notification work.
+- Only the owner can promote or demote co-hosts.
+- The room and list responses expose `memberCount`; this foundation does not expose a complete member-identity list.
+- Member removal and leave operations are introduced with the invitation/join lifecycle rather than exposing an
+  incomplete removal contract.
 
 ## 12. Invitations and joining
 
