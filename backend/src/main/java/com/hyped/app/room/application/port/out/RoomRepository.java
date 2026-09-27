@@ -37,6 +37,8 @@ public interface RoomRepository {
 
     void addMembership(RoomMembership membership);
 
+    void addMembership(RoomMembership membership, String joinedVia);
+
     void incrementMemberCount(RoomId roomId, Instant updatedAt);
 
     void transferOwnership(RoomId roomId, UserId oldOwner, UserId newOwner, Instant updatedAt);

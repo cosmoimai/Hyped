@@ -236,7 +236,7 @@ public class RoomController {
             Instant createdAt,
             Instant updatedAt,
             Instant serverNow) {
-        static RoomResponse from(AuthorizedRoom authorized, Instant serverNow) {
+        public static RoomResponse from(AuthorizedRoom authorized, Instant serverNow) {
             Room room = authorized.room();
             return new RoomResponse(room.id().value(), room.title(), room.eventAt(), room.eventTimeZone(),
                     room.location(), room.description(), room.status(), authorized.role(), room.memberCount(),

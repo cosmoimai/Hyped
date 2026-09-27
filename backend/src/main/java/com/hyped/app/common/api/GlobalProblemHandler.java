@@ -3,6 +3,7 @@ package com.hyped.app.common.api;
 import com.hyped.app.identity.application.exception.IdentityTokenVerificationException;
 import com.hyped.app.identity.application.exception.PersonalDataProtectionException;
 import com.hyped.app.room.application.RoomOperationException;
+import com.hyped.app.invitation.application.InvitationException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Comparator;
@@ -88,6 +89,17 @@ public class GlobalProblemHandler {
         };
         return response(request, status, exception.code(), exception.title(), exception.getMessage(),
                 false, List.of(), List.of());
+    }
+
+    @ExceptionHandler(InvitationException.class)
+    ResponseEntity<ApiProblem> invitation(InvitationException exception, HttpServletRequest request) {
+        ResponseEntity<ApiProblem> result = response(request, HttpStatus.valueOf(exception.status()), exception.code(),
+                "Invitation unavailable", exception.getMessage(), exception.status() == 503, List.of(), List.of());
+        if (exception.code().equals("REQUEST_IN_PROGRESS")) {
+            return ResponseEntity.status(result.getStatusCode()).headers(result.getHeaders())
+                    .header("Retry-After", "1").body(result.getBody());
+        }
+        return result;
     }
 
     @ExceptionHandler(Exception.class)

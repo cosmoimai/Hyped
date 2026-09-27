@@ -1,6 +1,7 @@
 package com.hyped.app.room.application;
 
 import com.hyped.app.identity.domain.UserId;
+import com.hyped.app.invitation.application.InvitationService;
 import com.hyped.app.room.application.port.out.RoomRepository;
 import com.hyped.app.room.application.port.out.RoomRepository.AuthorizedRoom;
 import com.hyped.app.room.domain.MembershipRole;
@@ -20,6 +21,7 @@ import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,10 +32,12 @@ public class RoomService {
     public static final int MAX_MEMBERS = 25;
     private final RoomRepository rooms;
     private final Clock clock;
+    private final ObjectProvider<InvitationService> invitations;
 
-    public RoomService(RoomRepository rooms, Clock clock) {
+    public RoomService(RoomRepository rooms, Clock clock, ObjectProvider<InvitationService> invitations) {
         this.rooms = rooms;
         this.clock = clock;
+        this.invitations = invitations;
     }
 
     @Transactional
@@ -53,6 +57,8 @@ public class RoomService {
                 1, 1, null, null, now, now);
         RoomMembership owner = new RoomMembership(room.id(), actor, MembershipRole.OWNER, now, now);
         rooms.create(room, owner);
+        // Provision in this transaction when the invitation module is configured; failure rolls back the room.
+        invitations.ifAvailable(service -> service.get(actor, room.id()));
         return new AuthorizedRoom(room, MembershipRole.OWNER);
     }
 

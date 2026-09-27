@@ -25,6 +25,9 @@ public class RequestContextFilter extends OncePerRequestFilter {
         String requestId = validRequestId(request.getHeader(REQUEST_ID_HEADER));
         request.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
         response.setHeader(REQUEST_ID_HEADER, requestId);
+        if (request.getRequestURI().contains("/invitation") || request.getRequestURI().contains("/room-codes/")) {
+            response.setHeader("Cache-Control", "no-store");
+        }
         filterChain.doFilter(request, response);
     }
 

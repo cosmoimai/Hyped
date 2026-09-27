@@ -144,11 +144,16 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
 
     @Override
     public void addMembership(RoomMembership membership) {
+        addMembership(membership, "invite_link");
+    }
+
+    @Override
+    public void addMembership(RoomMembership membership, String joinedVia) {
         jdbc.update("""
                 INSERT INTO app.room_member
                     (room_id, user_id, role, joined_via, joined_at, updated_at)
-                VALUES (?, ?, ?, 'invite_link', ?, ?)
-                """, membership.roomId().value(), membership.userId().value(), database(membership.role()),
+                VALUES (?, ?, ?, ?, ?, ?)
+                """, membership.roomId().value(), membership.userId().value(), database(membership.role()), joinedVia,
                 timestamp(membership.joinedAt()), timestamp(membership.updatedAt()));
     }
 
