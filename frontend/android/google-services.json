@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "661950448866",
+    "project_id": "hyped-41a30",
+    "storage_bucket": "hyped-41a30.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661950448866:android:315d2b6ce66876be780abb",
+        "android_client_info": {
+          "package_name": "com.hyped.hyped"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBqeC92AfXqe26D8sASDUjVeCVl8FBznpI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
