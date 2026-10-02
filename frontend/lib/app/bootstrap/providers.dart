@@ -37,25 +37,41 @@ final googleIdentityProviderProvider = Provider<GoogleIdentityProvider>(
   ),
 );
 
-final authApiProvider = Provider<AuthApi>((ref) {
-  final options = BaseOptions(
+final dioOptionsProvider = Provider<BaseOptions>(
+  (ref) => BaseOptions(
     baseUrl: ApiEnvironment.baseUrl,
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 15),
     headers: {'Accept': 'application/json'},
+  ),
+);
+
+final publicDioProvider = Provider<Dio>(
+  (ref) => Dio(ref.read(dioOptionsProvider)),
+);
+
+final authenticatedDioProvider = Provider<Dio>((ref) {
+  final dio = Dio(ref.read(dioOptionsProvider));
+  final refresher = AuthApi(
+    ref.read(publicDioProvider),
+    Dio(ref.read(dioOptionsProvider)),
   );
-  final publicDio = Dio(options);
-  final authenticatedDio = Dio(options);
-  final api = AuthApi(publicDio, authenticatedDio);
-  authenticatedDio.interceptors.add(
+  dio.interceptors.add(
     AuthenticationInterceptor(
-      authenticatedDio,
+      dio,
       ref.read(tokenStoreProvider),
-      api,
+      refresher,
       onAuthenticationFailed: ref.read(sessionInvalidationProvider).invalidate,
     ),
   );
-  return api;
+  return dio;
+});
+
+final authApiProvider = Provider<AuthApi>((ref) {
+  return AuthApi(
+    ref.read(publicDioProvider),
+    ref.read(authenticatedDioProvider),
+  );
 });
 
 final authRepositoryProvider = Provider<AuthRepository>(

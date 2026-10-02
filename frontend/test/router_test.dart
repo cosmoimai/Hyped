@@ -5,9 +5,13 @@ import 'package:hyped/app/bootstrap/providers.dart';
 import 'package:hyped/app/router/app_router.dart';
 import 'package:hyped/features/authentication/data/auth_repository.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
+import 'package:hyped/features/rooms/data/room_repository.dart';
+import 'package:hyped/features/rooms/presentation/controllers/room_providers.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockRouterRepository extends Mock implements AuthRepository {}
+
+class MockRoomRepository extends Mock implements RoomRepository {}
 
 void main() {
   testWidgets('signed-out private route redirects to sign-in', (tester) async {
@@ -22,7 +26,10 @@ void main() {
     router.go('/home');
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [authControllerProvider.overrideWith((ref) => auth)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => auth),
+          roomRepositoryProvider.overrideWith((ref) => emptyRoomRepository()),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -42,7 +49,10 @@ void main() {
     router.go('/sign-in');
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [authControllerProvider.overrideWith((ref) => auth)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => auth),
+          roomRepositoryProvider.overrideWith((ref) => emptyRoomRepository()),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -65,7 +75,10 @@ void main() {
     addTearDown(signal.dispose);
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [authControllerProvider.overrideWith((ref) => auth)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => auth),
+          roomRepositoryProvider.overrideWith((ref) => emptyRoomRepository()),
+        ],
         child: MaterialApp.router(routerConfig: router),
       ),
     );
@@ -76,4 +89,35 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Welcome to Hyped!'), findsOneWidget);
   });
+
+  testWidgets('signed-out create-room route redirects to sign-in', (
+    tester,
+  ) async {
+    final repository = MockRouterRepository();
+    when(
+      () => repository.restoreSession(any()),
+    ).thenAnswer((_) async => SessionRestoreResult.missing);
+    final auth = AuthController(repository);
+    await auth.initialize();
+    final router = createRouter(auth);
+    addTearDown(router.dispose);
+    router.go('/rooms/new');
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWith((ref) => auth),
+          roomRepositoryProvider.overrideWith((ref) => emptyRoomRepository()),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome to Hyped!'), findsOneWidget);
+  });
+}
+
+RoomRepository emptyRoomRepository() {
+  final repository = MockRoomRepository();
+  when(() => repository.listRooms()).thenAnswer((_) async => []);
+  return repository;
 }
