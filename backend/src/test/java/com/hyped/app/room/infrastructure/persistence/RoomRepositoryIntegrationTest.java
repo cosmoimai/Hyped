@@ -52,11 +52,11 @@ class RoomRepositoryIntegrationTest {
     @Test
     void migrationCreatesConstrainedRoomTables() {
         assertThat(jdbc.queryForObject(
-                "SELECT success FROM flyway.flyway_schema_history WHERE version = '7'", Boolean.class)).isTrue();
+                "SELECT success FROM flyway.flyway_schema_history WHERE version = '8'", Boolean.class)).isTrue();
         assertThat(jdbc.queryForList("""
                 SELECT table_name FROM information_schema.tables
-                WHERE table_schema = 'app' AND table_name IN ('room', 'room_member', 'room_theme')
-                """, String.class)).containsExactlyInAnyOrder("room", "room_member", "room_theme");
+                WHERE table_schema = 'app' AND table_name IN ('room', 'room_member', 'room_theme', 'room_reminder')
+                """, String.class)).containsExactlyInAnyOrder("room", "room_member", "room_theme", "room_reminder");
     }
 
     @Test
