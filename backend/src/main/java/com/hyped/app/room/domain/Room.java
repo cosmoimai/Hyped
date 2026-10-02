@@ -13,6 +13,7 @@ public record Room(
         String eventTimeZone,
         String location,
         String description,
+        RoomTheme theme,
         RoomStatus status,
         long revision,
         int memberCount,
@@ -30,6 +31,10 @@ public record Room(
         ZoneId.of(eventTimeZone);
         location = boundedOptional(location, 120, "location");
         description = boundedOptional(description, 500, "description");
+        Objects.requireNonNull(theme, "theme");
+        if (!theme.roomId().equals(id)) {
+            throw new IllegalArgumentException("Theme must belong to the room");
+        }
         Objects.requireNonNull(status, "status");
         Objects.requireNonNull(createdAt, "createdAt");
         Objects.requireNonNull(updatedAt, "updatedAt");

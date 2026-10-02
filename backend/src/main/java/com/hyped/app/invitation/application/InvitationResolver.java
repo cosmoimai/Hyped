@@ -56,7 +56,8 @@ public class InvitationResolver {
         guard.requireActive(room);
         var reference = references.issue(current, roomCode);
         return new Preview(reference.value(), reference.expiresAt(),
-                new Event(room.title(), room.eventAt(), room.eventTimeZone(), new Theme("PRESET", "soft-blue-01")),
+                new Event(room.title(), room.eventAt(), room.eventTimeZone(),
+                        new Theme(room.theme().kind().name(), room.theme().presetKey())),
                 new Inviter(displayName(room)), room.memberCount(), true);
     }
 

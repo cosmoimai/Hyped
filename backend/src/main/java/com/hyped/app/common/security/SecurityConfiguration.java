@@ -57,11 +57,13 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/auth/sessions/*")
                         .authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/rooms", "/api/v1/rooms/*")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rooms", "/api/v1/rooms/*",
+                                "/api/v1/rooms/*/event-theme")
                         .authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/rooms", "/api/v1/rooms/*/ownership-transfer")
                         .authenticated()
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/rooms/*", "/api/v1/rooms/*/members/*")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/rooms/*", "/api/v1/rooms/*/event-theme",
+                                "/api/v1/rooms/*/members/*")
                         .authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/rooms/*")
                         .authenticated()

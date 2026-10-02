@@ -1,11 +1,13 @@
 package com.hyped.app.room.api;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.hyped.app.common.api.ApiProblemException;
 import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.room.application.RoomService;
 import com.hyped.app.room.application.RoomService.CreateRoomCommand;
 import com.hyped.app.room.application.RoomService.OwnershipTransfer;
+import com.hyped.app.room.application.RoomService.ThemeCommand;
 import com.hyped.app.room.application.RoomService.UpdateRoomCommand;
 import com.hyped.app.room.application.port.out.RoomRepository.AuthorizedRoom;
 import com.hyped.app.room.domain.MembershipRole;
@@ -13,6 +15,7 @@ import com.hyped.app.room.domain.Room;
 import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomMembership;
 import com.hyped.app.room.domain.RoomStatus;
+import com.hyped.app.room.domain.RoomTheme;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -61,7 +64,7 @@ public class RoomController {
             @Valid @RequestBody CreateRoomRequest request) {
         AuthorizedRoom created = service.create(actor(jwt), new CreateRoomCommand(request.title(),
                 request.eventLocalDate(), request.eventLocalTime(), request.eventTimeZone(),
-                request.location(), request.description()));
+                request.location(), request.description(), theme(request.theme())));
         RoomResponse response = RoomResponse.from(created, clock.instant());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .header(HttpHeaders.LOCATION, "/api/v1/rooms/" + response.id())
@@ -85,20 +88,35 @@ public class RoomController {
         return ResponseEntity.ok().eTag(etag(response.revision())).body(response);
     }
 
+    @GetMapping("/{roomId}/event-theme")
+    public ResponseEntity<RoomEventThemeResponse> eventTheme(
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId) {
+        RoomEventThemeResponse response = RoomEventThemeResponse.from(
+                service.get(actor(jwt), new RoomId(roomId)), clock.instant());
+        return ResponseEntity.ok().eTag(etag(response.revision())).body(response);
+    }
+
     @PatchMapping(value = "/{roomId}", consumes = "application/merge-patch+json")
     public ResponseEntity<RoomResponse> update(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID roomId,
             @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
             @RequestBody JsonNode patch) {
-        rejectUnknown(patch, List.of("title", "eventLocalDate", "eventLocalTime", "eventTimeZone",
-                "location", "description"));
-        rejectClearedRequired(patch, List.of("title", "eventLocalDate", "eventLocalTime", "eventTimeZone"));
-        UpdateRoomCommand command = new UpdateRoomCommand(text(patch, "title"), date(patch, "eventLocalDate"),
-                time(patch, "eventLocalTime"), text(patch, "eventTimeZone"), text(patch, "location"),
-                patch.has("location"), text(patch, "description"), patch.has("description"));
+        UpdateRoomCommand command = updateCommand(patch);
         AuthorizedRoom updated = service.update(actor(jwt), new RoomId(roomId), revision(ifMatch), command);
         RoomResponse response = RoomResponse.from(updated, clock.instant());
+        return ResponseEntity.ok().eTag(etag(response.revision())).body(response);
+    }
+
+    @PatchMapping(value = "/{roomId}/event-theme", consumes = "application/merge-patch+json")
+    public ResponseEntity<RoomEventThemeResponse> updateEventTheme(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable UUID roomId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
+            @RequestBody JsonNode patch) {
+        AuthorizedRoom updated = service.update(actor(jwt), new RoomId(roomId), revision(ifMatch),
+                updateCommand(patch));
+        RoomEventThemeResponse response = RoomEventThemeResponse.from(updated, clock.instant());
         return ResponseEntity.ok().eTag(etag(response.revision())).body(response);
     }
 
@@ -194,6 +212,41 @@ public class RoomController {
         }
     }
 
+    private static UpdateRoomCommand updateCommand(JsonNode patch) {
+        rejectUnknown(patch, List.of("title", "eventLocalDate", "eventLocalTime", "eventTimeZone",
+                "location", "description", "theme"));
+        rejectClearedRequired(patch, List.of("title", "eventLocalDate", "eventLocalTime", "eventTimeZone",
+                "theme"));
+        return new UpdateRoomCommand(text(patch, "title"), date(patch, "eventLocalDate"),
+                time(patch, "eventLocalTime"), text(patch, "eventTimeZone"), text(patch, "location"),
+                patch.has("location"), text(patch, "description"), patch.has("description"),
+                theme(patch.get("theme")), patch.has("theme"));
+    }
+
+    private static ThemeCommand theme(JsonNode value) {
+        if (value == null) {
+            return null;
+        }
+        if (!value.isObject() || value.isEmpty()) {
+            throw malformedPatch();
+        }
+        rejectUnknown(value, List.of("kind", "presetKey", "overlayKey"));
+        rejectClearedRequired(value, List.of("kind", "presetKey", "overlayKey"));
+        try {
+            return new ThemeCommand(RoomTheme.Kind.valueOf(text(value, "kind")), text(value, "presetKey"),
+                    text(value, "overlayKey"));
+        } catch (RuntimeException exception) {
+            throw malformedPatch();
+        }
+    }
+
+    private static ThemeCommand theme(ThemeRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return new ThemeCommand(request.kind(), request.presetKey(), request.overlayKey());
+    }
+
     private static ApiProblemException malformedPatch() {
         return new ApiProblemException(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed",
                 "The room patch is invalid.");
@@ -205,7 +258,22 @@ public class RoomController {
             @NotNull LocalTime eventLocalTime,
             @NotBlank @Size(max = 64) String eventTimeZone,
             @Size(max = 120) String location,
-            @Size(max = 500) String description) {
+            @Size(max = 500) String description,
+            @Valid ThemeRequest theme) {
+        @JsonAnySetter
+        public void unknown(String name, Object value) {
+            throw malformedPatch();
+        }
+    }
+
+    public record ThemeRequest(
+            @NotNull RoomTheme.Kind kind,
+            @NotBlank @Size(max = 64) String presetKey,
+            @NotBlank @Size(max = 64) String overlayKey) {
+        @JsonAnySetter
+        public void unknown(String name, Object value) {
+            throw malformedPatch();
+        }
     }
 
     public record RoleRequest(@NotNull MembershipRole role) {
@@ -227,6 +295,7 @@ public class RoomController {
             String eventTimeZone,
             String location,
             String description,
+            ThemeResponse theme,
             RoomStatus status,
             MembershipRole role,
             int memberCount,
@@ -239,9 +308,34 @@ public class RoomController {
         public static RoomResponse from(AuthorizedRoom authorized, Instant serverNow) {
             Room room = authorized.room();
             return new RoomResponse(room.id().value(), room.title(), room.eventAt(), room.eventTimeZone(),
-                    room.location(), room.description(), room.status(), authorized.role(), room.memberCount(),
-                    room.revision(), room.archivedAt(), room.deleteAfter(), room.createdAt(), room.updatedAt(),
-                    serverNow);
+                    room.location(), room.description(), ThemeResponse.from(room.theme()), room.status(),
+                    authorized.role(), room.memberCount(), room.revision(), room.archivedAt(), room.deleteAfter(),
+                    room.createdAt(), room.updatedAt(), serverNow);
+        }
+    }
+
+    public record RoomEventThemeResponse(
+            UUID id,
+            String title,
+            Instant eventAt,
+            String eventTimeZone,
+            String location,
+            String description,
+            ThemeResponse theme,
+            long revision,
+            Instant updatedAt,
+            Instant serverNow) {
+        public static RoomEventThemeResponse from(AuthorizedRoom authorized, Instant serverNow) {
+            Room room = authorized.room();
+            return new RoomEventThemeResponse(room.id().value(), room.title(), room.eventAt(),
+                    room.eventTimeZone(), room.location(), room.description(), ThemeResponse.from(room.theme()),
+                    room.revision(), room.updatedAt(), serverNow);
+        }
+    }
+
+    public record ThemeResponse(RoomTheme.Kind kind, String presetKey, String overlayKey) {
+        static ThemeResponse from(RoomTheme theme) {
+            return new ThemeResponse(theme.kind(), theme.presetKey(), theme.overlayKey());
         }
     }
 

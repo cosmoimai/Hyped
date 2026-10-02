@@ -7,6 +7,7 @@ import com.hyped.app.room.domain.Room;
 import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomMembership;
 import com.hyped.app.room.domain.RoomStatus;
+import com.hyped.app.room.domain.RoomTheme;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -22,9 +23,20 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public class JdbcRoomRepositoryAdapter implements RoomRepository {
-    private static final String PROJECTION = """
-            SELECT r.*, m.role AS caller_role
+    private static final String ROOM_WITH_THEME = """
+            SELECT r.*, t.kind AS theme_kind, t.preset_key AS theme_preset_key,
+                t.overlay_key AS theme_overlay_key, t.updated_by_user_id AS theme_updated_by_user_id,
+                t.created_at AS theme_created_at, t.updated_at AS theme_updated_at
             FROM app.room r
+            JOIN app.room_theme t ON t.room_id = r.id
+            """;
+    private static final String AUTHORIZED_PROJECTION = """
+            SELECT r.*, t.kind AS theme_kind, t.preset_key AS theme_preset_key,
+                t.overlay_key AS theme_overlay_key, t.updated_by_user_id AS theme_updated_by_user_id,
+                t.created_at AS theme_created_at, t.updated_at AS theme_updated_at,
+                m.role AS caller_role
+            FROM app.room r
+            JOIN app.room_theme t ON t.room_id = r.id
             JOIN app.room_member m ON m.room_id = r.id
             WHERE m.user_id = :userId
             """;
@@ -68,6 +80,13 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
                 room.eventTimeZone(), room.location(), room.description(), timestamp(room.createdAt()),
                 timestamp(room.updatedAt()));
         jdbc.update("""
+                INSERT INTO app.room_theme
+                    (room_id, kind, preset_key, overlay_key, updated_by_user_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, room.id().value(), database(room.theme().kind()), room.theme().presetKey(),
+                room.theme().overlayKey(), room.theme().updatedByUserId().value(),
+                timestamp(room.theme().createdAt()), timestamp(room.theme().updatedAt()));
+        jdbc.update("""
                 INSERT INTO app.room_member
                     (room_id, user_id, role, joined_via, joined_at, updated_at)
                 VALUES (?, ?, 'owner', 'created', ?, ?)
@@ -83,24 +102,25 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
         MapSqlParameterSource parameters = new MapSqlParameterSource("userId", userId.value())
                 .addValue("status", status == null ? null : database(status))
                 .addValue("limit", limit);
-        return named.query(PROJECTION + statusClause + order + " LIMIT :limit", parameters, this::mapAuthorized);
+        return named.query(AUTHORIZED_PROJECTION + statusClause + order + " LIMIT :limit", parameters,
+                this::mapAuthorized);
     }
 
     @Override
     public Optional<AuthorizedRoom> findAuthorized(RoomId roomId, UserId userId) {
-        return first(named.query(PROJECTION + " AND r.id = :roomId",
+        return first(named.query(AUTHORIZED_PROJECTION + " AND r.id = :roomId",
                 Map.of("userId", userId.value(), "roomId", roomId.value()), this::mapAuthorized));
     }
 
     @Override
     public Optional<AuthorizedRoom> findAuthorizedForUpdate(RoomId roomId, UserId userId) {
-        return first(named.query(PROJECTION + " AND r.id = :roomId FOR UPDATE OF r, m",
+        return first(named.query(AUTHORIZED_PROJECTION + " AND r.id = :roomId FOR UPDATE OF r, t, m",
                 Map.of("userId", userId.value(), "roomId", roomId.value()), this::mapAuthorized));
     }
 
     @Override
     public Optional<Room> findForUpdate(RoomId roomId) {
-        List<Room> rows = jdbc.query("SELECT * FROM app.room WHERE id = ? FOR UPDATE",
+        List<Room> rows = jdbc.query(ROOM_WITH_THEME + " WHERE r.id = ? FOR UPDATE OF r, t",
                 (rs, row) -> mapRoom(rs), roomId.value());
         return first(rows);
     }
@@ -123,7 +143,14 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
                     revision = revision + 1, updated_at = ?
                 WHERE id = ? AND revision = ? AND status = 'active'
                 """, room.title(), timestamp(room.eventAt()), room.eventTimeZone(), room.location(), room.description(),
-                timestamp(room.updatedAt()), room.id().value(), expectedRevision) == 1;
+                timestamp(room.updatedAt()), room.id().value(), expectedRevision) == 1
+                && jdbc.update("""
+                        UPDATE app.room_theme
+                        SET kind = ?, preset_key = ?, overlay_key = ?, updated_by_user_id = ?, updated_at = ?
+                        WHERE room_id = ?
+                        """, database(room.theme().kind()), room.theme().presetKey(), room.theme().overlayKey(),
+                        room.theme().updatedByUserId().value(), timestamp(room.theme().updatedAt()),
+                        room.id().value()) == 1;
     }
 
     @Override
@@ -179,11 +206,15 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
     }
 
     private Room mapRoom(ResultSet rs) throws SQLException {
-        return new Room(new RoomId(rs.getObject("id", java.util.UUID.class)),
-                new UserId(rs.getObject("owner_user_id", java.util.UUID.class)), rs.getString("title"),
-                instant(rs, "event_at"), rs.getString("event_timezone"), rs.getString("location"),
-                rs.getString("description"), status(rs.getString("status")), rs.getLong("revision"),
-                rs.getInt("member_count"), nullableInstant(rs, "archived_at"),
+        RoomId roomId = new RoomId(rs.getObject("id", java.util.UUID.class));
+        RoomTheme theme = new RoomTheme(roomId, themeKind(rs.getString("theme_kind")),
+                rs.getString("theme_preset_key"), rs.getString("theme_overlay_key"),
+                new UserId(rs.getObject("theme_updated_by_user_id", java.util.UUID.class)),
+                instant(rs, "theme_created_at"), instant(rs, "theme_updated_at"));
+        return new Room(roomId, new UserId(rs.getObject("owner_user_id", java.util.UUID.class)),
+                rs.getString("title"), instant(rs, "event_at"), rs.getString("event_timezone"),
+                rs.getString("location"), rs.getString("description"), theme, status(rs.getString("status")),
+                rs.getLong("revision"), rs.getInt("member_count"), nullableInstant(rs, "archived_at"),
                 nullableInstant(rs, "delete_after"), instant(rs, "created_at"), instant(rs, "updated_at"));
     }
 
@@ -206,6 +237,10 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
 
     private static RoomStatus status(String value) {
         return RoomStatus.valueOf(value.toUpperCase(Locale.ROOT));
+    }
+
+    private static RoomTheme.Kind themeKind(String value) {
+        return RoomTheme.Kind.valueOf(value.toUpperCase(Locale.ROOT));
     }
 
     private static String database(Enum<?> value) {
