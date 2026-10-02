@@ -3,6 +3,8 @@ import 'package:hyped/features/authentication/presentation/controllers/auth_cont
 import 'package:hyped/features/authentication/presentation/screens/sign_in_screen.dart';
 import 'package:hyped/features/authentication/presentation/screens/splash_screen.dart';
 import 'package:hyped/features/home/presentation/screens/home_screen.dart';
+import 'package:hyped/features/rooms/presentation/screens/room_detail_screen.dart';
+import 'package:hyped/features/rooms/presentation/screens/room_form_screen.dart';
 import 'package:hyped/features/onboarding/presentation/screens/onboarding_screen.dart';
 
 GoRouter createRouter(AuthController auth) => GoRouter(
@@ -14,10 +16,12 @@ GoRouter createRouter(AuthController auth) => GoRouter(
     if (status == AuthStatus.initializing) {
       return path == '/splash' ? null : '/splash';
     }
-    if (auth.state.isAuthenticated) return path == '/home' ? null : '/home';
+    if (auth.state.isAuthenticated) {
+      return _isPrivatePath(path) ? null : '/home';
+    }
     if (status == AuthStatus.failure && path == '/splash') return '/sign-in';
     if (path == '/splash') return '/onboarding';
-    if (path == '/home') return '/sign-in';
+    if (_isPrivatePath(path)) return '/sign-in';
     return null;
   },
   routes: [
@@ -25,5 +29,19 @@ GoRouter createRouter(AuthController auth) => GoRouter(
     GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
     GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
     GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+    GoRoute(path: '/rooms/new', builder: (_, _) => const CreateRoomScreen()),
+    GoRoute(
+      path: '/rooms/:roomId',
+      builder: (_, state) =>
+          RoomDetailScreen(roomId: state.pathParameters['roomId']!),
+    ),
+    GoRoute(
+      path: '/rooms/:roomId/edit',
+      builder: (_, state) =>
+          EditRoomScreen(roomId: state.pathParameters['roomId']!),
+    ),
   ],
 );
+
+bool _isPrivatePath(String path) =>
+    path == '/home' || path.startsWith('/rooms');

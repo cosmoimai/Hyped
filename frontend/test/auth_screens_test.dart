@@ -7,9 +7,14 @@ import 'package:hyped/features/authentication/presentation/controllers/auth_cont
 import 'package:hyped/features/authentication/presentation/screens/sign_in_screen.dart';
 import 'package:hyped/features/authentication/presentation/screens/splash_screen.dart';
 import 'package:hyped/features/home/presentation/screens/home_screen.dart';
+import 'package:hyped/features/rooms/data/room_repository.dart';
+import 'package:hyped/features/rooms/domain/room.dart';
+import 'package:hyped/features/rooms/presentation/controllers/room_providers.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockScreenRepository extends Mock implements AuthRepository {}
+
+class MockRoomRepository extends Mock implements RoomRepository {}
 
 void main() {
   testWidgets('splash displays brand and loading state', (tester) async {
@@ -42,11 +47,21 @@ void main() {
     await controller.initialize();
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [authControllerProvider.overrideWith((ref) => controller)],
+        overrides: [
+          authControllerProvider.overrideWith((ref) => controller),
+          roomRepositoryProvider.overrideWith((ref) => roomRepository([])),
+        ],
         child: const MaterialApp(home: HomeScreen()),
       ),
     );
+    await tester.pumpAndSettle();
     expect(find.text('Your countdowns will live here'), findsOneWidget);
     expect(find.byTooltip('Sign out'), findsOneWidget);
   });
+}
+
+RoomRepository roomRepository(List<Room> rooms) {
+  final repository = MockRoomRepository();
+  when(() => repository.listRooms()).thenAnswer((_) async => rooms);
+  return repository;
 }
