@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyped/app/bootstrap/providers.dart';
 import 'package:hyped/app/router/app_router.dart';
+import 'package:hyped/features/invitations/presentation/controllers/invitation_providers.dart';
 import 'package:hyped/app/theme/hyped_theme.dart';
 
 class HypedApp extends ConsumerStatefulWidget {
@@ -15,7 +16,10 @@ class _HypedAppState extends ConsumerState<HypedApp> {
   GoRouter? _router;
   @override
   Widget build(BuildContext context) {
-    _router ??= createRouter(ref.read(authControllerProvider));
+    _router ??= createRouter(
+      ref.read(authControllerProvider),
+      ref.read(pendingInviteControllerProvider),
+    );
     return MaterialApp.router(
       title: 'Hyped!',
       theme: HypedTheme.light,
