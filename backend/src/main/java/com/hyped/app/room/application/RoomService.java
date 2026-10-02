@@ -2,6 +2,7 @@ package com.hyped.app.room.application;
 
 import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.invitation.application.InvitationService;
+import com.hyped.app.reminder.application.RoomReminderService;
 import com.hyped.app.room.application.port.out.RoomRepository;
 import com.hyped.app.room.application.port.out.RoomRepository.AuthorizedRoom;
 import com.hyped.app.room.domain.MembershipRole;
@@ -34,11 +35,14 @@ public class RoomService {
     private final RoomRepository rooms;
     private final Clock clock;
     private final ObjectProvider<InvitationService> invitations;
+    private final ObjectProvider<RoomReminderService> reminders;
 
-    public RoomService(RoomRepository rooms, Clock clock, ObjectProvider<InvitationService> invitations) {
+    public RoomService(RoomRepository rooms, Clock clock, ObjectProvider<InvitationService> invitations,
+            ObjectProvider<RoomReminderService> reminders) {
         this.rooms = rooms;
         this.clock = clock;
         this.invitations = invitations;
+        this.reminders = reminders;
     }
 
     @Transactional
@@ -60,6 +64,7 @@ public class RoomService {
                 1, 1, null, null, now, now, theme);
         RoomMembership owner = new RoomMembership(room.id(), actor, MembershipRole.OWNER, now, now);
         rooms.create(room, owner);
+        reminders.ifAvailable(service -> service.replaceForEvent(room.id(), room.eventAt()));
         // Provision in this transaction when the invitation module is configured; failure rolls back the room.
         invitations.ifAvailable(service -> service.get(actor, room.id()));
         return new AuthorizedRoom(room, MembershipRole.OWNER);
@@ -110,6 +115,9 @@ public class RoomService {
         if (!rooms.updateVisibleFields(changed, expectedRevision)) {
             throw revisionMismatch();
         }
+        if (!eventAt.equals(existing.eventAt())) {
+            reminders.ifAvailable(service -> service.replaceForEvent(existing.id(), eventAt));
+        }
         return new AuthorizedRoom(changed, current.role());
     }
 
@@ -128,6 +136,7 @@ public class RoomService {
         Instant now = clock.instant();
         Instant deleteAfter = now.plus(Duration.ofDays(1));
         rooms.archive(roomId, now, deleteAfter, now);
+        reminders.ifAvailable(service -> service.cancelOpen(roomId));
         Room existing = current.room();
         Room archived = room(existing.id(), existing.ownerUserId(), existing.title(), existing.eventAt(),
                 existing.eventTimeZone(), existing.location(), existing.description(), RoomStatus.ARCHIVED,
