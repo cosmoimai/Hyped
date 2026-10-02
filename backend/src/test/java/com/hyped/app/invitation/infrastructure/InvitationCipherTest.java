@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.HashSet;
@@ -37,10 +39,13 @@ class InvitationCipherTest {
     }
 
     @Test
-    void lookupHasDomainSeparationAndLinksHaveOnlyAnOpaquePathCredential() {
+    void lookupHasDomainSeparationAndLinksHaveOnlyAnOpaquePathCredential() throws Exception {
         var cipher = cipher();
         assertThat(cipher.digest("code", "ABCDEFGH")).hasSize(32)
                 .isNotEqualTo(cipher.digest("request", "ABCDEFGH"));
+        String token = cipher.newToken();
+        assertThat(cipher.digest("link", token))
+                .isNotEqualTo(MessageDigest.getInstance("SHA-256").digest(token.getBytes(StandardCharsets.US_ASCII)));
         URI url = URI.create(cipher.inviteUrl(cipher.newToken()));
         assertThat(url.getScheme()).isEqualTo("https");
         assertThat(url.getHost()).isEqualTo("invites.example.test");

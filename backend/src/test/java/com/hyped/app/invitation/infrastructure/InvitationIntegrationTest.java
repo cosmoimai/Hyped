@@ -37,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -158,7 +159,7 @@ class InvitationIntegrationTest {
     }
 
     @Test
-    void migrationCreatesUniqueProtectedCredentialsAndRoomCreationProvisionsThem() {
+    void migrationCreatesUniqueProtectedCredentialsAndRoomCreationProvisionsThem() throws Exception {
         UserId owner = user();
         RoomId room = room(owner);
         Share share = invitations.get(owner, room);
@@ -173,6 +174,8 @@ class InvitationIntegrationTest {
         assertThat(new String(stored.roomCodeCiphertext(), StandardCharsets.UTF_8))
                 .doesNotContain(share.roomCode().replace("-", ""));
         assertThat(stored.linkTokenHash()).hasSize(32);
+        assertThat(stored.linkTokenHash()).isNotEqualTo(MessageDigest.getInstance("SHA-256")
+                .digest(token(share).getBytes(StandardCharsets.US_ASCII)));
         RoomId other = room(user());
         assertThatThrownBy(() -> jdbc.update("""
                 UPDATE app.room_invitation SET room_code_hmac = ? WHERE room_id = ?

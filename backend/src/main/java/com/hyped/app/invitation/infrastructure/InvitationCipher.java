@@ -4,7 +4,6 @@ import com.hyped.app.invitation.application.port.out.InvitationCryptography;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
-import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Base64;
 import javax.crypto.Cipher;
@@ -45,9 +44,6 @@ public final class InvitationCipher implements InvitationCryptography {
     @Override
     public byte[] digest(String purpose, String value) {
         try {
-            if (purpose.equals("link")) {
-                return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.US_ASCII));
-            }
             Mac mac = Mac.getInstance("HmacSHA256");
             mac.init(lookupKey);
             return mac.doFinal((properties.environment() + ":" + purpose + ":" + value)
