@@ -31,9 +31,17 @@ spring:
 
 server:
   shutdown: graceful
-  forward-headers-strategy: framework
+  forward-headers-strategy: none
 
 hyped:
+  invitation:
+    enabled: ${INVITATION_ENABLED:false}
+    # Production has no domain or key defaults. Supply independent keys from a secret manager.
+    public-base-url: ${INVITATION_PUBLIC_BASE_URL:}
+    encryption-key: ${INVITATION_ENCRYPTION_KEY:}
+    lookup-hmac-key: ${INVITATION_LOOKUP_HMAC_KEY:}
+    environment: ${INVITATION_ENVIRONMENT:production}
+    attempts-per-minute: ${INVITATION_ATTEMPTS_PER_MINUTE:10}
   identity-crypto:
     enabled: ${IDENTITY_CRYPTO_ENABLED:false}
     environment: ${IDENTITY_CRYPTO_ENVIRONMENT:local}

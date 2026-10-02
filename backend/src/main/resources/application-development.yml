@@ -1,0 +1,5 @@
+# Explicit local opt-in; generate local keys separately. Never reuse production key material.
+hyped:
+  invitation:
+    public-base-url: ${INVITATION_PUBLIC_BASE_URL:https://localhost:8443}
+    environment: local

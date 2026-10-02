@@ -43,6 +43,14 @@ public class SecurityConfiguration {
                                 "/actuator/health",
                                 "/actuator/health/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/public/invitations/preview",
+                                "/api/v1/public/room-codes/preview")
+                        .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/rooms/*/invitation")
+                        .authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/rooms/*/invitation/rotate",
+                                "/api/v1/invitations/join", "/api/v1/room-codes/join")
+                        .authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout")
                         .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/sessions")
