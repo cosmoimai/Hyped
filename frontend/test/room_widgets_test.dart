@@ -63,6 +63,23 @@ void main() {
     expect(find.byTooltip('Edit room'), findsOneWidget);
   });
 
+  testWidgets('room detail hides edit action for members', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          roomRepositoryProvider.overrideWith(
+            (ref) => repositoryWithDetail(room(role: RoomRole.member)),
+          ),
+        ],
+        child: const MaterialApp(home: RoomDetailScreen(roomId: 'room-id')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Goa trip'), findsOneWidget);
+    expect(find.byTooltip('Edit room'), findsNothing);
+  });
+
   testWidgets('create room flow validates missing title', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -96,6 +113,7 @@ Room room({
   String id = 'room-id',
   String title = 'Goa trip',
   DateTime? eventAt,
+  RoomRole role = RoomRole.owner,
 }) => Room(
   id: id,
   title: title,
@@ -109,7 +127,7 @@ Room room({
     overlayKey: 'dark-soft',
   ),
   status: RoomStatus.active,
-  role: RoomRole.owner,
+  role: role,
   memberCount: 2,
   revision: 1,
   createdAt: DateTime.utc(2026),

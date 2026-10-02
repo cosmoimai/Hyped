@@ -13,13 +13,14 @@ String compactDateTime(DateTime value) {
 
 String countdown(DateTime eventAt, DateTime now) {
   final remaining = eventAt.difference(now.toUtc());
-  if (remaining.isNegative) return 'Event started';
+  if (remaining <= Duration.zero) return 'Event started';
   final days = remaining.inDays;
   final hours = remaining.inHours.remainder(24);
   final minutes = remaining.inMinutes.remainder(60);
   if (days > 0) return '${days}d ${hours}h';
   if (hours > 0) return '${hours}h ${minutes}m';
-  return '${minutes}m';
+  if (minutes > 0) return '${minutes}m';
+  return 'Less than 1m';
 }
 
 String _month(int month) => const [

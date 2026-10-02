@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:hyped/features/rooms/data/room_api.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/domain/room_commands.dart';
@@ -78,6 +79,9 @@ class RoomDetailController extends ChangeNotifier {
     try {
       _room = await _repository.updateRoom(current, draft);
       return true;
+    } on RoomApiException catch (error) {
+      _error = _roomMutationMessage(error);
+      return false;
     } catch (_) {
       _error = 'Could not save room changes.';
       return false;
@@ -113,6 +117,9 @@ class RoomCreationController extends ChangeNotifier {
     try {
       _created = await _repository.createRoom(draft);
       return _created;
+    } on RoomApiException catch (error) {
+      _error = _roomMutationMessage(error);
+      return null;
     } catch (_) {
       _error = 'Could not create the room. Please try again.';
       return null;
@@ -127,3 +134,19 @@ class RoomCreationController extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+String _roomMutationMessage(RoomApiException error) => switch (error.code) {
+  'VALIDATION_FAILED' => 'Check the room details and try again.',
+  'EVENT_TIME_NOT_FUTURE' => 'Choose a future event time.',
+  'EVENT_TIME_AMBIGUOUS' =>
+    'Choose a different time; that local time is ambiguous.',
+  'EVENT_TIME_NONEXISTENT' =>
+    'Choose a different time; that local time does not exist.',
+  'OWNED_ROOM_LIMIT_REACHED' =>
+    'You already own the maximum number of active rooms.',
+  'ROOM_REVISION_MISMATCH' =>
+    'This room changed. Reload it before editing again.',
+  'ROOM_REVISION_REQUIRED' => 'Reload this room before editing again.',
+  'ROOM_ACTION_FORBIDDEN' => 'Only owners and co-hosts can edit this room.',
+  _ => 'Could not save this room. Please try again.',
+};

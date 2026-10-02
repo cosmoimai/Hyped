@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hyped/features/rooms/data/room_api.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/domain/room_commands.dart';
@@ -60,6 +61,21 @@ void main() {
     expect(controller.error, 'Add a title.');
     verifyNever(() => repository.createRoom(any()));
   });
+
+  test(
+    'creation controller maps backend validation codes to clean messages',
+    () async {
+      when(() => repository.createRoom(any())).thenThrow(
+        const RoomApiException(code: 'EVENT_TIME_NOT_FUTURE', statusCode: 422),
+      );
+      final controller = RoomCreationController(repository);
+
+      final created = await controller.submit(draft());
+
+      expect(created, isNull);
+      expect(controller.error, 'Choose a future event time.');
+    },
+  );
 
   test('creation controller returns created room', () async {
     when(() => repository.createRoom(any())).thenAnswer((_) async => room());
