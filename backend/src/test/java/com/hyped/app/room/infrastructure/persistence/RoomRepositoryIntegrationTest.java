@@ -7,11 +7,13 @@ import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.room.application.RoomOperationException;
 import com.hyped.app.room.application.RoomService;
 import com.hyped.app.room.application.RoomService.CreateRoomCommand;
+import com.hyped.app.room.application.RoomService.ThemeCommand;
 import com.hyped.app.room.application.RoomService.UpdateRoomCommand;
 import com.hyped.app.room.application.port.out.RoomRepository;
 import com.hyped.app.room.domain.MembershipRole;
 import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomStatus;
+import com.hyped.app.room.domain.RoomTheme;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -50,11 +52,11 @@ class RoomRepositoryIntegrationTest {
     @Test
     void migrationCreatesConstrainedRoomTables() {
         assertThat(jdbc.queryForObject(
-                "SELECT success FROM flyway.flyway_schema_history WHERE version = '5'", Boolean.class)).isTrue();
+                "SELECT success FROM flyway.flyway_schema_history WHERE version = '7'", Boolean.class)).isTrue();
         assertThat(jdbc.queryForList("""
                 SELECT table_name FROM information_schema.tables
-                WHERE table_schema = 'app' AND table_name IN ('room', 'room_member')
-                """, String.class)).containsExactlyInAnyOrder("room", "room_member");
+                WHERE table_schema = 'app' AND table_name IN ('room', 'room_member', 'room_theme')
+                """, String.class)).containsExactlyInAnyOrder("room", "room_member", "room_theme");
     }
 
     @Test
@@ -90,6 +92,8 @@ class RoomRepositoryIntegrationTest {
 
         assertThat(created.room().eventAt()).isEqualTo("2030-12-20T04:30:00Z");
         assertThat(created.room().eventTimeZone()).isEqualTo("Asia/Kolkata");
+        assertThat(created.room().theme().kind()).isEqualTo(RoomTheme.Kind.PRESET);
+        assertThat(created.room().theme().presetKey()).isEqualTo("soft-blue-01");
         assertThat(created.role()).isEqualTo(MembershipRole.OWNER);
         assertThat(service.list(owner, RoomStatus.ACTIVE, 20)).containsExactly(created);
         assertThat(service.list(outsider, RoomStatus.ACTIVE, 20)).isEmpty();
@@ -98,18 +102,41 @@ class RoomRepositoryIntegrationTest {
     @Test
     void conditionalUpdateIncrementsRevisionAndRejectsStaleWriter() {
         UserId owner = user();
-        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        RoomId roomId = service.create(owner, new CreateRoomCommand("Goa trip", LocalDate.of(2030, 12, 20),
+                LocalTime.of(10, 0), "UTC", "North Goa", "Our first group trip",
+                new ThemeCommand(RoomTheme.Kind.GRADIENT, "blue-lilac-02", "dark-soft"))).room().id();
         UpdateRoomCommand update = new UpdateRoomCommand("Updated", null, null, null,
-                "Goa", true, null, false);
+                "Goa", true, null, false, new ThemeCommand(RoomTheme.Kind.PRESET, "mint-sky-01", "light-soft"),
+                true);
 
         var changed = service.update(owner, roomId, 1, update);
 
         assertThat(changed.room().revision()).isEqualTo(2);
         assertThat(changed.room().location()).isEqualTo("Goa");
+        assertThat(changed.room().theme().kind()).isEqualTo(RoomTheme.Kind.PRESET);
+        assertThat(changed.room().theme().presetKey()).isEqualTo("mint-sky-01");
+        assertThat(jdbc.queryForObject("SELECT kind FROM app.room_theme WHERE room_id = ?",
+                String.class, roomId.value())).isEqualTo("preset");
         assertThatThrownBy(() -> service.update(owner, roomId, 1, update))
                 .isInstanceOf(RoomOperationException.class)
                 .extracting(exception -> ((RoomOperationException) exception).code())
                 .isEqualTo("ROOM_REVISION_MISMATCH");
+    }
+
+    @Test
+    void unsupportedThemeMetadataIsRejectedBeforePersistence() {
+        UserId owner = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+
+        assertThatThrownBy(() -> service.update(owner, roomId, 1,
+                new UpdateRoomCommand(null, null, null, null, null, false, null, false,
+                        new ThemeCommand(RoomTheme.Kind.GRADIENT, "soft-blue-01", "dark-soft"), true)))
+                .isInstanceOf(RoomOperationException.class)
+                .extracting(exception -> ((RoomOperationException) exception).code())
+                .isEqualTo("VALIDATION_FAILED");
+        assertThat(rooms.findAuthorized(roomId, owner).orElseThrow().room().revision()).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT preset_key FROM app.room_theme WHERE room_id = ?",
+                String.class, roomId.value())).isEqualTo("soft-blue-01");
     }
 
     @Test

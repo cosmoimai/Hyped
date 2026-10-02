@@ -9,6 +9,7 @@ import com.hyped.app.room.domain.Room;
 import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomMembership;
 import com.hyped.app.room.domain.RoomStatus;
+import com.hyped.app.room.domain.RoomTheme;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Duration;
@@ -52,9 +53,11 @@ public class RoomService {
         if (!eventAt.isAfter(now)) {
             throw validation("EVENT_TIME_NOT_FUTURE", "The event time must be in the future.");
         }
-        Room room = room(new RoomId(UUID.randomUUID()), actor, command.title(), eventAt,
+        RoomId roomId = new RoomId(UUID.randomUUID());
+        RoomTheme theme = command.theme() == null ? null : theme(roomId, actor, command.theme(), now, now);
+        Room room = room(roomId, actor, command.title(), eventAt,
                 command.eventTimeZone(), command.location(), command.description(), RoomStatus.ACTIVE,
-                1, 1, null, null, now, now);
+                1, 1, null, null, now, now, theme);
         RoomMembership owner = new RoomMembership(room.id(), actor, MembershipRole.OWNER, now, now);
         rooms.create(room, owner);
         // Provision in this transaction when the invitation module is configured; failure rolls back the room.
@@ -92,13 +95,18 @@ public class RoomService {
         if (!eventAt.isAfter(now)) {
             throw validation("EVENT_TIME_NOT_FUTURE", "The event time must be in the future.");
         }
+        RoomTheme theme = command.themePresent()
+                ? theme(existing.id(), actor, command.theme(), existing.theme().createdAt(), now)
+                : new RoomTheme(existing.id(), existing.theme().kind(), existing.theme().presetKey(),
+                        existing.theme().overlayKey(), existing.theme().updatedByUserId(),
+                        existing.theme().createdAt(), existing.theme().updatedAt());
         Room changed = room(existing.id(), existing.ownerUserId(),
                 command.title() == null ? existing.title() : command.title(), eventAt,
                 command.eventTimeZone() == null ? existing.eventTimeZone() : command.eventTimeZone(),
                 command.locationPresent() ? command.location() : existing.location(),
                 command.descriptionPresent() ? command.description() : existing.description(),
                 existing.status(), existing.revision() + 1, existing.memberCount(), null, null,
-                existing.createdAt(), now);
+                existing.createdAt(), now, theme);
         if (!rooms.updateVisibleFields(changed, expectedRevision)) {
             throw revisionMismatch();
         }
@@ -123,7 +131,8 @@ public class RoomService {
         Room existing = current.room();
         Room archived = room(existing.id(), existing.ownerUserId(), existing.title(), existing.eventAt(),
                 existing.eventTimeZone(), existing.location(), existing.description(), RoomStatus.ARCHIVED,
-                existing.revision(), existing.memberCount(), now, deleteAfter, existing.createdAt(), now);
+                existing.revision(), existing.memberCount(), now, deleteAfter, existing.createdAt(), now,
+                existing.theme());
         return new AuthorizedRoom(archived, current.role());
     }
 
@@ -200,7 +209,7 @@ public class RoomService {
         Room room = current.room();
         Room updated = room(room.id(), newOwner, room.title(), room.eventAt(), room.eventTimeZone(),
                 room.location(), room.description(), room.status(), room.revision(), room.memberCount(),
-                room.archivedAt(), room.deleteAfter(), room.createdAt(), now);
+                room.archivedAt(), room.deleteAfter(), room.createdAt(), now, room.theme());
         return new OwnershipTransfer(new AuthorizedRoom(updated, MembershipRole.CO_HOST),
                 new RoomMembership(roomId, actor, MembershipRole.CO_HOST, previous.joinedAt(), now),
                 new RoomMembership(roomId, newOwner, MembershipRole.OWNER, target.joinedAt(), now));
@@ -265,12 +274,26 @@ public class RoomService {
             Instant archivedAt,
             Instant deleteAfter,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            RoomTheme theme) {
         try {
-            return new Room(id, owner, title, eventAt, eventTimeZone, location, description, status,
-                    revision, memberCount, archivedAt, deleteAfter, createdAt, updatedAt);
+            RoomTheme selectedTheme = theme == null ? RoomTheme.defaultTheme(id, owner, createdAt) : theme;
+            return new Room(id, owner, title, eventAt, eventTimeZone, location, description, selectedTheme,
+                    status, revision, memberCount, archivedAt, deleteAfter, createdAt, updatedAt);
         } catch (IllegalArgumentException exception) {
             throw validation("VALIDATION_FAILED", "One or more room fields are invalid.");
+        }
+    }
+
+    private static RoomTheme theme(RoomId roomId, UserId actor, ThemeCommand command, Instant createdAt, Instant now) {
+        if (command == null) {
+            throw validation("VALIDATION_FAILED", "The room theme is invalid.");
+        }
+        try {
+            return new RoomTheme(roomId, command.kind(), command.presetKey(), command.overlayKey(), actor, createdAt,
+                    now);
+        } catch (IllegalArgumentException exception) {
+            throw validation("VALIDATION_FAILED", "The room theme is invalid.");
         }
     }
 
@@ -304,7 +327,12 @@ public class RoomService {
             LocalTime eventLocalTime,
             String eventTimeZone,
             String location,
-            String description) {
+            String description,
+            ThemeCommand theme) {
+        public CreateRoomCommand(String title, LocalDate eventLocalDate, LocalTime eventLocalTime,
+                String eventTimeZone, String location, String description) {
+            this(title, eventLocalDate, eventLocalTime, eventTimeZone, location, description, null);
+        }
     }
 
     public record UpdateRoomCommand(
@@ -315,7 +343,18 @@ public class RoomService {
             String location,
             boolean locationPresent,
             String description,
-            boolean descriptionPresent) {
+            boolean descriptionPresent,
+            ThemeCommand theme,
+            boolean themePresent) {
+        public UpdateRoomCommand(String title, LocalDate eventLocalDate, LocalTime eventLocalTime,
+                String eventTimeZone, String location, boolean locationPresent, String description,
+                boolean descriptionPresent) {
+            this(title, eventLocalDate, eventLocalTime, eventTimeZone, location, locationPresent, description,
+                    descriptionPresent, null, false);
+        }
+    }
+
+    public record ThemeCommand(RoomTheme.Kind kind, String presetKey, String overlayKey) {
     }
 
     public record OwnershipTransfer(

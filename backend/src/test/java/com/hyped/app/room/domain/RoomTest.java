@@ -24,14 +24,18 @@ class RoomTest {
 
     @Test
     void archivedRoomRequiresExactDeletionDelay() {
-        assertThatThrownBy(() -> new Room(new RoomId(UUID.randomUUID()), new UserId(UUID.randomUUID()),
-                "Title", NOW.plusSeconds(60), "UTC", null, null, RoomStatus.ARCHIVED, 1, 1,
-                NOW, NOW.plusSeconds(60), NOW, NOW)).isInstanceOf(IllegalArgumentException.class);
+        RoomId roomId = new RoomId(UUID.randomUUID());
+        UserId owner = new UserId(UUID.randomUUID());
+        assertThatThrownBy(() -> new Room(roomId, owner, "Title", NOW.plusSeconds(60), "UTC", null, null,
+                RoomTheme.defaultTheme(roomId, owner, NOW),
+                RoomStatus.ARCHIVED, 1, 1, NOW, NOW.plusSeconds(60), NOW, NOW))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private Room room(String title, String location, String description) {
-        return new Room(new RoomId(UUID.randomUUID()), new UserId(UUID.randomUUID()), title,
-                NOW.plusSeconds(60), "UTC", location, description, RoomStatus.ACTIVE, 1, 1,
-                null, null, NOW, NOW);
+        RoomId roomId = new RoomId(UUID.randomUUID());
+        UserId owner = new UserId(UUID.randomUUID());
+        return new Room(roomId, owner, title, NOW.plusSeconds(60), "UTC", location, description,
+                RoomTheme.defaultTheme(roomId, owner, NOW), RoomStatus.ACTIVE, 1, 1, null, null, NOW, NOW);
     }
 }

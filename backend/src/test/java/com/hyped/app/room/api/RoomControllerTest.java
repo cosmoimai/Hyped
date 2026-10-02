@@ -26,6 +26,7 @@ import com.hyped.app.room.domain.MembershipRole;
 import com.hyped.app.room.domain.Room;
 import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomStatus;
+import com.hyped.app.room.domain.RoomTheme;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -95,7 +96,33 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.id").value(ROOM.toString()))
                 .andExpect(jsonPath("$.memberCount").value(8))
                 .andExpect(jsonPath("$.role").value("OWNER"))
+                .andExpect(jsonPath("$.theme.presetKey").value("soft-blue-01"))
                 .andExpect(jsonPath("$.members").doesNotExist());
+    }
+
+    @Test
+    void createRejectsRecurrenceAndUnsupportedThemeFields() throws Exception {
+        mvc.perform(post("/api/v1/rooms")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header("Idempotency-Key", "create-1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Goa trip","eventLocalDate":"2030-12-20",
+                                 "eventLocalTime":"10:00","eventTimeZone":"Asia/Kolkata",
+                                 "recurrence":"weekly"}
+                                """))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/v1/rooms")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header("Idempotency-Key", "create-2")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"title":"Goa trip","eventLocalDate":"2030-12-20",
+                                 "eventLocalTime":"10:00","eventTimeZone":"Asia/Kolkata",
+                                 "theme":{"kind":"PRESET","presetKey":"soft-blue-01",
+                                 "overlayKey":"dark-soft","mediaAssetId":"019b1f2b-d5e2-7d46-9165-a37ed59d6080"}}
+                                """))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -110,6 +137,28 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.items[0].role").value("MEMBER"));
         mvc.perform(get("/api/v1/rooms/{id}", ROOM.value())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"room-1\""));
+    }
+
+    @Test
+    void eventThemeSubresourceReadsAndUpdatesWithRoomEtags() throws Exception {
+        when(service.get(USER, ROOM)).thenReturn(room(MembershipRole.MEMBER));
+        when(service.update(eq(USER), eq(ROOM), eq(1L), any())).thenReturn(room(MembershipRole.CO_HOST));
+
+        mvc.perform(get("/api/v1/rooms/{id}/event-theme", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"room-1\""))
+                .andExpect(jsonPath("$.theme.kind").value("PRESET"));
+        mvc.perform(patch("/api/v1/rooms/{id}/event-theme", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-1\"")
+                        .contentType("application/merge-patch+json")
+                        .content("""
+                                {"theme":{"kind":"GRADIENT","presetKey":"blue-lilac-02",
+                                 "overlayKey":"dark-soft"}}
+                                """))
                 .andExpect(status().isOk())
                 .andExpect(header().string(HttpHeaders.ETAG, "\"room-1\""));
     }
@@ -154,7 +203,8 @@ class RoomControllerTest {
 
     private AuthorizedRoom room(MembershipRole role) {
         return new AuthorizedRoom(new Room(ROOM, USER, "Goa trip", Instant.parse("2030-12-20T04:30:00Z"),
-                "Asia/Kolkata", "North Goa", "Trip", RoomStatus.ACTIVE, 1, 8,
+                "Asia/Kolkata", "North Goa", "Trip", RoomTheme.defaultTheme(ROOM, USER, NOW),
+                RoomStatus.ACTIVE, 1, 8,
                 null, null, NOW, NOW), role);
     }
 
