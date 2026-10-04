@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart';
+import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
 import 'package:hyped/features/rooms/data/room_api.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/domain/room_commands.dart';
 
 class RoomListController extends ChangeNotifier {
-  RoomListController(this._repository);
+  RoomListController(this._repository, [this._widgets]);
 
   final RoomRepository _repository;
+  final RoomWidgetRepository? _widgets;
   bool _loading = false;
   String? _error;
   List<Room> _rooms = const [];
@@ -26,6 +28,7 @@ class RoomListController extends ChangeNotifier {
     try {
       final rooms = await _repository.listRooms();
       _rooms = [...rooms]..sort((a, b) => a.eventAt.compareTo(b.eventAt));
+      await _widgets?.cacheRooms(_rooms);
     } catch (_) {
       _error = 'Could not load your rooms. Pull to retry.';
     } finally {
@@ -36,10 +39,11 @@ class RoomListController extends ChangeNotifier {
 }
 
 class RoomDetailController extends ChangeNotifier {
-  RoomDetailController(this._repository, this.roomId);
+  RoomDetailController(this._repository, this.roomId, [this._widgets]);
 
   final RoomRepository _repository;
   final String roomId;
+  final RoomWidgetRepository? _widgets;
   bool _loading = false;
   bool _saving = false;
   String? _error;
@@ -56,6 +60,7 @@ class RoomDetailController extends ChangeNotifier {
     notifyListeners();
     try {
       _room = await _repository.getRoom(roomId);
+      if (_room case final room?) await _widgets?.cacheRoom(room);
     } catch (_) {
       _error = 'Could not load this room.';
     } finally {
@@ -78,6 +83,7 @@ class RoomDetailController extends ChangeNotifier {
     notifyListeners();
     try {
       _room = await _repository.updateRoom(current, draft);
+      if (_room case final room?) await _widgets?.cacheRoom(room);
       return true;
     } on RoomApiException catch (error) {
       _error = _roomMutationMessage(error);

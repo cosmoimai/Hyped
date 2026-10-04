@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:hyped/app/bootstrap/providers.dart';
+import 'package:hyped/features/android_widgets/presentation/controllers/room_widget_providers.dart';
 import 'package:hyped/features/rooms/data/room_api.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/presentation/controllers/room_controllers.dart';
@@ -16,7 +17,10 @@ final roomRepositoryProvider = Provider<RoomRepository>(
 final roomListControllerProvider = ChangeNotifierProvider<RoomListController>((
   ref,
 ) {
-  final controller = RoomListController(ref.read(roomRepositoryProvider));
+  final controller = RoomListController(
+    ref.read(roomRepositoryProvider),
+    ref.read(roomWidgetRepositoryProvider),
+  );
   controller.load();
   return controller;
 });
@@ -26,6 +30,7 @@ final roomDetailControllerProvider =
       final controller = RoomDetailController(
         ref.read(roomRepositoryProvider),
         roomId,
+        ref.read(roomWidgetRepositoryProvider),
       );
       controller.load();
       return controller;

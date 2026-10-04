@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
 import 'package:hyped/features/authentication/presentation/screens/sign_in_screen.dart';
+import 'package:hyped/features/android_widgets/presentation/screens/room_widget_settings_screen.dart';
 import 'package:hyped/features/authentication/presentation/screens/splash_screen.dart';
 import 'package:hyped/features/home/presentation/screens/home_screen.dart';
 import 'package:hyped/features/invitations/domain/invitation.dart';
@@ -41,6 +42,10 @@ GoRouter createRouter(
     GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
     GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
     GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+    GoRoute(
+      path: '/widgets/room',
+      builder: (_, _) => const RoomWidgetSettingsScreen(),
+    ),
     GoRoute(path: '/join', builder: (_, _) => const RoomCodeEntryScreen()),
     GoRoute(
       path: '/join/room-code/:code',
@@ -75,7 +80,7 @@ GoRouter createRouter(
 );
 
 bool _isPrivatePath(String path) =>
-    path == '/home' || path.startsWith('/rooms');
+    path == '/home' || path.startsWith('/rooms') || path.startsWith('/widgets');
 
 bool _isInvitePath(String path) =>
     path == '/join' || path.startsWith('/join/') || path.startsWith('/invite/');
