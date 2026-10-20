@@ -680,17 +680,18 @@ The target must be a current member or co-host. Success returns the updated room
 
 | Method | Path | Authorization | Purpose |
 |---|---|---|---|
+| `GET` | `/rooms/{roomId}/members` | Current member | Safe member list, including archived rooms |
 | `PATCH` | `/rooms/{roomId}/members/{userId}` | Owner | Promote/demote permitted user |
+| `DELETE` | `/rooms/{roomId}/members/{userId}` | Owner; co-host for regular members | Remove member, `204 No Content` |
 
 Role-change response:
 
 ```json
 {
   "userId": "019b1f40-84fc-70da-848e-e67fe8d32f50",
-  "displayName": "Mira",
-  "photo": null,
   "role": "MEMBER",
-  "joinedAt": "2026-09-09T10:30:00Z"
+  "joinedAt": "2026-09-09T10:30:00Z",
+  "updatedAt": "2026-09-09T11:30:00Z"
 }
 ```
 
@@ -705,9 +706,35 @@ Role update:
 Rules:
 
 - Only the owner can promote or demote co-hosts.
-- The room and list responses expose `memberCount`; this foundation does not expose a complete member-identity list.
-- Member removal and leave operations are introduced with the invitation/join lifecycle rather than exposing an
-  incomplete removal contract.
+- All current participants can read the member list. Outsiders receive `404 ROOM_UNAVAILABLE` for list and mutation attempts.
+- Owners may remove members or co-hosts. Co-hosts may remove only regular members. Regular members cannot manage others.
+- No caller may remove themselves or change/remove the owner through these endpoints. Ownership changes use the existing transfer endpoint, which demotes the previous owner to co-host.
+- Archived rooms remain readable but reject member mutations with `409 ROOM_ARCHIVED`.
+- Removal is idempotent for an already absent target after caller authorization, returning `204` even with an older revision; it does not reveal whether the target belongs to another room. There is no permanent ban: valid invitations can permit re-entry.
+- A successful role change, removal, or ownership transfer increments room revision once. A no-op role change does not increment it. These mutations accept the current strong room ETag in `If-Match`; Flutter always supplies it. Omission remains supported for compatibility with the existing role/transfer contract. A supplied malformed ETag returns `428 ROOM_REVISION_REQUIRED`; a stale ETag returns `412 ROOM_REVISION_MISMATCH`. Authorization precedes revision evaluation.
+- Room and user locks serialize membership/ownership writes. Existing unique owner and deferred membership/count consistency constraints enforce exactly one owner and the 25-member limit at transaction commit. Transfers lock both users in stable ID order before the room and re-evaluate permissions after waiting.
+- Removal transactionally deletes the membership and personal reminder preferences, cancels pending/sending device reminders, and updates member count/revision. Delivery eligibility is also rechecked before sending. A message already accepted by FCM cannot be recalled and uses generic notification text.
+- Removed users lose REST access immediately. On the next successful foreground synchronization, Flutter clears protected widget snapshots on the safe unavailable response. Offline cached widgets remain subject to the existing documented offline behavior; there is no new background synchronization.
+
+`GET /rooms/{roomId}/members` returns `Cache-Control: private, no-store` and `ETag: "room-{revision}"`:
+
+```json
+{
+  "items": [{
+    "userId": "019b1f40-84fc-70da-848e-e67fe8d32f50",
+    "displayName": "Mira",
+    "photo": null,
+    "role": "MEMBER",
+    "joinedAt": "2026-09-09T10:30:00Z",
+    "isCurrentUser": true
+  }],
+  "callerRole": "MEMBER",
+  "status": "ACTIVE",
+  "revision": 4
+}
+```
+
+Ordering is owner, co-hosts, then members, with case-insensitive display name and user ID tie-breaker. The bounded list has at most 25 entries. Only display names are projected from encrypted profiles; no email, provider identity, raw photo URL, storage key, device/session data, encryption reference, or private account response is returned. `photo` is currently null and Flutter renders initials; media delivery is outside this contract. Role-change responses retain the existing `userId`, `role`, `joinedAt`, `updatedAt` shape; ownership transfer retains its room and two membership responses.
 
 ## 12. Invitations and joining
 

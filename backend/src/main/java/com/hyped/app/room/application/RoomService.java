@@ -1,6 +1,7 @@
 package com.hyped.app.room.application;
 
 import com.hyped.app.identity.domain.UserId;
+import com.hyped.app.identity.application.service.AuthenticationProfileReader;
 import com.hyped.app.invitation.application.InvitationService;
 import com.hyped.app.reminder.application.RoomReminderService;
 import com.hyped.app.reminder.application.ReminderPreferencesService;
@@ -34,6 +35,7 @@ public class RoomService {
     public static final int MAX_JOINED_ROOMS = 25;
     public static final int MAX_MEMBERS = 25;
     private final RoomRepository rooms;
+    private final ObjectProvider<AuthenticationProfileReader> profiles;
     private final Clock clock;
     private final ObjectProvider<InvitationService> invitations;
     private final ObjectProvider<RoomReminderService> reminders;
@@ -41,8 +43,10 @@ public class RoomService {
 
     public RoomService(RoomRepository rooms, Clock clock, ObjectProvider<InvitationService> invitations,
             ObjectProvider<RoomReminderService> reminders,
-            ObjectProvider<ReminderPreferencesService> reminderPreferences) {
+            ObjectProvider<ReminderPreferencesService> reminderPreferences,
+            ObjectProvider<AuthenticationProfileReader> profiles) {
         this.rooms = rooms;
+        this.profiles = profiles;
         this.clock = clock;
         this.invitations = invitations;
         this.reminders = reminders;
@@ -153,6 +157,12 @@ public class RoomService {
     @Transactional
     public RoomMembership changeRole(
             UserId actor, RoomId roomId, UserId memberId, MembershipRole requestedRole) {
+        return changeRole(actor, roomId, memberId, requestedRole, null);
+    }
+
+    @Transactional
+    public RoomMembership changeRole(UserId actor, RoomId roomId, UserId memberId,
+            MembershipRole requestedRole, Long expectedRevision) {
         AuthorizedRoom current = lockedActive(actor, roomId);
         if (current.role() != MembershipRole.OWNER || requestedRole == MembershipRole.OWNER) {
             throw forbidden();
@@ -161,7 +171,12 @@ public class RoomService {
         if (target.role() == MembershipRole.OWNER) {
             throw forbidden();
         }
+        checkRevision(current, expectedRevision);
+        if (target.role() == requestedRole) {
+            return target;
+        }
         Instant now = clock.instant();
+        rooms.incrementRevision(roomId, now);
         rooms.updateRole(roomId, memberId, requestedRole, now);
         return new RoomMembership(roomId, memberId, requestedRole, target.joinedAt(), now);
     }
@@ -193,6 +208,11 @@ public class RoomService {
 
     @Transactional
     public OwnershipTransfer transfer(UserId actor, RoomId roomId, UserId newOwner) {
+        return transfer(actor, roomId, newOwner, null);
+    }
+
+    @Transactional
+    public OwnershipTransfer transfer(UserId actor, RoomId roomId, UserId newOwner, Long expectedRevision) {
         if (actor.equals(newOwner)) {
             throw validation("INVALID_OWNER", "The target is already the room owner.");
         }
@@ -203,6 +223,7 @@ public class RoomService {
         if (current.role() != MembershipRole.OWNER) {
             throw forbidden();
         }
+        checkRevision(current, expectedRevision);
         RoomMembership previous = rooms.findMembershipForUpdate(roomId, actor)
                 .orElseThrow(RoomService::unavailable);
         RoomMembership target = rooms.findMembershipForUpdate(roomId, newOwner)
@@ -221,13 +242,63 @@ public class RoomService {
         }
         Instant now = clock.instant();
         rooms.transferOwnership(roomId, actor, newOwner, now);
+        rooms.incrementRevision(roomId, now);
         Room room = current.room();
         Room updated = room(room.id(), newOwner, room.title(), room.eventAt(), room.eventTimeZone(),
-                room.location(), room.description(), room.status(), room.revision(), room.memberCount(),
+                room.location(), room.description(), room.status(), room.revision() + 1, room.memberCount(),
                 room.archivedAt(), room.deleteAfter(), room.createdAt(), now, room.theme());
         return new OwnershipTransfer(new AuthorizedRoom(updated, MembershipRole.CO_HOST),
                 new RoomMembership(roomId, actor, MembershipRole.CO_HOST, previous.joinedAt(), now),
                 new RoomMembership(roomId, newOwner, MembershipRole.OWNER, target.joinedAt(), now));
+    }
+
+    @Transactional
+    public MemberList members(UserId actor, RoomId roomId) {
+        // Serialize the projection with role changes and removals, including caller authorization.
+        AuthorizedRoom current = rooms.findAuthorizedForUpdate(roomId, actor).orElseThrow(RoomService::unavailable);
+        if (current.room().status() == RoomStatus.DELETING) {
+            throw unavailable();
+        }
+        var reader = profiles.getIfAvailable();
+        List<MemberView> items = rooms.findMembers(roomId).stream().map(member -> new MemberView(
+                member.userId().value(), reader == null ? "Member" : reader.read(member.userId()).displayName(),
+                null, member.role(), member.joinedAt(), member.userId().equals(actor)))
+                .sorted(Comparator.comparing(MemberView::role)
+                        .thenComparing(MemberView::displayName, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(MemberView::userId)).toList();
+        return new MemberList(items, current.role(), current.room().status(), current.room().revision());
+    }
+
+    @Transactional
+    public void removeMember(UserId actor, RoomId roomId, UserId memberId, Long expectedRevision) {
+        AuthorizedRoom current = lockedActive(actor, roomId);
+        if (current.role() == MembershipRole.MEMBER || actor.equals(memberId)) {
+            throw forbidden();
+        }
+        var target = rooms.findMembershipForUpdate(roomId, memberId);
+        // An absent target is deliberately indistinguishable from an already removed member.
+        if (target.isEmpty()) {
+            return;
+        }
+        if (target.get().role() == MembershipRole.OWNER
+                || current.role() == MembershipRole.CO_HOST && target.get().role() != MembershipRole.MEMBER) {
+            throw forbidden();
+        }
+        checkRevision(current, expectedRevision);
+        rooms.removeMembership(roomId, memberId, clock.instant());
+    }
+
+    private static void checkRevision(AuthorizedRoom current, Long expectedRevision) {
+        if (expectedRevision != null && current.room().revision() != expectedRevision) {
+            throw revisionMismatch();
+        }
+    }
+
+    public record MemberView(UUID userId, String displayName, Object photo, MembershipRole role,
+            Instant joinedAt, boolean isCurrentUser) {
+    }
+
+    public record MemberList(List<MemberView> items, MembershipRole callerRole, RoomStatus status, long revision) {
     }
 
     private AuthorizedRoom lockedActive(UserId actor, RoomId roomId) {

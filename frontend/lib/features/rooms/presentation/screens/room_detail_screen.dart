@@ -19,6 +19,12 @@ class RoomDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Room'),
         actions: [
+          if (room != null)
+            IconButton(
+              onPressed: () => context.go('/rooms/$roomId/members'),
+              tooltip: 'Members',
+              icon: const Icon(Icons.group_outlined),
+            ),
           IconButton(
             onPressed: () => context.go('/rooms/$roomId/reminders'),
             tooltip: 'Reminders',

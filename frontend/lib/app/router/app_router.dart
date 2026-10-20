@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/screens/member_screen.dart';
 import 'package:hyped/features/notifications/presentation/notification_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -86,6 +87,11 @@ GoRouter createRouter(
       path: '/rooms/:roomId/edit',
       builder: (_, state) =>
           EditRoomScreen(roomId: state.pathParameters['roomId']!),
+    ),
+    GoRoute(
+      path: '/rooms/:roomId/members',
+      builder: (_, state) =>
+          MemberScreen(roomId: state.pathParameters['roomId']!),
     ),
     GoRoute(
       path: '/rooms/:roomId/reminders',

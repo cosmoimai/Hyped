@@ -2,6 +2,7 @@ package com.hyped.app.room.infrastructure.persistence;
 
 import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.room.application.port.out.RoomRepository;
+import com.hyped.app.room.application.RoomOperationException;
 import com.hyped.app.room.domain.MembershipRole;
 import com.hyped.app.room.domain.Room;
 import com.hyped.app.room.domain.RoomId;
@@ -50,8 +51,12 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
 
     @Override
     public void lockUser(UserId userId) {
-        jdbc.queryForObject("SELECT id FROM app.app_user WHERE id = ? FOR UPDATE", (rs, row) -> rs.getObject(1),
-                userId.value());
+        var locked = jdbc.query("SELECT id FROM app.app_user WHERE id = ? FOR UPDATE",
+                (rs, row) -> rs.getObject(1), userId.value());
+        if (locked.isEmpty()) {
+            throw new RoomOperationException(RoomOperationException.Kind.NOT_FOUND, "ROOM_UNAVAILABLE",
+                    "Room unavailable", "The room is unavailable.");
+        }
     }
 
     @Override
@@ -114,8 +119,12 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
 
     @Override
     public Optional<AuthorizedRoom> findAuthorizedForUpdate(RoomId roomId, UserId userId) {
-        return first(named.query(AUTHORIZED_PROJECTION + " AND r.id = :roomId FOR UPDATE OF r, t, m",
-                Map.of("userId", userId.value(), "roomId", roomId.value()), this::mapAuthorized));
+        // Lock the room first, then read authorization in a fresh READ COMMITTED statement.
+        // A writer waiting behind ownership transfer must observe the new caller role.
+        if (findForUpdate(roomId).isEmpty()) {
+            return Optional.empty();
+        }
+        return findAuthorized(roomId, userId);
     }
 
     @Override
@@ -198,6 +207,40 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
                 timestamp(updatedAt), roomId.value(), newOwner.value());
         jdbc.update("UPDATE app.room SET owner_user_id = ?, updated_at = ? WHERE id = ?",
                 newOwner.value(), timestamp(updatedAt), roomId.value());
+    }
+
+    @Override
+    public List<RoomMembership> findMembers(RoomId roomId) {
+        return jdbc.query("""
+                SELECT room_id, user_id, role, joined_at, updated_at FROM app.room_member
+                WHERE room_id = ? ORDER BY user_id
+                """, (rs, row) -> new RoomMembership(roomId,
+                        new UserId(rs.getObject("user_id", java.util.UUID.class)), role(rs.getString("role")),
+                        instant(rs, "joined_at"), instant(rs, "updated_at")), roomId.value());
+    }
+
+    @Override
+    public void removeMembership(RoomId roomId, UserId userId, Instant now) {
+        int removed = jdbc.update("DELETE FROM app.room_member WHERE room_id = ? AND user_id = ? AND role <> 'owner'",
+                roomId.value(), userId.value());
+        if (removed == 1) {
+            jdbc.update("DELETE FROM app.room_reminder_preference WHERE room_id = ? AND user_id = ?",
+                    roomId.value(), userId.value());
+            jdbc.update("""
+                    UPDATE app.reminder_delivery SET status = 'canceled', updated_at = ?
+                    WHERE room_id = ? AND user_id = ? AND status IN ('pending', 'sending')
+                    """, timestamp(now), roomId.value(), userId.value());
+            jdbc.update("""
+                    UPDATE app.room SET member_count = member_count - 1, revision = revision + 1, updated_at = ?
+                    WHERE id = ?
+                    """, timestamp(now), roomId.value());
+        }
+    }
+
+    @Override
+    public void incrementRevision(RoomId roomId, Instant now) {
+        jdbc.update("UPDATE app.room SET revision = revision + 1, updated_at = ? WHERE id = ?",
+                timestamp(now), roomId.value());
     }
 
     private AuthorizedRoom mapAuthorized(ResultSet rs, int row) throws SQLException {
