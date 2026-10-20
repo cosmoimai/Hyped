@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
+import 'package:hyped/features/android_widgets/data/widget_refresh_coordinator.dart';
 import 'package:hyped/features/rooms/data/room_api.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
@@ -10,6 +11,7 @@ class RoomListController extends ChangeNotifier {
 
   final RoomRepository _repository;
   final RoomWidgetRepository? _widgets;
+  bool _disposed = false;
   bool _loading = false;
   String? _error;
   List<Room> _rooms = const [];
@@ -22,19 +24,28 @@ class RoomListController extends ChangeNotifier {
       _rooms.length <= 1 ? const [] : _rooms.skip(1).toList(growable: false);
 
   Future<void> load() async {
+    final epoch = _widgets?.sessionEpoch ?? 0;
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       final rooms = await _repository.listRooms();
       _rooms = [...rooms]..sort((a, b) => a.eventAt.compareTo(b.eventAt));
-      await _widgets?.cacheRooms(_rooms);
+      await WidgetRefreshCoordinator(
+        _widgets,
+      ).afterList(_rooms, _repository.getRoom, epoch);
     } catch (_) {
       _error = 'Could not load your rooms. Pull to retry.';
     } finally {
       _loading = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
 
@@ -44,6 +55,7 @@ class RoomDetailController extends ChangeNotifier {
   final RoomRepository _repository;
   final String roomId;
   final RoomWidgetRepository? _widgets;
+  bool _disposed = false;
   bool _loading = false;
   bool _saving = false;
   String? _error;
@@ -55,17 +67,23 @@ class RoomDetailController extends ChangeNotifier {
   Room? get room => _room;
 
   Future<void> load() async {
+    final epoch = _widgets?.sessionEpoch ?? 0;
     _loading = true;
     _error = null;
     notifyListeners();
     try {
       _room = await _repository.getRoom(roomId);
-      if (_room case final room?) await _widgets?.cacheRoom(room);
-    } catch (_) {
+      if (_room case final room?) {
+        await WidgetRefreshCoordinator(_widgets).afterDetail(room, epoch);
+      }
+    } catch (error) {
+      await WidgetRefreshCoordinator(
+        _widgets,
+      ).afterFailure(roomId, error, epoch);
       _error = 'Could not load this room.';
     } finally {
       _loading = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
@@ -75,15 +93,18 @@ class RoomDetailController extends ChangeNotifier {
     final validation = RoomDraftValidation.validate(draft, DateTime.now());
     if (validation != null) {
       _error = validation;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
       return false;
     }
+    final epoch = _widgets?.sessionEpoch ?? 0;
     _saving = true;
     _error = null;
     notifyListeners();
     try {
       _room = await _repository.updateRoom(current, draft);
-      if (_room case final room?) await _widgets?.cacheRoom(room);
+      if (_room case final room?) {
+        await WidgetRefreshCoordinator(_widgets).afterDetail(room, epoch);
+      }
       return true;
     } on RoomApiException catch (error) {
       _error = _roomMutationMessage(error);
@@ -93,8 +114,14 @@ class RoomDetailController extends ChangeNotifier {
       return false;
     } finally {
       _saving = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
 

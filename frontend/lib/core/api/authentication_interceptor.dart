@@ -34,6 +34,15 @@ class AuthenticationInterceptor extends Interceptor {
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
     final request = err.requestOptions;
+    final body = err.response?.data;
+    final code = body is Map ? body['code'] : null;
+    if (code == 'ACCOUNT_DELETED' || code == 'ACCOUNT_DELETION_PENDING') {
+      await _tokens.clear();
+      onAuthenticationFailed?.call();
+      handler.next(err);
+      return;
+    }
+
     if (err.response?.statusCode != 401 ||
         request.extra['authRetried'] == true ||
         _isPublicAuth(request.path)) {

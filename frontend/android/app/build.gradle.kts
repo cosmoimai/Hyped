@@ -48,6 +48,8 @@ android {
 }
 
 dependencies {
+  testImplementation("junit:junit:4.13.2")
+  testImplementation("org.json:json:20240303")
   // Import the Firebase BoM
   implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
 

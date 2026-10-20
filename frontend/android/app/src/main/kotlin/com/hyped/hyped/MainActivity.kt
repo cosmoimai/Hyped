@@ -1,49 +1,69 @@
 package com.hyped.hyped
 
+import android.content.Intent
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var widgetChannel: MethodChannel? = null
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        HypedCountdownWidgetProvider.launchLocation(this, intent)?.let {
+            widgetChannel?.invokeMethod("widgetTapped", it)
+        }
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "hyped/android_widgets")
-            .setMethodCallHandler { call, result ->
-                try {
-                    when (call.method) {
-                        "cacheRooms" -> {
-                            @Suppress("UNCHECKED_CAST")
-                            HypedWidgetStore.cacheRooms(
-                                this,
-                                call.arguments as? List<Map<String, Any?>> ?: emptyList(),
-                            )
-                            HypedCountdownWidgetProvider.updateAll(this)
-                            result.success(null)
-                        }
-                        "cacheRoom" -> {
-                            @Suppress("UNCHECKED_CAST")
-                            val room = call.arguments as? Map<String, Any?>
-                            if (room != null) HypedWidgetStore.cacheRoom(this, room)
-                            HypedCountdownWidgetProvider.updateAll(this)
-                            result.success(null)
-                        }
-                        "selectedRoomId" -> result.success(HypedWidgetStore.selectedRoomId(this))
-                        "selectRoom" -> {
-                            val roomId = call.arguments as? String
-                            if (roomId != null) HypedWidgetStore.selectRoom(this, roomId)
-                            HypedCountdownWidgetProvider.updateAll(this)
-                            result.success(null)
-                        }
-                        "clearSelection" -> {
-                            HypedWidgetStore.clearSelection(this)
-                            HypedCountdownWidgetProvider.updateAll(this)
-                            result.success(null)
-                        }
-                        else -> result.notImplemented()
+        widgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "hyped/android_widgets")
+        widgetChannel!!.setMethodCallHandler { call, result ->
+            try {
+                val store = HypedWidgetStore.store(this)
+                val ids = HypedWidgetStore.activeIds(this)
+                val args = call.arguments as? Map<*, *> ?: emptyMap<Any, Any>()
+                when (call.method) {
+                    "getLaunchLocation" -> {
+                        val location = HypedCountdownWidgetProvider.launchLocation(this, intent)
+                        // Consume only widget launches; subsequent Flutter engine setup must not replay them.
+                        if (intent?.action == HypedCountdownWidgetProvider.OPEN_WIDGET) intent.action = null
+                        result.success(location)
+                        return@setMethodCallHandler
                     }
-                } catch (error: Exception) {
-                    result.error("WIDGET_UPDATE_FAILED", "Could not update widget data.", null)
+                    "listWidgets" -> {
+                        store.prune(ids)
+                        result.success(ids.sorted().map { id -> mapOf(
+                            "appWidgetId" to id,
+                            "roomId" to store.room(id)?.roomId,
+                            "size" to if (android.appwidget.AppWidgetManager.getInstance(this).getAppWidgetInfo(id)?.provider?.className == HypedMediumWidgetProvider::class.java.name) "medium" else "small",
+                        ) })
+                        return@setMethodCallHandler
+                    }
+                    "cacheRooms" -> store.sync((call.arguments as? List<*>)?.mapNotNull { (it as? Map<*, *>)?.let(WidgetRoom::from) } ?: emptyList(), ids)
+                    "cacheRoom" -> store.sync(listOfNotNull(WidgetRoom.from(args)), ids)
+                    "selectRoom" -> {
+                        val id = (args["appWidgetId"] as? Number)?.toInt() ?: error("Invalid widget")
+                        val room = (args["room"] as? Map<*, *>)?.let(WidgetRoom::from) ?: error("Invalid room")
+                        check(store.select(id, room, ids))
+                    }
+                    "clearSelection" -> store.remove((args["appWidgetId"] as? Number)?.toInt() ?: error("Invalid widget"))
+                    "markRoom" -> store.mark(args["roomId"] as? String ?: "", args["state"] as? String ?: "", ids)
+                    "clearProtectedContent" -> store.clear()
+                    else -> { result.notImplemented(); return@setMethodCallHandler }
                 }
+                HypedCountdownWidgetProvider.updateAll(this)
+                result.success(null)
+            } catch (_: Exception) {
+                result.error("WIDGET_UPDATE_FAILED", "Could not update widget data.", null)
             }
+        }
+    }
+
+    override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        widgetChannel?.setMethodCallHandler(null)
+        widgetChannel = null
+        super.cleanUpFlutterEngine(flutterEngine)
     }
 }

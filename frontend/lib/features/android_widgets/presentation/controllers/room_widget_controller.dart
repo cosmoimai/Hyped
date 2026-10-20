@@ -1,63 +1,85 @@
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
+import 'package:hyped/features/android_widgets/domain/room_widget_data.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 
 class RoomWidgetController extends ChangeNotifier {
-  RoomWidgetController(this._repository);
-
+  RoomWidgetController(this._repository, [this._fetchRoom]);
   final RoomWidgetRepository _repository;
+  final Future<Room> Function(String)? _fetchRoom;
   bool _loading = false;
-  String? _selectedRoomId;
+  bool _disposed = false;
+  List<WidgetInstance> _instances = [];
+  int? _selectedId;
   String? _message;
-
   bool get loading => _loading;
-  String? get selectedRoomId => _selectedRoomId;
+  List<WidgetInstance> get instances => _instances;
+  int? get selectedId => _selectedId;
+  String? get selectedRoomId => _instances
+      .where((widget) => widget.id == _selectedId)
+      .firstOrNull
+      ?.roomId;
   String? get message => _message;
 
-  Future<void> load() async {
-    _loading = true;
-    _message = null;
+  void chooseWidget(int id) {
+    if (!_instances.any((widget) => widget.id == id)) return;
+    _selectedId = id;
     notifyListeners();
-    try {
-      _selectedRoomId = await _repository.selectedRoomId();
-    } catch (_) {
-      _message = 'Could not load widget settings.';
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
+  }
+
+  Future<void> load({int? preferredId}) async {
+    await _perform(() async {
+      _instances = await _repository.instances();
+      final wanted = preferredId ?? _selectedId;
+      _selectedId = _instances.any((widget) => widget.id == wanted)
+          ? wanted
+          : _instances.firstOrNull?.id;
+    });
   }
 
   Future<void> select(Room room) async {
-    _loading = true;
-    _message = null;
-    notifyListeners();
-    try {
-      await _repository.cacheRoom(room);
-      await _repository.selectRoom(room.id);
-      _selectedRoomId = room.id;
-      _message = 'Widget updated for ${room.title}.';
-    } catch (_) {
-      _message = 'Could not update the widget.';
-    } finally {
-      _loading = false;
-      notifyListeners();
-    }
+    final id = _selectedId;
+    final epoch = _repository.sessionEpoch;
+    if (id == null) return;
+    await _perform(() async {
+      final current = await _fetchRoom?.call(room.id) ?? room;
+      if (current.status != RoomStatus.active) {
+        throw StateError('This room is unavailable for selection.');
+      }
+      await _repository.selectRoom(id, current, epoch: epoch);
+      _instances = await _repository.instances();
+      _message = 'Widget updated.';
+    });
   }
 
   Future<void> clear() async {
+    final id = _selectedId;
+    if (id == null) return;
+    await _perform(() async {
+      await _repository.clearSelection(id);
+      _instances = await _repository.instances();
+      _message = 'Widget room cleared.';
+    });
+  }
+
+  Future<void> _perform(Future<void> Function() operation) async {
+    if (_loading || _disposed) return;
     _loading = true;
     _message = null;
     notifyListeners();
     try {
-      await _repository.clearSelection();
-      _selectedRoomId = null;
-      _message = 'Widget room cleared.';
+      await operation();
     } catch (_) {
-      _message = 'Could not clear the widget.';
+      _message = 'Could not update widget settings. Please retry.';
     } finally {
       _loading = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }

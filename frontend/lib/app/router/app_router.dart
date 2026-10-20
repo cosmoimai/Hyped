@@ -48,7 +48,9 @@ GoRouter createRouter(
     GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
     GoRoute(
       path: '/widgets/room',
-      builder: (_, _) => const RoomWidgetSettingsScreen(),
+      builder: (_, state) => RoomWidgetSettingsScreen(
+        appWidgetId: int.tryParse(state.uri.queryParameters['widgetId'] ?? ''),
+      ),
     ),
     GoRoute(path: '/join', builder: (_, _) => const RoomCodeEntryScreen()),
     GoRoute(
