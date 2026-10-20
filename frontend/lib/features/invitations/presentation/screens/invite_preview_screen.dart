@@ -136,7 +136,7 @@ class _InviteContent extends ConsumerWidget {
           _StatusBanner(message: error, error: true),
         ],
         const SizedBox(height: 24),
-        if (result != null && result.created == false)
+        if (authenticated && result != null && result.created == false)
           FilledButton(
             onPressed: () {
               ref.read(pendingInviteControllerProvider).clear();
@@ -146,7 +146,9 @@ class _InviteContent extends ConsumerWidget {
           )
         else
           FilledButton(
-            onPressed: flow.joining ? null : () => _join(context, ref),
+            onPressed: flow.joining || flow.loading
+                ? null
+                : () => _join(context, ref),
             child: flow.joining
                 ? const SizedBox.square(
                     dimension: 20,
@@ -155,7 +157,7 @@ class _InviteContent extends ConsumerWidget {
                 : Text(authenticated ? 'Join room' : 'Sign in to join'),
           ),
         TextButton(
-          onPressed: flow.loading ? null : flow.loadPreview,
+          onPressed: flow.loading || flow.joining ? null : flow.loadPreview,
           child: const Text('Refresh preview'),
         ),
       ],

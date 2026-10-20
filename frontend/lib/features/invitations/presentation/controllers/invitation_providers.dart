@@ -22,11 +22,8 @@ final invitationRepositoryProvider = Provider<InvitationRepository>(
   (ref) => InvitationRepository(ref.read(invitationApiProvider)),
 );
 
-final inviteFlowControllerProvider =
-    ChangeNotifierProvider.family<InviteFlowController, PendingInviteIntent>((
-      ref,
-      intent,
-    ) {
+final inviteFlowControllerProvider = ChangeNotifierProvider.autoDispose
+    .family<InviteFlowController, PendingInviteIntent>((ref, intent) {
       final controller = InviteFlowController(
         ref.read(invitationRepositoryProvider),
         intent,

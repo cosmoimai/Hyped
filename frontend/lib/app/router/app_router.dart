@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
 import 'package:hyped/features/authentication/presentation/screens/sign_in_screen.dart';
@@ -18,6 +18,9 @@ GoRouter createRouter(
   PendingInviteController? pending,
 ]) => GoRouter(
   initialLocation: '/splash',
+  // Router errors can contain the full URI, including invite credentials.
+  errorBuilder: (_, _) =>
+      const Scaffold(body: Center(child: Text('This page is unavailable.'))),
   refreshListenable: pending == null ? auth : Listenable.merge([auth, pending]),
   redirect: (context, state) {
     final status = auth.state.status;

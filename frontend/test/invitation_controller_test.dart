@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hyped/features/invitations/data/invitation_api.dart';
@@ -7,6 +9,108 @@ import 'package:hyped/features/invitations/presentation/controllers/invitation_c
 import 'package:hyped/features/rooms/domain/room.dart';
 
 void main() {
+  for (final kind in InviteKind.values) {
+    for (final scenario in {
+      'invalid': 'INVITATION_INVALID',
+      'expired': 'INVITATION_INVALID',
+      'rotated': 'INVITATION_INVALID',
+      'ended': 'ROOM_ENDED',
+      'expired preview': 'PREVIEW_EXPIRED',
+      'full room': 'ROOM_FULL',
+      'joined-room limit': 'JOINED_ROOM_LIMIT_REACHED',
+      'unauthorized': null,
+      'backend error': null,
+    }.entries) {
+      test('$kind ${scenario.key} has safe recoverable errors', () async {
+        final error = InvitationApiException(
+          code: scenario.value,
+          statusCode: scenario.key == 'unauthorized' ? 401 : 500,
+        );
+        final repository = _FakeInvitationRepository(
+          previewValue: preview(),
+          joinError: error,
+        );
+        final controller = InviteFlowController(
+          repository,
+          PendingInviteIntent(kind: kind, credential: 'secret-token'),
+        );
+        await controller.loadPreview();
+        expect(await controller.join(), isNull);
+        expect(controller.joining, isFalse);
+        expect(controller.error, isNotNull);
+        expect(controller.error, isNot(contains('secret-token')));
+        final previewFailure = InviteFlowController(
+          _FakeInvitationRepository(previewError: error),
+          controller.intent,
+        );
+        await previewFailure.loadPreview();
+        expect(previewFailure.loading, isFalse);
+        expect(previewFailure.preview, isNull);
+        expect(previewFailure.error, isNotNull);
+      });
+    }
+  }
+
+  test(
+    'failed refresh clears stale preview and already-member result',
+    () async {
+      final repository = _FakeInvitationRepository(
+        previewValue: preview(),
+        joinResult: InviteJoinResult(room: room(), created: false),
+      );
+      final controller = InviteFlowController(
+        repository,
+        const PendingInviteIntent(kind: InviteKind.link, credential: 'secret'),
+      );
+      await controller.loadPreview();
+      await controller.join();
+      repository.previewError = const InvitationApiException(
+        code: 'INVITATION_INVALID',
+      );
+      await controller.loadPreview();
+      expect(controller.preview, isNull);
+      expect(controller.result, isNull);
+      expect(await controller.join(), isNull);
+    },
+  );
+
+  test(
+    'overlapping join and preview actions cannot send duplicate commands',
+    () async {
+      final repository = _FakeInvitationRepository(previewValue: preview());
+      final controller = InviteFlowController(
+        repository,
+        const PendingInviteIntent(kind: InviteKind.link, credential: 'secret'),
+      );
+      await controller.loadPreview();
+      repository.joinGate = Completer<void>();
+      final first = controller.join();
+      expect(await controller.join(), isNull);
+      await controller.loadPreview();
+      expect(repository.joinCalls, 1);
+      expect(repository.previewCalls, 1);
+      repository.joinGate!.complete();
+      expect(await first, isNotNull);
+    },
+  );
+
+  test(
+    'leaving preview during an in-flight join safely disposes controller',
+    () async {
+      final repository = _FakeInvitationRepository(previewValue: preview());
+      final controller = InviteFlowController(
+        repository,
+        const PendingInviteIntent(kind: InviteKind.link, credential: 'secret'),
+      );
+      await controller.loadPreview();
+      repository.joinGate = Completer<void>();
+      final joining = controller.join();
+      controller.dispose();
+      repository.joinGate!.complete();
+      expect(await joining, isNotNull);
+    },
+  );
+
   test('controller maps invalid invites to enumeration-safe copy', () async {
     final controller = InviteFlowController(
       _FakeInvitationRepository(
@@ -86,12 +190,16 @@ class _FakeInvitationRepository extends InvitationRepository {
   }) : super(InvitationApi(Dio(), Dio()));
 
   final InvitePreview? previewValue;
-  final InvitationApiException? previewError;
+  InvitationApiException? previewError;
+  Completer<void>? joinGate;
+  int joinCalls = 0;
+  int previewCalls = 0;
   final InviteJoinResult? joinResult;
   final InvitationApiException? joinError;
 
   @override
   Future<InvitePreview> preview(PendingInviteIntent intent) async {
+    previewCalls++;
     if (previewError != null) throw previewError!;
     return previewValue!;
   }
@@ -101,6 +209,8 @@ class _FakeInvitationRepository extends InvitationRepository {
     PendingInviteIntent intent,
     String previewReference,
   ) async {
+    joinCalls++;
+    await joinGate?.future;
     if (joinError != null) throw joinError!;
     return joinResult ?? InviteJoinResult(room: room(), created: true);
   }

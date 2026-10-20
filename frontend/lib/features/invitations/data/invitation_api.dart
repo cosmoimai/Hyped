@@ -18,6 +18,8 @@ class InvitationApi {
       return InvitePreview.fromJson(response.data!);
     } on DioException catch (error) {
       throw InvitationApiException.from(error);
+    } catch (_) {
+      throw const InvitationApiException();
     }
   }
 
@@ -30,6 +32,8 @@ class InvitationApi {
       return InvitePreview.fromJson(response.data!);
     } on DioException catch (error) {
       throw InvitationApiException.from(error);
+    } catch (_) {
+      throw const InvitationApiException();
     }
   }
 
@@ -52,6 +56,8 @@ class InvitationApi {
       );
     } on DioException catch (error) {
       throw InvitationApiException.from(error);
+    } catch (_) {
+      throw const InvitationApiException();
     }
   }
 }
@@ -65,14 +71,27 @@ class InvitationApiException implements Exception {
   factory InvitationApiException.from(DioException error) {
     final data = error.response?.data;
     String? code;
-    if (data is Map<String, dynamic>) code = data['code'] as String?;
+    if (data is Map<String, dynamic>) {
+      final candidate = data['code'];
+      if (candidate is String && _knownCodes.contains(candidate)) {
+        code = candidate;
+      }
+    }
     return InvitationApiException(
       code: code,
       statusCode: error.response?.statusCode,
     );
   }
 
+  static const _knownCodes = {
+    'INVITATION_INVALID',
+    'ROOM_ENDED',
+    'ROOM_FULL',
+    'JOINED_ROOM_LIMIT_REACHED',
+    'PREVIEW_EXPIRED',
+    'ROOM_UNAVAILABLE',
+  };
+
   @override
-  String toString() =>
-      'Invitation request failed${code == null ? '' : ': $code'}';
+  String toString() => 'Invitation request failed';
 }
