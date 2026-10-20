@@ -77,6 +77,10 @@ class RoomDetailController extends ChangeNotifier {
         await WidgetRefreshCoordinator(_widgets).afterDetail(room, epoch);
       }
     } catch (error) {
+      if (error is RoomApiException &&
+          [401, 403, 404, 410].contains(error.statusCode)) {
+        _room = null;
+      }
       await WidgetRefreshCoordinator(
         _widgets,
       ).afterFailure(roomId, error, epoch);
@@ -107,6 +111,14 @@ class RoomDetailController extends ChangeNotifier {
       }
       return true;
     } on RoomApiException catch (error) {
+      if ([401, 404, 410].contains(error.statusCode)) {
+        _room = null;
+      }
+      if ([404, 410].contains(error.statusCode)) {
+        await WidgetRefreshCoordinator(
+          _widgets,
+        ).afterFailure(roomId, error, epoch);
+      }
       _error = _roomMutationMessage(error);
       return false;
     } catch (_) {
@@ -181,5 +193,6 @@ String _roomMutationMessage(RoomApiException error) => switch (error.code) {
     'This room changed. Reload it before editing again.',
   'ROOM_REVISION_REQUIRED' => 'Reload this room before editing again.',
   'ROOM_ACTION_FORBIDDEN' => 'Only owners and co-hosts can edit this room.',
+  'ROOM_UNAVAILABLE' => 'This room is no longer available.',
   _ => 'Could not save this room. Please try again.',
 };

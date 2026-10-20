@@ -52,6 +52,40 @@ void main() {
     expect(controller.room?.title, 'Updated');
   });
 
+  test(
+    'detail clears previously loaded room after membership access is removed',
+    () async {
+      when(
+        () => repository.getRoom('room-id'),
+      ).thenAnswer((_) async => room(id: 'room-id'));
+      final controller = RoomDetailController(repository, 'room-id');
+      await controller.load();
+      expect(controller.room, isNotNull);
+      when(() => repository.getRoom('room-id')).thenThrow(
+        const RoomApiException(code: 'ROOM_UNAVAILABLE', statusCode: 404),
+      );
+      await controller.load();
+      expect(controller.room, isNull);
+      expect(controller.error, isNotNull);
+      controller.dispose();
+    },
+  );
+
+  test('saving after removal clears protected room details', () async {
+    when(
+      () => repository.getRoom('room-id'),
+    ).thenAnswer((_) async => room(id: 'room-id'));
+    when(() => repository.updateRoom(any(), any())).thenThrow(
+      const RoomApiException(code: 'ROOM_UNAVAILABLE', statusCode: 404),
+    );
+    final controller = RoomDetailController(repository, 'room-id');
+    await controller.load();
+    expect(await controller.save(draft(title: 'Updated')), isFalse);
+    expect(controller.room, isNull);
+    expect(controller.error, 'This room is no longer available.');
+    controller.dispose();
+  });
+
   test('creation controller validates before calling API', () async {
     final controller = RoomCreationController(repository);
 

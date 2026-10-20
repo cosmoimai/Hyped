@@ -41,6 +41,12 @@ public interface RoomRepository {
 
     void incrementMemberCount(RoomId roomId, Instant updatedAt);
 
+    List<RoomMembership> findMembers(RoomId roomId);
+
+    void removeMembership(RoomId roomId, UserId userId, Instant now);
+
+    void incrementRevision(RoomId roomId, Instant now);
+
     void transferOwnership(RoomId roomId, UserId oldOwner, UserId newOwner, Instant updatedAt);
 
     record AuthorizedRoom(Room room, MembershipRole role) {

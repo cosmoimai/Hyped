@@ -185,11 +185,11 @@ class RoomRepositoryIntegrationTest {
         service.addMember(roomId, member);
 
         service.changeRole(owner, roomId, member, MembershipRole.CO_HOST);
-        assertThat(service.update(member, roomId, 1,
+        assertThat(service.update(member, roomId, 2,
                 new UpdateRoomCommand("Co-host edit", null, null, null, null, false, null, false))
-                .room().revision()).isEqualTo(2);
+                .room().revision()).isEqualTo(3);
         service.changeRole(owner, roomId, member, MembershipRole.MEMBER);
-        assertThatThrownBy(() -> service.update(member, roomId, 2,
+        assertThatThrownBy(() -> service.update(member, roomId, 4,
                 new UpdateRoomCommand("Member edit", null, null, null, null, false, null, false)))
                 .isInstanceOf(RoomOperationException.class)
                 .extracting(exception -> ((RoomOperationException) exception).code())
@@ -248,6 +248,8 @@ class RoomRepositoryIntegrationTest {
 
         assertThatThrownBy(() -> service.transfer(owner, roomId, outsider))
                 .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.transfer(owner, roomId, new UserId(UUID.randomUUID())))
+                .isInstanceOf(RoomOperationException.class).extracting("code").isEqualTo("ROOM_UNAVAILABLE");
         assertThat(rooms.findAuthorized(roomId, owner).orElseThrow().role()).isEqualTo(MembershipRole.OWNER);
     }
 
@@ -304,6 +306,150 @@ class RoomRepositoryIntegrationTest {
         } finally {
             jdbc.update("DELETE FROM app.room WHERE id = ?", roomId.value());
             jdbc.update("DELETE FROM app.app_user WHERE id IN (?, ?)", first.value(), second.value());
+        }
+    }
+
+    @Test
+    void memberListIncludesOnlyRoomParticipantsAndIdentifiesCaller() {
+        UserId owner = user();
+        UserId member = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        service.addMember(roomId, member);
+        var view = service.members(member, roomId);
+        assertThat(view.items()).hasSize(2);
+        assertThat(view.items().getFirst().role()).isEqualTo(MembershipRole.OWNER);
+        assertThat(view.items().stream().filter(RoomService.MemberView::isCurrentUser).findFirst().orElseThrow()
+                .userId()).isEqualTo(member.value());
+        assertThat(view.items()).allMatch(item -> item.photo() == null);
+        assertThat(view.callerRole()).isEqualTo(MembershipRole.MEMBER);
+    }
+
+    @Test
+    void outsidersCannotListChangeTransferOrRemoveMembers() {
+        UserId owner = user();
+        UserId outsider = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        assertThatThrownBy(() -> service.members(outsider, roomId)).isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.changeRole(outsider, roomId, owner, MembershipRole.MEMBER))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.transfer(outsider, roomId, owner)).isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.removeMember(outsider, roomId, owner, null))
+                .isInstanceOf(RoomOperationException.class);
+    }
+
+    @Test
+    void ownerPromotesDemotesAndRemovesCoHostAndRemovalIsIdempotent() {
+        UserId owner = user();
+        UserId member = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        service.addMember(roomId, member);
+        service.changeRole(owner, roomId, member, MembershipRole.CO_HOST, 1L);
+        assertThat(role(roomId, member)).isEqualTo("co_host");
+        service.changeRole(owner, roomId, member, MembershipRole.CO_HOST, 2L);
+        assertThat(service.get(owner, roomId).room().revision()).isEqualTo(2);
+        service.changeRole(owner, roomId, member, MembershipRole.MEMBER, 2L);
+        service.changeRole(owner, roomId, member, MembershipRole.CO_HOST, 3L);
+        service.removeMember(owner, roomId, member, 4L);
+        service.removeMember(owner, roomId, member, 4L);
+        assertThat(service.get(owner, roomId).room().memberCount()).isEqualTo(1);
+        assertThat(service.get(owner, roomId).room().revision()).isEqualTo(5);
+        assertThat(jdbc.queryForObject("""
+                SELECT count(*) FROM app.room_reminder_preference WHERE room_id = ? AND user_id = ?
+                """,
+                Integer.class, roomId.value(), member.value())).isZero();
+        assertThatThrownBy(() -> service.get(member, roomId)).isInstanceOf(RoomOperationException.class);
+    }
+
+    @Test
+    void coHostCanOnlyRemoveRegularMembers() {
+        UserId owner = user();
+        UserId coHost = user();
+        UserId otherHost = user();
+        UserId member = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        service.addMember(roomId, coHost);
+        service.addMember(roomId, otherHost);
+        service.addMember(roomId, member);
+        service.changeRole(owner, roomId, coHost, MembershipRole.CO_HOST);
+        service.changeRole(owner, roomId, otherHost, MembershipRole.CO_HOST);
+        assertThatThrownBy(() -> service.removeMember(coHost, roomId, owner, null))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.removeMember(coHost, roomId, otherHost, null))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.removeMember(coHost, roomId, coHost, null))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.changeRole(coHost, roomId, member, MembershipRole.CO_HOST))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.transfer(coHost, roomId, member))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.archive(coHost, roomId)).isInstanceOf(RoomOperationException.class);
+        service.removeMember(coHost, roomId, member, null);
+        assertThat(service.get(owner, roomId).room().memberCount()).isEqualTo(3);
+    }
+
+    @Test
+    void ownerAndMemberCannotRemoveTheLastOwnerOrModifyAnotherRoom() {
+        UserId owner = user();
+        UserId member = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        RoomId foreign = service.create(member, command("UTC")).room().id();
+        service.addMember(roomId, member);
+        assertThatThrownBy(() -> service.removeMember(owner, roomId, owner, null))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.changeRole(owner, roomId, owner, MembershipRole.MEMBER))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.removeMember(member, roomId, owner, null))
+                .isInstanceOf(RoomOperationException.class);
+        assertThatThrownBy(() -> service.removeMember(owner, foreign, member, null))
+                .isInstanceOf(RoomOperationException.class);
+    }
+
+    @Test
+    void staleMemberManagementRevisionIsRejected() {
+        UserId owner = user();
+        UserId member = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        service.addMember(roomId, member);
+        service.changeRole(owner, roomId, member, MembershipRole.CO_HOST, 1L);
+        assertThatThrownBy(() -> service.removeMember(owner, roomId, member, 1L))
+                .isInstanceOf(RoomOperationException.class).extracting("code").isEqualTo("ROOM_REVISION_MISMATCH");
+        assertThatThrownBy(() -> service.transfer(owner, roomId, member, 1L))
+                .isInstanceOf(RoomOperationException.class).extracting("code").isEqualTo("ROOM_REVISION_MISMATCH");
+    }
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void concurrentOwnershipTransfersLeaveExactlyOneOwner() throws Exception {
+        UserId owner = user();
+        UserId first = user();
+        UserId second = user();
+        RoomId roomId = service.create(owner, command("UTC")).room().id();
+        service.addMember(roomId, first);
+        service.addMember(roomId, second);
+        CountDownLatch start = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            var one = executor.submit(() -> attemptTransfer(start, owner, roomId, first));
+            var two = executor.submit(() -> attemptTransfer(start, owner, roomId, second));
+            start.countDown();
+            assertThat(List.of(one.get(), two.get())).containsExactlyInAnyOrder("transferred", "ROOM_ACTION_FORBIDDEN");
+            assertThat(jdbc.queryForObject("SELECT count(*) FROM app.room_member WHERE room_id = ? AND role = 'owner'",
+                    Integer.class, roomId.value())).isEqualTo(1);
+            jdbc.execute("SET CONSTRAINTS ALL IMMEDIATE");
+        } finally {
+            jdbc.update("DELETE FROM app.room WHERE id = ?", roomId.value());
+        }
+    }
+
+    private String attemptTransfer(CountDownLatch start, UserId owner, RoomId roomId, UserId target) {
+        try {
+            start.await();
+            service.transfer(owner, roomId, target, 1L);
+            return "transferred";
+        } catch (RoomOperationException exception) {
+            return exception.code();
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(exception);
         }
     }
 

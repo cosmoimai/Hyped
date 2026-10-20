@@ -133,20 +133,41 @@ public class RoomController {
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID roomId,
             @PathVariable UUID userId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
             @Valid @RequestBody RoleRequest request) {
         return MembershipResponse.from(service.changeRole(actor(jwt), new RoomId(roomId),
-                new UserId(userId), request.role()));
+                new UserId(userId), request.role(), optionalRevision(ifMatch)));
     }
 
     @PostMapping("/{roomId}/ownership-transfer")
     public OwnershipTransferResponse transfer(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable UUID roomId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch,
             @Valid @RequestBody OwnershipTransferRequest request) {
         OwnershipTransfer result = service.transfer(actor(jwt), new RoomId(roomId),
-                new UserId(request.newOwnerUserId()));
+                new UserId(request.newOwnerUserId()), optionalRevision(ifMatch));
         return new OwnershipTransferResponse(RoomResponse.from(result.room(), clock.instant()),
                 MembershipResponse.from(result.previousOwner()), MembershipResponse.from(result.newOwner()));
+    }
+
+    @GetMapping("/{roomId}/members")
+    public ResponseEntity<RoomService.MemberList> members(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId) {
+        var result = service.members(actor(jwt), new RoomId(roomId));
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .eTag(etag(result.revision())).body(result);
+    }
+
+    @DeleteMapping("/{roomId}/members/{userId}")
+    public ResponseEntity<Void> removeMember(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId,
+            @PathVariable UUID userId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
+        service.removeMember(actor(jwt), new RoomId(roomId), new UserId(userId), optionalRevision(ifMatch));
+        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "private, no-store").build();
+    }
+
+    private static Long optionalRevision(String value) {
+        return value == null ? null : revision(value);
     }
 
     private static UserId actor(Jwt jwt) {

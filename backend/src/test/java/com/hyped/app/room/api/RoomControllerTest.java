@@ -193,12 +193,49 @@ class RoomControllerTest {
     }
 
     @Test
-    void unimplementedMemberListAndUnknownRoutesRemainDenied() throws Exception {
-        mvc.perform(get("/api/v1/rooms/{id}/members", ROOM.value())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN))
-                .andExpect(status().isForbidden());
+    void unknownRoutesRemainDenied() throws Exception {
         mvc.perform(get("/api/v1/private-future").header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void memberListUsesSafeProjectionAndPrivateCachePolicy() throws Exception {
+        when(service.members(USER, ROOM)).thenReturn(new RoomService.MemberList(List.of(
+                new RoomService.MemberView(USER.value(), "Mira", null, MembershipRole.OWNER, NOW, true)),
+                MembershipRole.OWNER, RoomStatus.ACTIVE, 4));
+        mvc.perform(get("/api/v1/rooms/{roomId}/members", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.CACHE_CONTROL, "private, no-store"))
+                .andExpect(header().string(HttpHeaders.ETAG, "\"room-4\""))
+                .andExpect(jsonPath("$.items[0].displayName").value("Mira"))
+                .andExpect(jsonPath("$.items[0].isCurrentUser").value(true))
+                .andExpect(jsonPath("$.items[0].*").value(org.hamcrest.Matchers.hasSize(6)))
+                .andExpect(jsonPath("$.items[0].email").doesNotExist())
+                .andExpect(jsonPath("$.items[0].providerPhotoUrl").doesNotExist())
+                .andExpect(jsonPath("$.items[0].piiKeyReference").doesNotExist());
+    }
+
+    @Test
+    void memberRemovalUsesAuthenticatedActorAndRevision() throws Exception {
+        UUID target = UUID.randomUUID();
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                        "/api/v1/rooms/{roomId}/members/{userId}", ROOM.value(), target)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-4\""))
+                .andExpect(status().isNoContent());
+        org.mockito.Mockito.verify(service).removeMember(USER, ROOM, new UserId(target), 4L);
+    }
+
+    @Test
+    void malformedMemberRevisionAndUnauthenticatedAccessAreRejected() throws Exception {
+        mvc.perform(get("/api/v1/rooms/{roomId}/members", ROOM.value())).andExpect(status().isUnauthorized());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                        "/api/v1/rooms/{roomId}/members/{userId}", ROOM.value(), USER.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "invalid"))
+                .andExpect(status().isPreconditionRequired())
+                .andExpect(jsonPath("$.code").value("ROOM_REVISION_REQUIRED"));
     }
 
     private AuthorizedRoom room(MembershipRole role) {

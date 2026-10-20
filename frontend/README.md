@@ -110,3 +110,7 @@ flutter build appbundle --release \
 ## Android push reminders
 
 See [Android notification setup and delivery guarantees](docs/android-notifications.md) for FCM, authenticated device registration, scheduler OIDC, fixed reminder preferences, privacy handling and live-device checks.
+
+## Room members
+
+See [room member management](docs/room-members.md) for permissions, confirmation behavior, revision conflicts, and access-loss cleanup.

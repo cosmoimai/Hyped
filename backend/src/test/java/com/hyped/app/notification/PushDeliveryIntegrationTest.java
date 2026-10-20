@@ -115,6 +115,26 @@ class PushDeliveryIntegrationTest {
     }
 
     @Test
+    void removingMemberCancelsClaimedDeliveryAndPreventsFutureReminders() {
+        var oldOwner = new com.hyped.app.identity.domain.UserId(user);
+        UUID next = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO app.app_user(id,status,created_at,updated_at) VALUES (?,'active',?,?)
+                """, next, java.sql.Timestamp.from(clock.now), java.sql.Timestamp.from(clock.now));
+        var newOwner = new com.hyped.app.identity.domain.UserId(next);
+        rooms.addMember(room, newOwner);
+        rooms.transfer(oldOwner, room, newOwner);
+        records.prepare(100, clock.now);
+        var claimed = records.claim(100, clock.now).getFirst();
+        rooms.removeMember(newOwner, room, oldOwner, null);
+        assertThat(records.stillEligible(claimed, clock.now)).isFalse();
+        assertThat(count("canceled")).isEqualTo(1);
+        clock.now = NOW.plusSeconds(86400);
+        assertThat(deliveries.tick().sent()).isZero();
+        verify(sender, times(0)).send(anyString(), any());
+    }
+
+    @Test
     void registrationBindsSessionOwnerAndEncryptsWithoutExposingToken() {
         assertThat(jdbc.queryForObject("SELECT push_session_id FROM app.device_registration WHERE id = ?",
                 UUID.class, device)).isEqualTo(session);
