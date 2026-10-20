@@ -14,6 +14,7 @@ import com.hyped.app.room.domain.MembershipRole;
 import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomStatus;
 import com.hyped.app.room.domain.RoomTheme;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -48,6 +49,9 @@ class RoomRepositoryIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private Clock clock;
 
     @Test
     void migrationCreatesConstrainedRoomTables() {
@@ -333,8 +337,9 @@ class RoomRepositoryIntegrationTest {
     private void addMember(RoomId roomId, UserId userId, String role) {
         jdbc.update("""
                 INSERT INTO app.room_member (room_id, user_id, role, joined_via, joined_at, updated_at)
-                VALUES (?, ?, ?, 'invite_link', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-                """, roomId.value(), userId.value(), role);
+                VALUES (?, ?, ?, 'invite_link', ?, ?)
+                """, roomId.value(), userId.value(), role,
+                java.sql.Timestamp.from(clock.instant()), java.sql.Timestamp.from(clock.instant()));
         jdbc.update("UPDATE app.room SET member_count = member_count + 1 WHERE id = ?", roomId.value());
     }
 

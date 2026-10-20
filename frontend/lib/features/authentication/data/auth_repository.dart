@@ -1,3 +1,4 @@
+import 'package:hyped/features/notifications/data/notification_platform.dart';
 import 'package:hyped/core/secure_storage/token_store.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
 import 'package:hyped/features/authentication/data/auth_api.dart';
@@ -11,8 +12,10 @@ class AuthRepository {
     this._metadata, [
     IdentityProvider? identityProvider,
     this.widgets,
+    this.notifications,
   ]) : _identityProvider = identityProvider;
   final RoomWidgetRepository? widgets;
+  final NotificationPlatform? notifications;
   final AuthApi _api;
   final TokenStore _tokens;
   final DeviceMetadataProvider _metadata;
@@ -21,10 +24,12 @@ class AuthRepository {
     final stored = await _tokens.read();
     if (stored == null) {
       await widgets?.clearProtectedContent();
+      await notifications?.clearSession();
       return SessionRestoreResult.missing;
     }
     if (stored.accessTokenExpiresAt.isAfter(now)) {
       await widgets?.startSession();
+      await notifications?.startSession();
       return SessionRestoreResult.authenticated;
     }
     if (!stored.refreshTokenExpiresAt.isAfter(now)) {
@@ -38,6 +43,7 @@ class AuthRepository {
       );
       await _tokens.write(refreshed);
       await widgets?.startSession();
+      await notifications?.startSession();
       return SessionRestoreResult.authenticated;
     } catch (_) {
       await _tokens.clear();
@@ -48,6 +54,10 @@ class AuthRepository {
   Future<void> signIn(IdentityProvider provider) async {
     // Clear even when switching directly between accounts, before any new requests.
     await widgets?.clearProtectedContent();
+    await notifications?.clearSession();
+    try {
+      await notifications?.deleteToken();
+    } catch (_) {}
     final firebaseToken = await provider.firebaseIdToken();
     final metadata = await _metadata.load();
     final exchange = await _api.exchange(
@@ -58,12 +68,14 @@ class AuthRepository {
     );
     await _tokens.write(exchange.tokens);
     await widgets?.startSession();
+    await notifications?.startSession();
     _identityProvider = provider;
   }
 
   Future<void> logout() async {
     try {
       await widgets?.clearProtectedContent();
+      await notifications?.clearSession();
       if (await _tokens.read() != null) await _api.logout();
     } finally {
       try {

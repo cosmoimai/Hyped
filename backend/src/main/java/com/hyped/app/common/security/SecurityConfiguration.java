@@ -71,6 +71,8 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/rooms/*/reminder-preferences")
                         .authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v1/devices/*").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/devices/*").authenticated()
                         .anyRequest()
                         .denyAll())
                 .oauth2ResourceServer(resourceServer -> resourceServer

@@ -24,6 +24,17 @@ class AuthenticationInterceptor extends Interceptor {
   ) async {
     if (!_isPublicAuth(options.path)) {
       final tokens = await _tokens.read();
+      final expected = options.extra['expectedSessionId'];
+      if (expected != null && tokens?.sessionId != expected) {
+        handler.reject(
+          DioException(
+            requestOptions: options,
+            type: DioExceptionType.cancel,
+            message: 'The session changed.',
+          ),
+        );
+        return;
+      }
       if (tokens != null) {
         options.headers['Authorization'] = 'Bearer ${tokens.accessToken}';
       }
@@ -37,8 +48,7 @@ class AuthenticationInterceptor extends Interceptor {
     final body = err.response?.data;
     final code = body is Map ? body['code'] : null;
     if (code == 'ACCOUNT_DELETED' || code == 'ACCOUNT_DELETION_PENDING') {
-      await _tokens.clear();
-      onAuthenticationFailed?.call();
+      await _invalidate();
       handler.next(err);
       return;
     }
@@ -49,8 +59,15 @@ class AuthenticationInterceptor extends Interceptor {
       handler.next(err);
       return;
     }
+    String? refreshingSession;
     try {
       final current = await _tokens.read();
+      refreshingSession = current?.sessionId;
+      final expected = request.extra['expectedSessionId'];
+      if (expected != null && current?.sessionId != expected) {
+        handler.next(err);
+        return;
+      }
       final requestToken = request.headers['Authorization'];
       if (current != null && requestToken != 'Bearer ${current.accessToken}') {
         request.extra['authRetried'] = true;
@@ -59,12 +76,20 @@ class AuthenticationInterceptor extends Interceptor {
         return;
       }
       final refreshed = await _singleFlightRefresh();
+      refreshingSession = refreshed.sessionId;
       request.extra['authRetried'] = true;
       request.headers['Authorization'] = 'Bearer ${refreshed.accessToken}';
       handler.resolve(await _dio.fetch<dynamic>(request));
     } catch (_) {
-      await _tokens.clear();
-      onAuthenticationFailed?.call();
+      final expected = request.extra['expectedSessionId'];
+      final latest = await _tokens.read();
+      if ((expected != null && latest?.sessionId != expected) ||
+          (refreshingSession != null &&
+              latest?.sessionId != refreshingSession)) {
+        handler.next(err);
+        return;
+      }
+      await _invalidate();
       handler.next(err);
     }
   }
@@ -86,8 +111,23 @@ class AuthenticationInterceptor extends Interceptor {
       current.refreshToken,
       await _tokens.installationId(),
     );
+    final latest = await _tokens.read();
+    if (latest?.sessionId != current.sessionId ||
+        latest?.refreshToken != current.refreshToken) {
+      throw StateError('The session changed.');
+    }
     await _tokens.write(refreshed);
     return refreshed;
+  }
+
+  Future<void> _invalidate() async {
+    try {
+      await _tokens.clear();
+    } catch (_) {
+      // Local notification/SDK cleanup must not leave an interceptor request unresolved.
+    } finally {
+      onAuthenticationFailed?.call();
+    }
   }
 
   bool _isPublicAuth(String path) =>

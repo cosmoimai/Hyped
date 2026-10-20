@@ -1,3 +1,5 @@
+import 'package:hyped/features/notifications/data/notification_platform.dart';
+import 'package:hyped/features/notifications/data/notification_token_store.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,16 +19,19 @@ import 'package:hyped/features/authentication/domain/identity_provider.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
 
 final tokenStoreProvider = Provider<TokenStore>(
-  (ref) => WidgetTokenStore(
-    SecureTokenStore(
-      const FlutterSecureStorage(
-        aOptions: AndroidOptions(),
-        iOptions: IOSOptions(
-          accessibility: KeychainAccessibility.first_unlock_this_device,
+  (ref) => NotificationTokenStore(
+    WidgetTokenStore(
+      SecureTokenStore(
+        const FlutterSecureStorage(
+          aOptions: AndroidOptions(),
+          iOptions: IOSOptions(
+            accessibility: KeychainAccessibility.first_unlock_this_device,
+          ),
         ),
       ),
+      ref.read(roomWidgetRepositoryProvider),
     ),
-    ref.read(roomWidgetRepositoryProvider),
+    ref.read(notificationPlatformProvider),
   ),
 );
 
@@ -86,6 +91,7 @@ final authRepositoryProvider = Provider<AuthRepository>(
     AndroidDeviceMetadataProvider(DeviceInfoPlugin()),
     ref.read(googleIdentityProviderProvider),
     ref.read(roomWidgetRepositoryProvider),
+    ref.read(notificationPlatformProvider),
   ),
 );
 

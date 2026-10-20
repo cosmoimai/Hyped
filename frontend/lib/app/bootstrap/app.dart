@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:hyped/features/notifications/presentation/push_providers.dart';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +18,8 @@ class HypedApp extends ConsumerStatefulWidget {
   ConsumerState<HypedApp> createState() => _HypedAppState();
 }
 
-class _HypedAppState extends ConsumerState<HypedApp> {
+class _HypedAppState extends ConsumerState<HypedApp>
+    with WidgetsBindingObserver {
   GoRouter? _router;
   static const _widgets = MethodChannel('hyped/android_widgets');
   final _widgetNavigation = WidgetNavigation();
@@ -24,6 +27,7 @@ class _HypedAppState extends ConsumerState<HypedApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     if (!kIsWeb && Platform.isAndroid) {
       _widgets.setMethodCallHandler((call) async {
         if (call.method == 'widgetTapped') _receiveWidget(call.arguments);
@@ -55,11 +59,36 @@ class _HypedAppState extends ConsumerState<HypedApp> {
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
+  void _resumeNotification() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final location = await ref
+          .read(pushControllerProvider)
+          .takePendingLocation();
+      if (mounted && location != null) _router?.go(location);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(ref.read(pushControllerProvider).sync(force: true));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(authControllerProvider, (_, auth) {
-      if (auth.state.isAuthenticated) _resumeWidget();
+      ref
+          .read(pushControllerProvider)
+          .setAuthenticated(auth.state.isAuthenticated);
+      if (auth.state.isAuthenticated) {
+        _resumeWidget();
+        _resumeNotification();
+      }
     });
+    ref.listen(pushControllerProvider, (_, _) => _resumeNotification());
     _router ??= createRouter(
       ref.read(authControllerProvider),
       ref.read(pendingInviteControllerProvider),
@@ -77,6 +106,7 @@ class _HypedAppState extends ConsumerState<HypedApp> {
   @override
   void dispose() {
     if (!kIsWeb && Platform.isAndroid) _widgets.setMethodCallHandler(null);
+    WidgetsBinding.instance.removeObserver(this);
     _router?.dispose();
     super.dispose();
   }
