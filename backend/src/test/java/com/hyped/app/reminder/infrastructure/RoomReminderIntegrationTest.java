@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.reminder.application.RoomReminderService;
+import com.hyped.app.reminder.application.ReminderPreferencesService;
 import com.hyped.app.reminder.domain.RoomReminder;
 import com.hyped.app.room.application.RoomService;
 import com.hyped.app.room.application.RoomService.CreateRoomCommand;
@@ -53,6 +54,9 @@ class RoomReminderIntegrationTest {
 
     @Autowired
     private RoomReminderService reminderService;
+
+    @Autowired
+    private ReminderPreferencesService reminderPreferencesService;
 
     @Autowired
     private MutableClock clock;
@@ -173,6 +177,23 @@ class RoomReminderIntegrationTest {
     void invalidClaimLimitIsRejectedBeforePolling() {
         assertThatThrownBy(() -> reminderService.claimDue(0)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> reminderService.claimDue(101)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void roomCreationCreatesDefaultReminderPreferencesAndMemberCanReplaceThem() {
+        UserId owner = user();
+        RoomId roomId = roomService.create(owner,
+                command(LocalDate.of(2030, 12, 20), LocalTime.of(10, 0))).room().id();
+
+        assertThat(reminderPreferencesService.get(owner, roomId))
+                .extracting(value -> value.remind24HoursBefore(),
+                        value -> value.remind1HourBefore(), value -> value.remindAtEventTime())
+                .containsExactly(true, true, true);
+
+        var updated = reminderPreferencesService.replace(owner, roomId, true, false, false);
+        assertThat(updated.remind24HoursBefore()).isTrue();
+        assertThat(updated.remind1HourBefore()).isFalse();
+        assertThat(updated.remindAtEventTime()).isFalse();
     }
 
     private List<RoomReminder> claimAfter(CountDownLatch start) throws InterruptedException {

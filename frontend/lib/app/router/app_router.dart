@@ -12,6 +12,7 @@ import 'package:hyped/features/invitations/presentation/screens/room_code_entry_
 import 'package:hyped/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/room_detail_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/room_form_screen.dart';
+import 'package:hyped/features/reminders/presentation/screens/reminder_settings_screen.dart';
 
 GoRouter createRouter(
   AuthController auth, [
@@ -78,6 +79,11 @@ GoRouter createRouter(
       path: '/rooms/:roomId/edit',
       builder: (_, state) =>
           EditRoomScreen(roomId: state.pathParameters['roomId']!),
+    ),
+    GoRoute(
+      path: '/rooms/:roomId/reminders',
+      builder: (_, state) =>
+          ReminderSettingsScreen(roomId: state.pathParameters['roomId']!),
     ),
   ],
 );
