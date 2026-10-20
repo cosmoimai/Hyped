@@ -5,113 +5,93 @@ import 'package:hyped/features/rooms/presentation/controllers/room_providers.dar
 import 'package:hyped/features/rooms/presentation/widgets/room_formatters.dart';
 
 class RoomWidgetSettingsScreen extends ConsumerWidget {
-  const RoomWidgetSettingsScreen({super.key});
+  const RoomWidgetSettingsScreen({this.appWidgetId, super.key});
+  final int? appWidgetId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rooms = ref.watch(roomListControllerProvider);
-    final widget = ref.watch(roomWidgetControllerProvider);
+    final provider = roomWidgetControllerProvider(appWidgetId);
+    final widget = ref.watch(provider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Countdown widget')),
+      appBar: AppBar(title: const Text('Countdown widgets')),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
+            await widget.load();
             await rooms.load();
-            await ref.read(roomWidgetControllerProvider).load();
           },
-          child: rooms.loading && rooms.rooms.isEmpty
-              ? const Center(child: CircularProgressIndicator())
-              : rooms.error != null && rooms.rooms.isEmpty
-              ? _MessageList(message: rooms.error!, action: rooms.load)
-              : rooms.rooms.isEmpty
-              ? const _EmptyWidgetState()
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                  children: [
-                    Text(
-                      'Choose a room for your Android home-screen widget.',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'The widget uses the latest room data synced by the app and keeps showing it while offline.',
-                    ),
-                    if (widget.message case final message?) ...[
-                      const SizedBox(height: 16),
-                      Card(child: ListTile(title: Text(message))),
-                    ],
-                    const SizedBox(height: 16),
-                    for (final room in rooms.rooms)
-                      Card(
-                        child: ListTile(
-                          leading: Icon(
-                            widget.selectedRoomId == room.id
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_unchecked,
-                          ),
-                          title: Text(room.title),
-                          subtitle: Text(compactDateTime(room.eventAt)),
-                          onTap: widget.loading
-                              ? null
-                              : () => ref
-                                    .read(roomWidgetControllerProvider)
-                                    .select(room),
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(24),
+            children: [
+              const Text(
+                'Add a Hyped widget from your Android home screen, then choose a room for each widget here.',
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Countdown text changes when the widget updates. Widgets keep the last successful sync while offline and are not continuously network-synchronized.',
+              ),
+              if (widget.loading || rooms.loading)
+                const LinearProgressIndicator(),
+              if (widget.message case final message?) Text(message),
+              if (!widget.loading && widget.instances.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Text('No home-screen widgets installed.'),
+                ),
+              if (widget.instances.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                DropdownButtonFormField<int>(
+                  key: ValueKey(widget.selectedId),
+                  initialValue: widget.selectedId,
+                  decoration: const InputDecoration(
+                    labelText: 'Home-screen widget',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [
+                    for (final instance in widget.instances)
+                      DropdownMenuItem(
+                        value: instance.id,
+                        child: Text(
+                          '${instance.size == 'medium' ? 'Medium' : 'Small'} widget ${instance.id}',
                         ),
                       ),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: widget.loading
-                          ? null
-                          : ref.read(roomWidgetControllerProvider).clear,
-                      icon: const Icon(Icons.widgets_outlined),
-                      label: const Text('Show empty widget state'),
-                    ),
                   ],
+                  onChanged: widget.loading
+                      ? null
+                      : (id) {
+                          if (id != null) widget.chooseWidget(id);
+                        },
                 ),
+                const SizedBox(height: 12),
+                if (rooms.error case final error?) Text(error),
+                if (!rooms.loading && rooms.rooms.isEmpty)
+                  const Text(
+                    'Create or join a room to select it for this widget.',
+                  ),
+                for (final room in rooms.rooms)
+                  Card(
+                    child: ListTile(
+                      leading: Icon(
+                        widget.selectedRoomId == room.id
+                            ? Icons.radio_button_checked
+                            : Icons.radio_button_unchecked,
+                      ),
+                      title: Text(room.title),
+                      subtitle: Text(compactDateTime(room.eventAt)),
+                      onTap: widget.loading ? null : () => widget.select(room),
+                    ),
+                  ),
+                OutlinedButton(
+                  onPressed: widget.loading ? null : widget.clear,
+                  child: const Text('Clear this widget'),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );
   }
-}
-
-class _EmptyWidgetState extends StatelessWidget {
-  const _EmptyWidgetState();
-
-  @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      const SizedBox(height: 96),
-      const Icon(Icons.widgets_outlined, size: 64),
-      const SizedBox(height: 16),
-      Text(
-        'No rooms to show yet',
-        style: Theme.of(context).textTheme.titleLarge,
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'Create or join a room, then choose it here for your widget.',
-        textAlign: TextAlign.center,
-      ),
-    ],
-  );
-}
-
-class _MessageList extends StatelessWidget {
-  const _MessageList({required this.message, required this.action});
-
-  final String message;
-  final Future<void> Function() action;
-
-  @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      const SizedBox(height: 96),
-      Text(message, textAlign: TextAlign.center),
-      const SizedBox(height: 16),
-      FilledButton(onPressed: action, child: const Text('Retry')),
-    ],
-  );
 }

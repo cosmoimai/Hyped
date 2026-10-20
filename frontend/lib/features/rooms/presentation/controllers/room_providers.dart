@@ -17,6 +17,7 @@ final roomRepositoryProvider = Provider<RoomRepository>(
 final roomListControllerProvider = ChangeNotifierProvider<RoomListController>((
   ref,
 ) {
+  ref.watch(authControllerProvider.select((auth) => auth.state.status));
   final controller = RoomListController(
     ref.read(roomRepositoryProvider),
     ref.read(roomWidgetRepositoryProvider),
@@ -27,6 +28,7 @@ final roomListControllerProvider = ChangeNotifierProvider<RoomListController>((
 
 final roomDetailControllerProvider =
     ChangeNotifierProvider.family<RoomDetailController, String>((ref, roomId) {
+      ref.watch(authControllerProvider.select((auth) => auth.state.status));
       final controller = RoomDetailController(
         ref.read(roomRepositoryProvider),
         roomId,

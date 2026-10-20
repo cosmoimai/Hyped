@@ -1,5 +1,5 @@
-import 'package:dio/dio.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -7,21 +7,26 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:hyped/core/api/api_environment.dart';
 import 'package:hyped/core/api/authentication_interceptor.dart';
 import 'package:hyped/core/secure_storage/token_store.dart';
-import 'package:hyped/features/authentication/data/auth_api.dart';
+import 'package:hyped/features/android_widgets/data/widget_token_store.dart';
+import 'package:hyped/features/android_widgets/presentation/controllers/room_widget_providers.dart';
 import 'package:hyped/features/authentication/data/android_device_metadata_provider.dart';
+import 'package:hyped/features/authentication/data/auth_api.dart';
 import 'package:hyped/features/authentication/data/auth_repository.dart';
 import 'package:hyped/features/authentication/data/firebase_identity_providers.dart';
 import 'package:hyped/features/authentication/domain/identity_provider.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
 
 final tokenStoreProvider = Provider<TokenStore>(
-  (ref) => SecureTokenStore(
-    const FlutterSecureStorage(
-      aOptions: AndroidOptions(),
-      iOptions: IOSOptions(
-        accessibility: KeychainAccessibility.first_unlock_this_device,
+  (ref) => WidgetTokenStore(
+    SecureTokenStore(
+      const FlutterSecureStorage(
+        aOptions: AndroidOptions(),
+        iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock_this_device,
+        ),
       ),
     ),
+    ref.read(roomWidgetRepositoryProvider),
   ),
 );
 
@@ -80,6 +85,7 @@ final authRepositoryProvider = Provider<AuthRepository>(
     ref.read(tokenStoreProvider),
     AndroidDeviceMetadataProvider(DeviceInfoPlugin()),
     ref.read(googleIdentityProviderProvider),
+    ref.read(roomWidgetRepositoryProvider),
   ),
 );
 

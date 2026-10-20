@@ -3,98 +3,104 @@ package com.hyped.hyped
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.os.Build
+import android.net.Uri
 import android.widget.RemoteViews
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import java.util.TimeZone
 
 open class HypedCountdownWidgetProvider : AppWidgetProvider() {
-    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
-        update(context, manager, ids)
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action in setOf(Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_LOCALE_CHANGED)) {
+            updateAll(context)
+        } else {
+            super.onReceive(context, intent)
+        }
+    }
+    override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) = updateAll(context)
+    override fun onDeleted(context: Context, ids: IntArray) {
+        ids.forEach { HypedWidgetStore.store(context).remove(it) }
+    }
+    override fun onDisabled(context: Context) = updateAll(context)
+    override fun onRestored(context: Context, oldIds: IntArray, newIds: IntArray) {
+        // Snapshots are excluded from backup; never restore another account's content.
+        oldIds.forEach { HypedWidgetStore.store(context).remove(it) }
+        newIds.forEach { HypedWidgetStore.store(context).remove(it) }
+        updateAll(context)
     }
 
     companion object {
+        const val OPEN_WIDGET = "com.hyped.hyped.OPEN_WIDGET"
+
         fun updateAll(context: Context) {
             val manager = AppWidgetManager.getInstance(context)
-            val ids = intArrayOf(
-                *manager.getAppWidgetIds(ComponentName(context, HypedSmallWidgetProvider::class.java)),
-                *manager.getAppWidgetIds(ComponentName(context, HypedMediumWidgetProvider::class.java)),
-            )
-            if (ids.isNotEmpty()) update(context, manager, ids)
-        }
-
-        private fun update(context: Context, manager: AppWidgetManager, ids: IntArray) {
-            ids.forEach { id -> manager.updateAppWidget(id, views(context)) }
-        }
-
-        private fun views(context: Context): RemoteViews {
-            val views = RemoteViews(context.packageName, R.layout.hyped_countdown_widget)
-            val room = HypedWidgetStore.selectedRoom(context)
-            if (room == null) {
-                views.setTextViewText(R.id.widget_title, "Choose a countdown")
-                views.setTextViewText(R.id.widget_countdown, "Open Hyped")
-                views.setTextViewText(R.id.widget_event_time, "Pick a room in widget settings")
-                views.setTextViewText(R.id.widget_state, "No room selected")
-            } else {
-                val title = room.optString("title", "Hyped countdown")
-                val eventAtMillis = parseMillis(room.optString("eventAt", ""))
+            val ids = HypedWidgetStore.activeIds(context)
+            val store = HypedWidgetStore.store(context)
+            store.prune(ids)
+            ids.forEach { id ->
+                val medium = manager.getAppWidgetInfo(id)?.provider?.className == HypedMediumWidgetProvider::class.java.name
+                val views = RemoteViews(context.packageName,
+                    if (medium) R.layout.hyped_countdown_widget_medium else R.layout.hyped_countdown_widget)
+                val room = store.room(id)
+                val active = room?.state == "active"
+                val title = when (room?.state) {
+                    "active", "archived" -> room.title
+                    "removed" -> "Room removed"
+                    "unavailable" -> "Room unavailable"
+                    else -> "Choose a countdown"
+                }
+                val state = when (room?.state) {
+                    "active" -> "Last synced ${WidgetText.localTime(room.syncedAt)}"
+                    "archived" -> "Archived · Last synced ${WidgetText.localTime(room.syncedAt)}"
+                    "removed" -> "Choose another room"
+                    "unavailable" -> "Open Hyped to check access"
+                    else -> "Tap to select a room"
+                }
                 views.setTextViewText(R.id.widget_title, title)
-                views.setTextViewText(R.id.widget_countdown, countdown(eventAtMillis, System.currentTimeMillis()))
-                views.setTextViewText(R.id.widget_event_time, eventText(eventAtMillis))
-                views.setTextViewText(R.id.widget_state, "Last synced by Hyped")
-            }
-            views.setOnClickPendingIntent(R.id.widget_root, launchIntent(context))
-            return views
-        }
-
-        private fun parseMillis(value: String): Long? {
-            if (value.isBlank()) return null
-            val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-            parser.timeZone = TimeZone.getTimeZone("UTC")
-            return runCatching { parser.parse(value)?.time }.getOrNull()
-                ?: runCatching {
-                    val fallback = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-                    fallback.timeZone = TimeZone.getTimeZone("UTC")
-                    fallback.parse(value)?.time
-                }.getOrNull()
-        }
-
-        private fun countdown(eventAtMillis: Long?, nowMillis: Long): String {
-            if (eventAtMillis == null) return "Open Hyped"
-            val seconds = (eventAtMillis - nowMillis) / 1000
-            if (seconds <= 0) return "Event started"
-            val minutes = seconds / 60
-            val hours = minutes / 60
-            val days = hours / 24
-            return when {
-                days > 0 -> "${days}d ${hours % 24}h"
-                hours > 0 -> "${hours}h ${minutes % 60}m"
-                minutes > 0 -> "${minutes}m"
-                else -> "Less than 1m"
+                views.setTextViewText(R.id.widget_countdown, if (active) WidgetText.countdown(room!!.eventAt, System.currentTimeMillis())
+                    else if (room?.state == "archived") "Room archived" else "Open Hyped")
+                views.setTextViewText(R.id.widget_event_time, if (active || room?.state == "archived") WidgetText.localTime(room!!.eventAt) else "")
+                views.setTextViewText(R.id.widget_state, state)
+                views.setInt(R.id.widget_root, "setBackgroundResource", background(room?.presetKey))
+                views.setOnClickPendingIntent(R.id.widget_root, pendingIntent(context, id, !active && room?.state != "archived"))
+                views.setOnClickPendingIntent(R.id.widget_brand, pendingIntent(context, id, true))
+                manager.updateAppWidget(id, views)
             }
         }
 
-        private fun eventText(eventAtMillis: Long?): String {
-            if (eventAtMillis == null) return "Event time unavailable"
-            val formatter = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault())
-            return formatter.format(Date(eventAtMillis))
+        private fun background(preset: String?) = when (preset) {
+            "mint-sky-01" -> R.drawable.widget_mint_background
+            "blue-lilac-02" -> R.drawable.widget_lilac_background
+            "sunset-peach-01" -> R.drawable.widget_peach_background
+            "forest-glow-01" -> R.drawable.widget_forest_background
+            else -> R.drawable.widget_soft_blue_background
         }
 
-        private fun launchIntent(context: Context): PendingIntent {
-            val intent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-                ?: Intent(context, MainActivity::class.java)
-            val flags = PendingIntent.FLAG_UPDATE_CURRENT or
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
-            return PendingIntent.getActivity(context, 0, intent, flags)
+        private fun pendingIntent(context: Context, id: Int, settings: Boolean): PendingIntent {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                action = OPEN_WIDGET
+                data = Uri.parse("hyped-widget://${if (settings) "settings" else "room"}/$id")
+                flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            }
+            // IDs are unique per installed widget; URI/action also separate room and settings intents.
+            return PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        }
+
+        fun launchLocation(context: Context, intent: Intent?): String? {
+            if (intent?.action != OPEN_WIDGET) return null
+            val uri = intent.data ?: return null
+            if (uri.scheme != "hyped-widget" || uri.pathSegments.size != 1) return null
+            val id = uri.lastPathSegment?.toIntOrNull() ?: return null
+            if (id !in HypedWidgetStore.activeIds(context)) return null
+            val room = HypedWidgetStore.store(context).room(id)
+            return when (uri.host) {
+                "settings" -> "/widgets/room?widgetId=$id"
+                "room" -> if (room != null && room.state in setOf("active", "archived")) "/rooms/${Uri.encode(room.roomId)}"
+                    else "/widgets/room?widgetId=$id"
+                else -> null
+            }
         }
     }
 }
 
 class HypedSmallWidgetProvider : HypedCountdownWidgetProvider()
-
 class HypedMediumWidgetProvider : HypedCountdownWidgetProvider()
