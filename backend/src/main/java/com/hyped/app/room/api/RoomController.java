@@ -122,10 +122,36 @@ public class RoomController {
 
     @DeleteMapping("/{roomId}")
     public ResponseEntity<ArchiveResponse> archive(
-            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId) {
-        Room room = service.archive(actor(jwt), new RoomId(roomId)).room();
-        return ResponseEntity.accepted().body(new ArchiveResponse(room.id().value(), room.status(),
-                room.archivedAt(), room.deleteAfter()));
+            @AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
+        Room room = service.archive(actor(jwt), new RoomId(roomId), optionalRevision(ifMatch)).room();
+        return ResponseEntity.accepted().eTag(etag(room.revision()))
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .body(new ArchiveResponse(room.id().value(), room.status(), room.archivedAt(), room.deleteAfter(),
+                        room.revision(), clock.instant()));
+    }
+
+    @PostMapping("/{roomId}/leave")
+    public ResponseEntity<Void> leave(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
+        service.leave(actor(jwt), new RoomId(roomId), optionalRevision(ifMatch));
+        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "private, no-store").build();
+    }
+
+    @PostMapping("/{roomId}/restore")
+    public ResponseEntity<RoomResponse> restore(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
+        var response = RoomResponse.from(service.restore(actor(jwt), new RoomId(roomId), optionalRevision(ifMatch)),
+                clock.instant());
+        return ResponseEntity.ok().header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .eTag(etag(response.revision())).body(response);
+    }
+
+    @DeleteMapping("/{roomId}/permanent")
+    public ResponseEntity<Void> deletePermanently(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId,
+            @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
+        service.deletePermanently(actor(jwt), new RoomId(roomId), optionalRevision(ifMatch));
+        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "private, no-store").build();
     }
 
     @PatchMapping("/{roomId}/members/{userId}")
@@ -360,7 +386,8 @@ public class RoomController {
         }
     }
 
-    public record ArchiveResponse(UUID roomId, RoomStatus status, Instant archivedAt, Instant deleteAfter) {
+    public record ArchiveResponse(UUID roomId, RoomStatus status, Instant archivedAt, Instant deleteAfter,
+            long revision, Instant serverNow) {
     }
 
     public record MembershipResponse(UUID userId, MembershipRole role, Instant joinedAt, Instant updatedAt) {

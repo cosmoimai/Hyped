@@ -86,7 +86,13 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
     if (!room.canEdit) {
       return Scaffold(
         appBar: AppBar(title: const Text('Edit room')),
-        body: const Center(child: Text('Only hosts can edit this room.')),
+        body: Center(
+          child: Text(
+            room.status == RoomStatus.archived
+                ? 'Archived rooms cannot be edited.'
+                : 'Only hosts can edit this room.',
+          ),
+        ),
       );
     }
     model ??= RoomFormModel.fromRoom(room);

@@ -33,6 +33,14 @@ public interface RoomRepository {
 
     boolean archive(RoomId roomId, Instant archivedAt, Instant deleteAfter, Instant updatedAt);
 
+    void restore(RoomId roomId, Instant now);
+
+    void cancelDeliveries(RoomId roomId, Instant now);
+
+    void deletePermanently(RoomId roomId);
+
+    List<RoomId> lockDeletionDue(Instant now, int limit);
+
     boolean updateRole(RoomId roomId, UserId userId, MembershipRole role, Instant updatedAt);
 
     void addMembership(RoomMembership membership);

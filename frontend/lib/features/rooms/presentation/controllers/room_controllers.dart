@@ -19,9 +19,11 @@ class RoomListController extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
   List<Room> get rooms => _rooms;
-  Room? get nearestRoom => _rooms.isEmpty ? null : _rooms.first;
-  List<Room> get otherRooms =>
-      _rooms.length <= 1 ? const [] : _rooms.skip(1).toList(growable: false);
+  Room? get nearestRoom =>
+      _rooms.where((room) => room.status == RoomStatus.active).firstOrNull;
+  List<Room> get otherRooms => _rooms
+      .where((room) => room.id != nearestRoom?.id)
+      .toList(growable: false);
 
   Future<void> load() async {
     final epoch = _widgets?.sessionEpoch ?? 0;
@@ -30,7 +32,12 @@ class RoomListController extends ChangeNotifier {
     notifyListeners();
     try {
       final rooms = await _repository.listRooms();
-      _rooms = [...rooms]..sort((a, b) => a.eventAt.compareTo(b.eventAt));
+      if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
+        return;
+      }
+      _rooms =
+          rooms.where((room) => room.status != RoomStatus.deleting).toList()
+            ..sort((a, b) => a.eventAt.compareTo(b.eventAt));
       await WidgetRefreshCoordinator(
         _widgets,
       ).afterList(_rooms, _repository.getRoom, epoch);
@@ -72,7 +79,11 @@ class RoomDetailController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _room = await _repository.getRoom(roomId);
+      final loaded = await _repository.getRoom(roomId);
+      if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
+        return;
+      }
+      _room = loaded;
       if (_room case final room?) {
         await WidgetRefreshCoordinator(_widgets).afterDetail(room, epoch);
       }
@@ -84,7 +95,11 @@ class RoomDetailController extends ChangeNotifier {
       await WidgetRefreshCoordinator(
         _widgets,
       ).afterFailure(roomId, error, epoch);
-      _error = 'Could not load this room.';
+      _error =
+          error is RoomApiException &&
+              [403, 404, 410].contains(error.statusCode)
+          ? 'This room was removed or is no longer accessible.'
+          : 'Could not load this room.';
     } finally {
       _loading = false;
       if (!_disposed) notifyListeners();
@@ -194,5 +209,6 @@ String _roomMutationMessage(RoomApiException error) => switch (error.code) {
   'ROOM_REVISION_REQUIRED' => 'Reload this room before editing again.',
   'ROOM_ACTION_FORBIDDEN' => 'Only owners and co-hosts can edit this room.',
   'ROOM_UNAVAILABLE' => 'This room is no longer available.',
+  'ROOM_ARCHIVED' => 'This room is archived. Reload it before editing.',
   _ => 'Could not save this room. Please try again.',
 };

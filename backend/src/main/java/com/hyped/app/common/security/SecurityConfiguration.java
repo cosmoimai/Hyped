@@ -60,12 +60,14 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.GET, "/api/v1/rooms", "/api/v1/rooms/*",
                                 "/api/v1/rooms/*/event-theme", "/api/v1/rooms/*/members")
                         .authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/rooms", "/api/v1/rooms/*/ownership-transfer")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/rooms", "/api/v1/rooms/*/ownership-transfer",
+                                "/api/v1/rooms/*/leave", "/api/v1/rooms/*/restore")
                         .authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/rooms/*", "/api/v1/rooms/*/event-theme",
                                 "/api/v1/rooms/*/members/*")
                         .authenticated()
-                        .requestMatchers(HttpMethod.DELETE, "/api/v1/rooms/*", "/api/v1/rooms/*/members/*")
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/rooms/*", "/api/v1/rooms/*/members/*",
+                                "/api/v1/rooms/*/permanent")
                         .authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/rooms/*/reminder-preferences")
                         .authenticated()

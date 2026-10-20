@@ -132,6 +132,11 @@ public class RoomService {
 
     @Transactional
     public AuthorizedRoom archive(UserId actor, RoomId roomId) {
+        return archive(actor, roomId, null);
+    }
+
+    @Transactional
+    public AuthorizedRoom archive(UserId actor, RoomId roomId, Long expectedRevision) {
         AuthorizedRoom current = rooms.findAuthorizedForUpdate(roomId, actor).orElseThrow(RoomService::unavailable);
         if (current.role() != MembershipRole.OWNER) {
             throw forbidden();
@@ -142,16 +147,112 @@ public class RoomService {
         if (current.room().status() != RoomStatus.ACTIVE) {
             throw unavailable();
         }
+        checkRevision(current, expectedRevision);
         Instant now = clock.instant();
         Instant deleteAfter = now.plus(Duration.ofDays(1));
         rooms.archive(roomId, now, deleteAfter, now);
         reminders.ifAvailable(service -> service.cancelOpen(roomId));
+        rooms.cancelDeliveries(roomId, now);
         Room existing = current.room();
         Room archived = room(existing.id(), existing.ownerUserId(), existing.title(), existing.eventAt(),
                 existing.eventTimeZone(), existing.location(), existing.description(), RoomStatus.ARCHIVED,
-                existing.revision(), existing.memberCount(), now, deleteAfter, existing.createdAt(), now,
+                existing.revision() + 1, existing.memberCount(), now, deleteAfter, existing.createdAt(), now,
                 existing.theme());
         return new AuthorizedRoom(archived, current.role());
+    }
+
+    @Transactional
+    public void leave(UserId actor, RoomId roomId, Long expectedRevision) {
+        // Account -> room -> membership, shared with join and transfer.
+        rooms.lockUser(actor);
+        var room = rooms.findForUpdate(roomId);
+        if (room.isEmpty()) {
+            return;
+        }
+        var membership = rooms.findMembershipForUpdate(roomId, actor);
+        if (membership.isEmpty()) {
+            return; // Repeated leave and foreign IDs disclose no membership information.
+        }
+        if (membership.get().role() == MembershipRole.OWNER) {
+            throw problem(RoomOperationException.Kind.CONFLICT, "OWNERSHIP_TRANSFER_REQUIRED",
+                    "Transfer ownership first", "Transfer ownership before leaving this room.");
+        }
+        checkRevision(new AuthorizedRoom(room.get(), membership.get().role()), expectedRevision);
+        rooms.removeMembership(roomId, actor, clock.instant());
+    }
+
+    @Transactional
+    public AuthorizedRoom restore(UserId actor, RoomId roomId, Long expectedRevision) {
+        // Snapshot the bounded member set before taking any room locks. Archive forbids joins/role changes.
+        var preview = rooms.findAuthorized(roomId, actor).orElseThrow(RoomService::unavailable);
+        if (preview.role() != MembershipRole.OWNER) {
+            throw forbidden();
+        }
+        var lockedUsers = rooms.findMembers(roomId).stream().map(RoomMembership::userId)
+                .sorted(Comparator.comparing(user -> user.value().toString())).toList();
+        lockedUsers.forEach(rooms::lockUser);
+        AuthorizedRoom current = rooms.findAuthorizedForUpdate(roomId, actor).orElseThrow(RoomService::unavailable);
+        if (current.role() != MembershipRole.OWNER) {
+            throw forbidden();
+        }
+        if (current.room().status() == RoomStatus.ACTIVE) {
+            return current; // A retry must not rebuild reminders or change revision again.
+        }
+        Instant now = clock.instant();
+        if (current.room().status() != RoomStatus.ARCHIVED) {
+            throw unavailable();
+        }
+        if (!now.isBefore(current.room().deleteAfter())) {
+            throw problem(RoomOperationException.Kind.CONFLICT, "ROOM_RECOVERY_EXPIRED",
+                    "Recovery expired", "The room recovery period has ended.");
+        }
+        checkRevision(current, expectedRevision);
+        var members = rooms.findMembers(roomId);
+        if (members.stream().anyMatch(member -> !lockedUsers.contains(member.userId()))) {
+            throw problem(RoomOperationException.Kind.CONFLICT, "ROOM_MEMBERS_CHANGED",
+                    "Room changed", "Reload the room before restoring it.");
+        }
+        if (rooms.countActiveOwned(actor) >= MAX_OWNED_ROOMS) {
+            throw problem(RoomOperationException.Kind.CONFLICT, "OWNED_ROOM_LIMIT_REACHED", "Room limit reached",
+                    "This account already owns ten active rooms.");
+        }
+        for (var member : members) {
+            if (member.role() != MembershipRole.OWNER && rooms.countActiveJoined(member.userId()) >= MAX_JOINED_ROOMS) {
+                throw problem(RoomOperationException.Kind.CONFLICT, "JOINED_ROOM_LIMIT_REACHED", "Room limit reached",
+                        "A participant has reached the active joined-room limit.");
+            }
+        }
+        rooms.restore(roomId, now);
+        reminders.ifAvailable(service -> service.replaceForEvent(roomId, current.room().eventAt()));
+        return rooms.findAuthorized(roomId, actor).orElseThrow(RoomService::unavailable);
+    }
+
+    @Transactional
+    public void deletePermanently(UserId actor, RoomId roomId, Long expectedRevision) {
+        var room = rooms.findForUpdate(roomId);
+        if (room.isEmpty()) {
+            return;
+        }
+        var member = rooms.findMembershipForUpdate(roomId, actor);
+        if (member.isEmpty()) {
+            return; // Same safe response as an already deleted room; no ID-existence oracle.
+        }
+        if (member.get().role() != MembershipRole.OWNER) {
+            throw forbidden();
+        }
+        if (room.get().status() != RoomStatus.ARCHIVED || clock.instant().isBefore(room.get().deleteAfter())) {
+            throw problem(RoomOperationException.Kind.CONFLICT, "ROOM_DELETE_NOT_ELIGIBLE", "Deletion unavailable",
+                    "Archive the room and wait until its deletion eligibility time.");
+        }
+        checkRevision(new AuthorizedRoom(room.get(), member.get().role()), expectedRevision);
+        rooms.deletePermanently(roomId);
+    }
+
+    @Transactional
+    public int purgeEligible() {
+        var due = rooms.lockDeletionDue(clock.instant(), 100);
+        due.forEach(rooms::deletePermanently);
+        return due.size();
     }
 
     @Transactional

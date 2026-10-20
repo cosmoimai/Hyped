@@ -238,6 +238,56 @@ class RoomControllerTest {
                 .andExpect(jsonPath("$.code").value("ROOM_REVISION_REQUIRED"));
     }
 
+    @Test
+    void lifecycleEndpointsUseVerifiedJwtActorAndRevision() throws Exception {
+        mvc.perform(post("/api/v1/rooms/{id}/leave", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-4\""))
+                .andExpect(status().isNoContent());
+        org.mockito.Mockito.verify(service).leave(USER, ROOM, 4L);
+        when(service.restore(USER, ROOM, 4L)).thenReturn(room(MembershipRole.OWNER));
+        mvc.perform(post("/api/v1/rooms/{id}/restore", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-4\""))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"room-1\""))
+                .andExpect(jsonPath("$.status").value("ACTIVE"));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                        "/api/v1/rooms/{id}/permanent", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-4\""))
+                .andExpect(status().isNoContent());
+        org.mockito.Mockito.verify(service).deletePermanently(USER, ROOM, 4L);
+    }
+
+    @Test
+    void lifecycleRoutesRequireAuthenticationAndMapRecoveryConflicts() throws Exception {
+        mvc.perform(post("/api/v1/rooms/{id}/leave", ROOM.value())).andExpect(status().isUnauthorized());
+        mvc.perform(post("/api/v1/rooms/{id}/restore", ROOM.value())).andExpect(status().isUnauthorized());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                "/api/v1/rooms/{id}/permanent", ROOM.value())).andExpect(status().isUnauthorized());
+        when(service.restore(USER, ROOM, null)).thenThrow(new com.hyped.app.room.application.RoomOperationException(
+                com.hyped.app.room.application.RoomOperationException.Kind.CONFLICT, "ROOM_RECOVERY_EXPIRED",
+                "Recovery expired", "The room recovery period has ended."));
+        mvc.perform(post("/api/v1/rooms/{id}/restore", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("ROOM_RECOVERY_EXPIRED"));
+    }
+
+    @Test
+    void archiveAddsAuthoritativeRevisionAndServerTimeWithoutChangingItsEndpoint() throws Exception {
+        when(service.archive(USER, ROOM, 1L)).thenReturn(room(MembershipRole.OWNER));
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                        "/api/v1/rooms/{id}", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-1\""))
+                .andExpect(status().isAccepted())
+                .andExpect(header().string(HttpHeaders.ETAG, "\"room-1\""))
+                .andExpect(jsonPath("$.roomId").value(ROOM.toString()))
+                .andExpect(jsonPath("$.revision").value(1))
+                .andExpect(jsonPath("$.serverNow").value(NOW.toString()));
+    }
+
     private AuthorizedRoom room(MembershipRole role) {
         return new AuthorizedRoom(new Room(ROOM, USER, "Goa trip", Instant.parse("2030-12-20T04:30:00Z"),
                 "Asia/Kolkata", "North Goa", "Trip", RoomTheme.defaultTheme(ROOM, USER, NOW),

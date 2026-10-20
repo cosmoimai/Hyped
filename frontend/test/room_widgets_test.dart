@@ -80,6 +80,31 @@ void main() {
     expect(find.byTooltip('Edit room'), findsNothing);
   });
 
+  testWidgets(
+    'archived owner opening edit route sees archive state instead of an editable form',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            roomRepositoryProvider.overrideWith(
+              (ref) => repositoryWithDetail(
+                room().copyWith(
+                  status: RoomStatus.archived,
+                  archivedAt: DateTime.utc(2026),
+                  deleteAfter: DateTime.utc(2026, 1, 2),
+                ),
+              ),
+            ),
+          ],
+          child: const MaterialApp(home: EditRoomScreen(roomId: 'room-id')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Archived rooms cannot be edited.'), findsOneWidget);
+      expect(find.byType(TextFormField), findsNothing);
+    },
+  );
+
   testWidgets('create room flow validates missing title', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

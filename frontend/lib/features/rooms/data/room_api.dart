@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
 import 'package:dio/dio.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/domain/room_commands.dart';
@@ -87,6 +88,51 @@ class RoomApi {
         response.data!,
         etag: response.headers.value('etag'),
       );
+    } on DioException catch (error) {
+      throw RoomApiException.from(error);
+    }
+  }
+
+  Future<Room?> lifecycle(Room room, RoomLifecycleAction action) async {
+    final options = Options(
+      headers: {'If-Match': room.etag ?? '"room-${room.revision}"'},
+    );
+    final path = '/rooms/${room.id}';
+    try {
+      switch (action) {
+        case RoomLifecycleAction.leave:
+          await _dio.post<void>('$path/leave', options: options);
+          return null;
+        case RoomLifecycleAction.delete:
+          await _dio.delete<void>('$path/permanent', options: options);
+          return null;
+        case RoomLifecycleAction.restore:
+          final response = await _dio.post<Map<String, dynamic>>(
+            '$path/restore',
+            options: options,
+          );
+          return Room.fromJson(
+            response.data!,
+            etag: response.headers.value('etag'),
+          );
+        case RoomLifecycleAction.archive:
+          final response = await _dio.delete<Map<String, dynamic>>(
+            path,
+            options: options,
+          );
+          final data = response.data!;
+          final now = DateTime.parse(data['serverNow'] as String).toUtc();
+          return room.copyWith(
+            status: RoomStatus.archived,
+            archivedAt: DateTime.parse(data['archivedAt'] as String).toUtc(),
+            deleteAfter: DateTime.parse(data['deleteAfter'] as String).toUtc(),
+            revision: data['revision'] as int,
+            serverNow: now,
+            updatedAt: now,
+            etag:
+                response.headers.value('etag') ?? '"room-${data['revision']}"',
+          );
+      }
     } on DioException catch (error) {
       throw RoomApiException.from(error);
     }

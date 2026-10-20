@@ -241,7 +241,7 @@ void main() {
       );
       await controller.load();
       expect(controller.snapshot, isNull);
-      expect(widgets.states, ['r:unavailable']);
+      expect(widgets.states, ['r:removed']);
       controller.dispose();
     },
   );

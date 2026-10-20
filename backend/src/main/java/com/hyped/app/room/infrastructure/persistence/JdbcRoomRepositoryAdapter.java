@@ -102,7 +102,10 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
     @Override
     public List<AuthorizedRoom> findByUser(UserId userId, RoomStatus status, int limit) {
         String statusClause = status == null ? "" : " AND r.status = :status";
-        String order = status == RoomStatus.ARCHIVED
+        String order = status == null ? """
+                 ORDER BY CASE WHEN r.status = 'active' THEN 0 ELSE 1 END,
+                    CASE WHEN r.status = 'active' THEN r.event_at END ASC, r.archived_at DESC, r.id ASC
+                """ : status == RoomStatus.ARCHIVED
                 ? " ORDER BY r.archived_at DESC, r.id DESC" : " ORDER BY r.event_at ASC, r.id ASC";
         MapSqlParameterSource parameters = new MapSqlParameterSource("userId", userId.value())
                 .addValue("status", status == null ? null : database(status))
@@ -165,9 +168,43 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
     @Override
     public boolean archive(RoomId roomId, Instant archivedAt, Instant deleteAfter, Instant updatedAt) {
         return jdbc.update("""
-                UPDATE app.room SET status = 'archived', archived_at = ?, delete_after = ?, updated_at = ?
+                UPDATE app.room SET status = 'archived', archived_at = ?, delete_after = ?,
+                    revision = revision + 1, updated_at = ?
                 WHERE id = ? AND status = 'active'
                 """, timestamp(archivedAt), timestamp(deleteAfter), timestamp(updatedAt), roomId.value()) == 1;
+    }
+
+    @Override
+    public void restore(RoomId roomId, Instant now) {
+        jdbc.update("""
+                UPDATE app.room SET status = 'active', archived_at = NULL, delete_after = NULL,
+                    revision = revision + 1, updated_at = ? WHERE id = ?
+                """, timestamp(now), roomId.value());
+    }
+
+    @Override
+    public void cancelDeliveries(RoomId roomId, Instant now) {
+        jdbc.update("""
+                UPDATE app.reminder_delivery SET status = 'canceled', updated_at = ?
+                WHERE room_id = ? AND status IN ('pending', 'sending')
+                """, timestamp(now), roomId.value());
+    }
+
+    @Override
+    public void deletePermanently(RoomId roomId) {
+        // No media objects are supported by the current preset/gradient theme implementation.
+        // Clear encrypted replay snapshots explicitly: resource_id intentionally has no room FK.
+        jdbc.update("DELETE FROM ops.idempotency_record WHERE resource_id = ?", roomId.value());
+        jdbc.update("UPDATE app.room SET status = 'deleting' WHERE id = ? AND status = 'archived'", roomId.value());
+        jdbc.update("DELETE FROM app.room WHERE id = ? AND status = 'deleting'", roomId.value());
+    }
+
+    @Override
+    public List<RoomId> lockDeletionDue(Instant now, int limit) {
+        return jdbc.query("""
+                SELECT id FROM app.room WHERE status = 'archived' AND delete_after <= ?
+                ORDER BY delete_after, id LIMIT ? FOR UPDATE SKIP LOCKED
+                """, (rs, row) -> new RoomId(rs.getObject("id", java.util.UUID.class)), timestamp(now), limit);
     }
 
     @Override

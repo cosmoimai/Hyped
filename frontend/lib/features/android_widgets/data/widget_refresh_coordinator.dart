@@ -43,7 +43,6 @@ class WidgetRefreshCoordinator {
       return;
     } // Offline/timeouts keep the successful snapshot.
     final state = switch (error.statusCode) {
-      404 when error.code == 'ROOM_UNAVAILABLE' => 'unavailable',
       404 || 410 => 'removed',
       403 => 'unavailable',
       _ => null,
