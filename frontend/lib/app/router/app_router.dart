@@ -1,3 +1,4 @@
+import 'package:hyped/features/notifications/presentation/notification_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
@@ -45,6 +46,10 @@ GoRouter createRouter(
     GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
     GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
     GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
+    GoRoute(
+      path: '/notifications',
+      builder: (_, _) => const NotificationSettingsScreen(),
+    ),
     GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
     GoRoute(
       path: '/widgets/room',
@@ -91,7 +96,10 @@ GoRouter createRouter(
 );
 
 bool _isPrivatePath(String path) =>
-    path == '/home' || path.startsWith('/rooms') || path.startsWith('/widgets');
+    path == '/notifications' ||
+    path == '/home' ||
+    path.startsWith('/rooms') ||
+    path.startsWith('/widgets');
 
 bool _isInvitePath(String path) =>
     path == '/join' || path.startsWith('/join/') || path.startsWith('/invite/');

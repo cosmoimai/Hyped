@@ -53,7 +53,8 @@ public class JdbcRoomReminderRepository implements RoomReminderRepository {
                     SELECT rr.id
                     FROM app.room_reminder rr
                     JOIN app.room r ON r.id = rr.room_id
-                    WHERE rr.status = 'pending'
+                    WHERE (rr.status = 'pending'
+                        OR (rr.status = 'claimed' AND rr.claim_expires_at <= ?))
                         AND rr.scheduled_at <= ?
                         AND r.status = 'active'
                         AND r.event_at = rr.event_at
@@ -67,8 +68,8 @@ public class JdbcRoomReminderRepository implements RoomReminderRepository {
                 WHERE rr.id = due.id
                 RETURNING rr.id, rr.room_id, rr.kind, rr.event_at, rr.scheduled_at, rr.status, rr.claim_token,
                     rr.claimed_at, rr.claim_expires_at, rr.completed_at, rr.canceled_at, rr.created_at, rr.updated_at
-                """, this::map, timestamp(now), limit, claimToken, timestamp(now), timestamp(now.plus(lease)),
-                timestamp(now));
+                """, this::map, timestamp(now), timestamp(now), limit, claimToken, timestamp(now),
+                timestamp(now.plus(lease)), timestamp(now));
     }
 
     @Override

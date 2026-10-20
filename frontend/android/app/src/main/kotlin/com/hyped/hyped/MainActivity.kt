@@ -6,11 +6,13 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var pushBridge: AndroidPushBridge? = null
     private var widgetChannel: MethodChannel? = null
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        pushBridge?.opened(intent)
         HypedCountdownWidgetProvider.launchLocation(this, intent)?.let {
             widgetChannel?.invokeMethod("widgetTapped", it)
         }
@@ -18,6 +20,7 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        pushBridge = AndroidPushBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         widgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "hyped/android_widgets")
         widgetChannel!!.setMethodCallHandler { call, result ->
             try {
@@ -61,7 +64,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        if (pushBridge?.permissionResult(requestCode) != true) super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        pushBridge?.close()
+        pushBridge = null
         widgetChannel?.setMethodCallHandler(null)
         widgetChannel = null
         super.cleanUpFlutterEngine(flutterEngine)

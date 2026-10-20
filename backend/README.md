@@ -32,7 +32,7 @@ The public probes are:
 - `GET /actuator/health/liveness`
 - `GET /actuator/health/readiness`
 
-All other routes are denied until their authentication and authorization contracts are implemented.
+Only explicitly implemented authenticated routes are allowed by SecurityConfiguration. Enable the corresponding token, invitation and Android push configuration before using those features; all other routes remain denied.
 
 ## Firebase identity verification
 
@@ -43,7 +43,7 @@ Firebase app; no credentials belong in this repository or `application.yml`.
 
 Verification checks revocation and accepts only Google and Apple sign-in identities.
 `FIREBASE_IDENTITY_CLOCK_SKEW` defaults to `60s` and accepts zero to 300 whole seconds.
-This provides the verification boundary only; there is no authentication exchange endpoint yet.
+The authentication exchange/refresh endpoints reuse this verification boundary and the configured backend session-token and personal-data protection services.
 Firebase unit tests mock the SDK and do not contact Google.
 
 ## Package boundaries
@@ -59,3 +59,7 @@ feature/
 ```
 
 ArchUnit enforces the internal dependency direction. Cross-feature access must use an application facade/port or durable outbox event.
+
+## Android push reminders
+
+See [Android notification setup and delivery guarantees](../frontend/docs/android-notifications.md) for FCM, authenticated device registration, scheduler OIDC, fixed reminder preferences, privacy handling and live-device checks.

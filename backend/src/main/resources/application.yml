@@ -34,6 +34,10 @@ server:
   forward-headers-strategy: none
 
 hyped:
+  push:
+    enabled: ${ANDROID_PUSH_ENABLED:false}
+    scheduler-audience: ${PUSH_SCHEDULER_AUDIENCE:}
+    scheduler-email: ${PUSH_SCHEDULER_EMAIL:}
   invitation:
     enabled: ${INVITATION_ENABLED:false}
     # Production has no domain or key defaults. Supply independent keys from a secret manager.

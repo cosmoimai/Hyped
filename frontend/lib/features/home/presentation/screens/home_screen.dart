@@ -1,3 +1,4 @@
+import 'package:hyped/features/notifications/presentation/push_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,10 +11,17 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final rooms = ref.watch(roomListControllerProvider);
+    final push = ref.watch(pushControllerProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Hyped!'),
         actions: [
+          if (push.status.supported)
+            IconButton(
+              onPressed: () => context.go('/notifications'),
+              tooltip: 'Notifications',
+              icon: const Icon(Icons.notifications_outlined),
+            ),
           IconButton(
             onPressed: () => context.go('/widgets/room'),
             tooltip: 'Countdown widget',
@@ -26,6 +34,18 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
+      bottomNavigationBar: push.status.supported && !push.status.enabled
+          ? SafeArea(
+              child: ListTile(
+                title: const Text('Enable event reminders'),
+                subtitle: const Text(
+                  'Choose whether Hyped can send notifications.',
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.go('/notifications'),
+              ),
+            )
+          : null,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => context.go('/rooms/new'),
         icon: const Icon(Icons.add),

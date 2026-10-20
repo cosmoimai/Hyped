@@ -405,7 +405,18 @@ Rules:
 }
 ```
 
-The FCM token is sensitive, encrypted at rest, and never returned after registration.
+Android delivery implementation: PUT and DELETE return `204` with no token response. Both require the
+current authenticated session. `installationId` must equal the JWT `did` installation claim, and that
+session must own the active Android device. Ownership is derived solely from JWT `sub`/`sid`; unknown
+fields including `userId` are rejected. `platform` must be `ANDROID`; `appVersion` is required (1–64
+characters). FCM tokens are 1–4096 non-whitespace characters when enabled. `notificationsEnabled: false`
+allows a null token and clears registration; DELETE has the same clearing effect without ending login.
+
+The FCM token is sensitive, encrypted at rest with the existing per-user DEVICE_FCM_TOKEN cipher, and
+never returned after registration. Registration is bound to a session; token replacement, session/device
+revocation, account deactivation/deletion and expiry invalidate delivery eligibility. Reusing the same
+FCM token/installation on another account removes the previous binding. See
+[`android-notifications.md`](../frontend/docs/android-notifications.md) for setup and delivery guarantees.
 
 ### 9.4 Account deletion readiness
 
@@ -1037,6 +1048,23 @@ Data payload example:
 }
 ```
 
+Implemented Android event reminder data (no FCM `notification` object):
+
+```json
+{
+  "type": "EVENT_REMINDER",
+  "roomId": "019b1f33-e664-7ef4-985e-76b3ac298620",
+  "roomRevision": "5",
+  "notificationId": "019b1f74-b080-743e-847a-657122357f07",
+  "sessionId": "019b1f20-4152-7ce8-ae9e-b12b87fe8a31",
+  "reminderKind": "day_before"
+}
+```
+
+`reminderKind` is exactly `day_before`, `hour_before`, or `event_time`. Android checks the current
+session and permission, durably suppresses duplicate IDs and presents only generic text. The original
+ROOM_CHANGED example describes future invalidation work, not an implemented notification type.
+
 Rules:
 
 - Payloads contain no invite credential, description, member list, provider token, or media URL.
@@ -1055,7 +1083,16 @@ Internal routes are outside `/api/v1` and are not reachable with mobile access t
 | `GET` | `/actuator/health/liveness` | Cloud Run/platform | Process liveness |
 | `GET` | `/actuator/health/readiness` | Cloud Run/platform | Dependency readiness |
 
-The scheduler endpoint validates Google-signed OIDC audience and service-account identity. It returns counts and a correlation ID, never personal content.
+The implemented reminder tick validates Google-signed OIDC issuer, exact configured audience and verified
+scheduler service-account email in a security chain separate from mobile JWTs. It processes bounded
+batches and returns `{ "prepared": 0, "sent": 0, "failed": 0 }`, never tokens or personal content.
+It is enabled only by `ANDROID_PUSH_ENABLED`; configuration requires `PUSH_SCHEDULER_AUDIENCE` and
+`PUSH_SCHEDULER_EMAIL`. Cloud Scheduler invokes it every minute. Durable occurrence/device keys, claim
+leases, bounded retries and stable notification IDs prevent duplicate work/presentation; provider transport
+itself is not exactly-once. Membership, room state/event instant, preferences and session/device/account
+eligibility are rechecked before send. No catch-up is generated for reminder times already past on room
+creation or membership join. Setup and failure guarantees are documented in
+[`android-notifications.md`](../frontend/docs/android-notifications.md).
 
 ## 22. Cache behaviour
 

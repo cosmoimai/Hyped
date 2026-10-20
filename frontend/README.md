@@ -106,3 +106,7 @@ A production build must include its HTTPS endpoint explicitly:
 flutter build appbundle --release \
   --dart-define=HYPED_API_BASE_URL=https://api.example.com/api/v1
 ```
+
+## Android push reminders
+
+See [Android notification setup and delivery guarantees](docs/android-notifications.md) for FCM, authenticated device registration, scheduler OIDC, fixed reminder preferences, privacy handling and live-device checks.
