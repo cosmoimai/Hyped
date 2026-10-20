@@ -15,6 +15,11 @@ class HomeScreen extends ConsumerWidget {
         title: const Text('Hyped!'),
         actions: [
           IconButton(
+            onPressed: () => context.go('/widgets/room'),
+            tooltip: 'Countdown widget',
+            icon: const Icon(Icons.widgets_outlined),
+          ),
+          IconButton(
             onPressed: () => ref.read(authControllerProvider).logout(),
             tooltip: 'Sign out',
             icon: const Icon(Icons.logout),

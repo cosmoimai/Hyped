@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
 import 'package:hyped/features/authentication/presentation/screens/sign_in_screen.dart';
+import 'package:hyped/features/android_widgets/presentation/screens/room_widget_settings_screen.dart';
 import 'package:hyped/features/authentication/presentation/screens/splash_screen.dart';
 import 'package:hyped/features/home/presentation/screens/home_screen.dart';
 import 'package:hyped/features/invitations/domain/invitation.dart';
@@ -11,12 +12,16 @@ import 'package:hyped/features/invitations/presentation/screens/room_code_entry_
 import 'package:hyped/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/room_detail_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/room_form_screen.dart';
+import 'package:hyped/features/reminders/presentation/screens/reminder_settings_screen.dart';
 
 GoRouter createRouter(
   AuthController auth, [
   PendingInviteController? pending,
 ]) => GoRouter(
   initialLocation: '/splash',
+  // Router errors can contain the full URI, including invite credentials.
+  errorBuilder: (_, _) =>
+      const Scaffold(body: Center(child: Text('This page is unavailable.'))),
   refreshListenable: pending == null ? auth : Listenable.merge([auth, pending]),
   redirect: (context, state) {
     final status = auth.state.status;
@@ -41,6 +46,10 @@ GoRouter createRouter(
     GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
     GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
     GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+    GoRoute(
+      path: '/widgets/room',
+      builder: (_, _) => const RoomWidgetSettingsScreen(),
+    ),
     GoRoute(path: '/join', builder: (_, _) => const RoomCodeEntryScreen()),
     GoRoute(
       path: '/join/room-code/:code',
@@ -71,11 +80,16 @@ GoRouter createRouter(
       builder: (_, state) =>
           EditRoomScreen(roomId: state.pathParameters['roomId']!),
     ),
+    GoRoute(
+      path: '/rooms/:roomId/reminders',
+      builder: (_, state) =>
+          ReminderSettingsScreen(roomId: state.pathParameters['roomId']!),
+    ),
   ],
 );
 
 bool _isPrivatePath(String path) =>
-    path == '/home' || path.startsWith('/rooms');
+    path == '/home' || path.startsWith('/rooms') || path.startsWith('/widgets');
 
 bool _isInvitePath(String path) =>
     path == '/join' || path.startsWith('/join/') || path.startsWith('/invite/');

@@ -3,6 +3,7 @@ package com.hyped.app.room.application;
 import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.invitation.application.InvitationService;
 import com.hyped.app.reminder.application.RoomReminderService;
+import com.hyped.app.reminder.application.ReminderPreferencesService;
 import com.hyped.app.room.application.port.out.RoomRepository;
 import com.hyped.app.room.application.port.out.RoomRepository.AuthorizedRoom;
 import com.hyped.app.room.domain.MembershipRole;
@@ -36,13 +37,16 @@ public class RoomService {
     private final Clock clock;
     private final ObjectProvider<InvitationService> invitations;
     private final ObjectProvider<RoomReminderService> reminders;
+    private final ObjectProvider<ReminderPreferencesService> reminderPreferences;
 
     public RoomService(RoomRepository rooms, Clock clock, ObjectProvider<InvitationService> invitations,
-            ObjectProvider<RoomReminderService> reminders) {
+            ObjectProvider<RoomReminderService> reminders,
+            ObjectProvider<ReminderPreferencesService> reminderPreferences) {
         this.rooms = rooms;
         this.clock = clock;
         this.invitations = invitations;
         this.reminders = reminders;
+        this.reminderPreferences = reminderPreferences;
     }
 
     @Transactional
@@ -64,6 +68,7 @@ public class RoomService {
                 1, 1, null, null, now, now, theme);
         RoomMembership owner = new RoomMembership(room.id(), actor, MembershipRole.OWNER, now, now);
         rooms.create(room, owner);
+        reminderPreferences.ifAvailable(service -> service.createDefaults(room.id(), actor));
         reminders.ifAvailable(service -> service.replaceForEvent(room.id(), room.eventAt()));
         // Provision in this transaction when the invitation module is configured; failure rolls back the room.
         invitations.ifAvailable(service -> service.get(actor, room.id()));
@@ -182,6 +187,7 @@ public class RoomService {
         RoomMembership membership = new RoomMembership(roomId, userId, MembershipRole.MEMBER, now, now);
         rooms.addMembership(membership);
         rooms.incrementMemberCount(roomId, now);
+        reminderPreferences.ifAvailable(service -> service.createDefaults(roomId, userId));
         return membership;
     }
 

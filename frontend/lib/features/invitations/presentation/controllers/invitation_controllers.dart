@@ -27,6 +27,7 @@ class InviteFlowController extends ChangeNotifier {
   final PendingInviteIntent intent;
   bool _loading = false;
   bool _joining = false;
+  bool _disposed = false;
   String? _error;
   String? _message;
   InvitePreview? _preview;
@@ -40,6 +41,9 @@ class InviteFlowController extends ChangeNotifier {
   InviteJoinResult? get result => _result;
 
   Future<void> loadPreview() async {
+    if (_disposed || _loading || _joining) return;
+    _preview = null;
+    _result = null;
     _loading = true;
     _error = null;
     _message = null;
@@ -52,13 +56,13 @@ class InviteFlowController extends ChangeNotifier {
       _error = 'Could not load this invite. Please try again.';
     } finally {
       _loading = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
   }
 
   Future<InviteJoinResult?> join() async {
     final preview = _preview;
-    if (preview == null) return null;
+    if (_disposed || preview == null || _loading || _joining) return null;
     _joining = true;
     _error = null;
     _message = null;
@@ -79,8 +83,14 @@ class InviteFlowController extends ChangeNotifier {
       return null;
     } finally {
       _joining = false;
-      notifyListeners();
+      if (!_disposed) notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
 
