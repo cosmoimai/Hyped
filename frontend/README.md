@@ -118,3 +118,7 @@ See [room member management](docs/room-members.md) for permissions, confirmation
 ## Room lifecycle
 
 See [room lifecycle](docs/room-lifecycle.md) for leave/archive/restore/delete rules, confirmations, server-time eligibility and widget cleanup.
+
+## Android Profile and Settings
+
+See [Profile and Settings setup](docs/profile-settings.md) for profile/device contracts, theme persistence, account deletion, Firebase permissions and cleanup-job operations.

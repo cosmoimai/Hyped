@@ -13,9 +13,11 @@ class AuthRepository {
     IdentityProvider? identityProvider,
     this.widgets,
     this.notifications,
+    this.onLocalCleanup,
   ]) : _identityProvider = identityProvider;
   final RoomWidgetRepository? widgets;
   final NotificationPlatform? notifications;
+  final void Function()? onLocalCleanup;
   final AuthApi _api;
   final TokenStore _tokens;
   final DeviceMetadataProvider _metadata;
@@ -52,7 +54,8 @@ class AuthRepository {
   }
 
   Future<void> signIn(IdentityProvider provider) async {
-    // Clear even when switching directly between accounts, before any new requests.
+    // Existing credentials must not survive an account switch or a cancelled replacement sign-in.
+    if (await _tokens.read() != null) await clearLocalSession();
     await widgets?.clearProtectedContent();
     await notifications?.clearSession();
     try {
@@ -74,17 +77,44 @@ class AuthRepository {
 
   Future<void> logout() async {
     try {
-      await widgets?.clearProtectedContent();
-      await notifications?.clearSession();
+      try {
+        await widgets?.clearProtectedContent();
+      } catch (_) {}
+      try {
+        await notifications?.clearSession();
+      } catch (_) {}
       if (await _tokens.read() != null) await _api.logout();
     } finally {
-      try {
-        await _identityProvider?.signOut();
-      } finally {
-        _identityProvider = null;
-        await _tokens.clear();
+      await clearLocalSession();
+    }
+  }
+
+  Future<bool> clearLocalSession({String? expectedSessionId}) async {
+    if (expectedSessionId != null) {
+      final current = await _tokens.read();
+      if (current != null && current.sessionId != expectedSessionId) {
+        return false;
       }
     }
+    try {
+      try {
+        await widgets?.clearProtectedContent();
+      } catch (_) {}
+      try {
+        await notifications?.clearSession();
+      } catch (_) {}
+      try {
+        await _identityProvider?.signOut();
+      } catch (_) {}
+    } finally {
+      _identityProvider = null;
+      try {
+        await _tokens.clear();
+      } finally {
+        onLocalCleanup?.call();
+      }
+    }
+    return true;
   }
 }
 

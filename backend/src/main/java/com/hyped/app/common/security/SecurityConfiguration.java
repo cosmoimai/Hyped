@@ -75,6 +75,8 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/devices/*").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/devices/*").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/me", "/api/v1/me/deletion-readiness").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/me/deletion-requests").authenticated()
                         .anyRequest()
                         .denyAll())
                 .oauth2ResourceServer(resourceServer -> resourceServer

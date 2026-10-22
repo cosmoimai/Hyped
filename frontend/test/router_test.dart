@@ -37,6 +37,28 @@ void main() {
     expect(find.text('Welcome to Hyped!'), findsOneWidget);
   });
 
+  for (final location in ['/settings', '/settings/rooms']) {
+    testWidgets('signed-out $location redirects to sign-in', (tester) async {
+      final repository = MockRouterRepository();
+      when(
+        () => repository.restoreSession(any()),
+      ).thenAnswer((_) async => SessionRestoreResult.missing);
+      final auth = AuthController(repository);
+      await auth.initialize();
+      final router = createRouter(auth);
+      addTearDown(router.dispose);
+      router.go(location);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [authControllerProvider.overrideWith((ref) => auth)],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Welcome to Hyped!'), findsOneWidget);
+    });
+  }
+
   testWidgets('authenticated user is redirected to home', (tester) async {
     final repository = MockRouterRepository();
     when(

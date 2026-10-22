@@ -16,6 +16,11 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Hyped!'),
         actions: [
+          IconButton(
+            onPressed: () => context.go('/settings'),
+            tooltip: 'Profile and Settings',
+            icon: const Icon(Icons.person_outline),
+          ),
           if (push.status.supported)
             IconButton(
               onPressed: () => context.go('/notifications'),

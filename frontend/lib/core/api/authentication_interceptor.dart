@@ -10,11 +10,13 @@ class AuthenticationInterceptor extends Interceptor {
     this._tokens,
     this._refresher, {
     this.onAuthenticationFailed,
+    this.onAccountDeleted,
   });
   final Dio _dio;
   final TokenStore _tokens;
   final TokenRefresher _refresher;
   final void Function()? onAuthenticationFailed;
+  final void Function()? onAccountDeleted;
   Future<AuthTokens>? _refreshing;
 
   @override
@@ -48,7 +50,15 @@ class AuthenticationInterceptor extends Interceptor {
     final body = err.response?.data;
     final code = body is Map ? body['code'] : null;
     if (code == 'ACCOUNT_DELETED' || code == 'ACCOUNT_DELETION_PENDING') {
+      try {
+        onAccountDeleted?.call();
+      } catch (_) {}
       await _invalidate();
+      handler.next(err);
+      return;
+    }
+
+    if (code == 'RECENT_AUTHENTICATION_REQUIRED') {
       handler.next(err);
       return;
     }

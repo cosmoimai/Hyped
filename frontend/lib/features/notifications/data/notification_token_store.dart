@@ -15,10 +15,13 @@ class NotificationTokenStore implements TokenStore {
   @override
   Future<void> clear() async {
     try {
-      await platform.clearSession();
       try {
-        await platform.deleteToken();
-      } catch (_) {}
+        await platform.clearSession();
+      } finally {
+        try {
+          await platform.deleteToken();
+        } catch (_) {}
+      }
     } finally {
       await inner.clear();
     }

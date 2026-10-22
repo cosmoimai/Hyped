@@ -1,3 +1,4 @@
+import 'package:hyped/features/settings/data/theme_preference.dart';
 import 'dart:async';
 import 'package:hyped/features/notifications/presentation/push_providers.dart';
 import 'dart:io' show Platform;
@@ -97,7 +98,7 @@ class _HypedAppState extends ConsumerState<HypedApp>
       title: 'Hyped!',
       theme: HypedTheme.light,
       darkTheme: HypedTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(themeControllerProvider).mode,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );

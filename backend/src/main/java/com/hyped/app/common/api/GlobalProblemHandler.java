@@ -29,6 +29,13 @@ public class GlobalProblemHandler {
         this.problems = problems;
     }
 
+    @ExceptionHandler(com.hyped.app.account.application.AccountException.class)
+    ResponseEntity<ApiProblem> account(com.hyped.app.account.application.AccountException exception,
+            HttpServletRequest request) {
+        return response(request, HttpStatus.valueOf(exception.status()), exception.code(), "Account action unavailable",
+                exception.getMessage(), false, List.of(), List.of());
+    }
+
     @ExceptionHandler(ApiProblemException.class)
     ResponseEntity<ApiProblem> apiProblem(ApiProblemException exception, HttpServletRequest request) {
         return response(request, exception.status(), exception.code(), exception.title(),

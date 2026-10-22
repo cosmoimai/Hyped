@@ -1,3 +1,4 @@
+import 'package:hyped/features/settings/presentation/settings_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/room_lifecycle_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/member_screen.dart';
 import 'package:hyped/features/notifications/presentation/notification_settings_screen.dart';
@@ -51,6 +52,11 @@ GoRouter createRouter(
     GoRoute(
       path: '/notifications',
       builder: (_, _) => const NotificationSettingsScreen(),
+    ),
+    GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+    GoRoute(
+      path: '/settings/rooms',
+      builder: (_, _) => const RoomNotificationChoicesScreen(),
     ),
     GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
     GoRoute(
@@ -108,6 +114,7 @@ GoRouter createRouter(
 );
 
 bool _isPrivatePath(String path) =>
+    path.startsWith('/settings') ||
     path == '/notifications' ||
     path == '/home' ||
     path.startsWith('/rooms') ||
