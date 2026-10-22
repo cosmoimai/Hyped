@@ -39,6 +39,7 @@ final roomDetailControllerProvider =
     });
 
 final roomCreationControllerProvider =
-    ChangeNotifierProvider<RoomCreationController>(
-      (ref) => RoomCreationController(ref.read(roomRepositoryProvider)),
-    );
+    ChangeNotifierProvider<RoomCreationController>((ref) {
+      ref.watch(authControllerProvider.select((auth) => auth.state.status));
+      return RoomCreationController(ref.read(roomRepositoryProvider));
+    });

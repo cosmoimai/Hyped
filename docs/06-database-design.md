@@ -608,6 +608,16 @@ Within 24 hours, an idempotent deletion worker:
 8. Removes raw analytics actor linkage through key rotation/deletion rules.
 9. Marks the minimal account tombstone deleted until backup restore safety no longer requires it.
 
+### 13.2.1 Implemented deletion job
+
+Flyway V12 adds `ops.account_deletion_job`, keyed by authenticated user UUID, with encrypted verified Firebase UID, `firebase_deleted` checkpoint, claim token, lease expiry, available time and creation time. The UID uses the existing per-user cipher under `ACCOUNT_DELETION_FIREBASE_UID`; authentication proofs and refresh credentials never enter this queue.
+
+The acceptance transaction locks the user and rechecks no ownership/membership (including archived rooms), sets `deletion_pending`, revokes sessions/refresh credentials and invalidates device/push registrations. A unique job makes repeated/concurrent acceptance safe; the account remains unavailable once committed. The first cleanup attempt runs immediately after commit. The existing protected job tick claims up to 20 due users with five-minute leases; failures retry after one minute, ordered by availability so a failing old job does not starve newly due work.
+
+Cleanup deletes the verified Firebase user, commits the Firebase-deleted checkpoint, destroys the external user key and transactionally removes personal rows. Checkpointing before key destruction allows database cleanup to resume after a crash without decrypting the already destroyed UID. Already missing Firebase users and already destroyed keys are idempotent success. Jobs are removed only after personal cleanup commits. Minimal non-identifying user UUID/timestamps may remain as a tombstone while shared-room author FKs or backup restore safety require it; no provider subject, email, device, token, profile or key-reference data remains there.
+
+The documented 24-hour purge deadline is operationally enforced through continuous scheduler execution and alerts/remediation on job creation age. External cleanup failures retain disabled pending jobs and must not be represented as completed deletion. No recovery period is introduced. Current schema has no remote profile media, moderation or raw analytics rows; future modules must extend this same deletion workflow before storing those data.
+
 ### 13.3 Backup semantics
 
 Existing encrypted backup files are not rewritten for each deletion. Instead:

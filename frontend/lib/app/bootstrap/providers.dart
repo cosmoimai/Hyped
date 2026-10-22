@@ -1,3 +1,5 @@
+import 'package:flutter/painting.dart';
+import 'package:hyped/features/invitations/presentation/controllers/invitation_providers.dart';
 import 'package:hyped/features/notifications/data/notification_platform.dart';
 import 'package:hyped/features/notifications/data/notification_token_store.dart';
 import 'package:device_info_plus/device_info_plus.dart';
@@ -39,10 +41,14 @@ final sessionInvalidationProvider = Provider<SessionInvalidationSignal>(
   (ref) => SessionInvalidationSignal(),
 );
 
+final googleAccountSelectorProvider = Provider<GoogleAccountSelector>(
+  (ref) => DefaultGoogleAccountSelector(GoogleSignIn.instance),
+);
+
 final googleIdentityProviderProvider = Provider<GoogleIdentityProvider>(
   (ref) => GoogleIdentityProvider(
     DefaultFirebaseBootstrap(),
-    DefaultGoogleAccountSelector(GoogleSignIn.instance),
+    ref.read(googleAccountSelectorProvider),
     DefaultFirebaseCredentialAuthenticator(),
   ),
 );
@@ -72,6 +78,11 @@ final authenticatedDioProvider = Provider<Dio>((ref) {
       ref.read(tokenStoreProvider),
       refresher,
       onAuthenticationFailed: ref.read(sessionInvalidationProvider).invalidate,
+      onAccountDeleted: () {
+        ref.read(pendingInviteControllerProvider).clear();
+        imageCache.clear();
+        imageCache.clearLiveImages();
+      },
     ),
   );
   return dio;
@@ -92,6 +103,11 @@ final authRepositoryProvider = Provider<AuthRepository>(
     ref.read(googleIdentityProviderProvider),
     ref.read(roomWidgetRepositoryProvider),
     ref.read(notificationPlatformProvider),
+    () {
+      ref.read(pendingInviteControllerProvider).clear();
+      imageCache.clear();
+      imageCache.clearLiveImages();
+    },
   ),
 );
 

@@ -216,6 +216,8 @@ final class KmsFirestorePersonalDataProtectionAdapter implements PersonalDataKey
                 case USER_PROFILE_PROVIDER_PHOTO_URL ->
                         new FieldLocation("app.user_profile", "provider_photo_url_ciphertext");
                 case DEVICE_FCM_TOKEN -> new FieldLocation("app.device_registration", "fcm_token_ciphertext");
+                case ACCOUNT_DELETION_FIREBASE_UID ->
+                        new FieldLocation("ops.account_deletion_job", "firebase_uid_ciphertext");
                 case REPORT_DETAILS -> new FieldLocation("app.report", "details_ciphertext");
             };
         }

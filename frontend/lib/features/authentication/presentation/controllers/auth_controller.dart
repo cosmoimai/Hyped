@@ -93,6 +93,16 @@ class AuthController extends ChangeNotifier {
     _set(const AuthState(AuthStatus.signedOut));
   }
 
+  Future<void> clearLocalSession({String? expectedSessionId}) async {
+    var cleared = true;
+    try {
+      cleared = await _repository.clearLocalSession(
+        expectedSessionId: expectedSessionId,
+      );
+    } catch (_) {}
+    if (cleared) _set(const AuthState(AuthStatus.signedOut));
+  }
+
   void retry() => _set(const AuthState(AuthStatus.signedOut));
 
   void reportSignInFailure() => _set(

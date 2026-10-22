@@ -1,7 +1,7 @@
 package com.hyped.app.notification.infrastructure;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -18,7 +18,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
-@ConditionalOnProperty(prefix = "hyped.push", name = "enabled", havingValue = "true")
+@ConditionalOnExpression("${hyped.push.enabled:false} || ${hyped.account-deletion.enabled:false}")
 public class PushWorkerSecurity {
     @Bean
     @Order(0)

@@ -360,10 +360,7 @@ Rules:
 {
   "id": "019b1f20-4152-7ce8-ae9e-b12b87fe8a31",
   "displayName": "Aarav",
-  "photo": {
-    "mediaAssetId": "019b1f2b-d5e2-7d46-9165-a37ed59d6080",
-    "url": "<short-lived-authorized-url>"
-  },
+  "photo": null,
   "profileRevision": 3,
   "limits": {
     "activeDevices": 2,
@@ -375,6 +372,8 @@ Rules:
   }
 }
 ```
+
+The implemented read contract returns the fields above with `photo: null` (Flutter uses initials), `Cache-Control: private, no-store`, and live device/active-room counts. Provider-photo URLs, provider subjects, security state and session/refresh credentials are excluded. The JWT's verified subject/session/installation must identify an unrevoked, unexpired session on an active registration; otherwise `401 SESSION_EXPIRED` applies. Profile editing/media remains governed by its separate contract.
 
 ### 9.2 Edit profile
 
@@ -462,6 +461,20 @@ Errors:
 - Owned rooms remain: `409 OWNERSHIP_TRANSFER_REQUIRED`.
 - Joined rooms remain: `409 ROOMS_MUST_BE_LEFT`.
 - Recent authentication invalid: `401 RECENT_AUTHENTICATION_REQUIRED`.
+
+Implementation and retry rules:
+
+- Readiness includes all owned rooms and joined memberships, including archived rooms. The deletion transaction locks the account before rechecking these blockers, matching join/ownership-transfer account-first ordering. No implicit room deletion or membership changes are performed.
+- The client reauthenticates the current Firebase user and sends only `recentFirebaseIdToken`; unknown ownership/UID fields are rejected. The backend requires verified `auth_time` within five minutes (inclusive), no future authentication time, and the exact provider-subject HMAC mapped to the JWT owner. Refreshing a token alone does not prove recent login. Invalid/stale/mismatched proof returns `401 RECENT_AUTHENTICATION_REQUIRED`; verification outage returns a safe dependency failure.
+- Flutter supplies a fresh UUID `Idempotency-Key`. Irreversibility/idempotence is enforced by account status and a single durable job per user, without retaining authentication proof in a response replay. Once accepted, subsequent authenticated calls return the existing `ACCOUNT_DELETION_PENDING`/`ACCOUNT_DELETED` denial; the client treats those during deletion as already accepted and clears local state. Acceptance always returns the pending envelope even when immediate cleanup has completed.
+- Acceptance atomically sets `deletion_pending`, revokes all sessions/refresh credentials and invalidates all device/push registrations before any external deletion. There is no recovery/cancel endpoint. Failure before this commit leaves the account unchanged; failures afterward cannot roll back acceptance.
+- A verified Firebase UID is encrypted with the existing external per-user key and distinct deletion-job cipher context. The backend deletes the Firebase user, checkpoints success durably, destroys the per-user key and purges personal rows. This is not deletion of the underlying Google account. A crash after key destruction resumes from the checkpoint without trying to decrypt the destroyed UID.
+- `ACCOUNT_DELETION_ENABLED` defaults false; readiness/request fail with `503 ACCOUNT_DELETION_UNAVAILABLE` before acceptance until enabled. Configure the protected scheduler and Firebase permissions first. This flag enables the shared OIDC worker independently of the Android push flag.
+- The existing protected `POST /internal/jobs/tick` additionally claims at most 20 due deletion jobs with five-minute leases. Failures retry after one minute without exposing provider exceptions or identifiers. Operators must schedule this tick and monitor/remediate overdue jobs to meet `purgeBy`; external outages remain disabled pending jobs, never false completion. Its existing reminder-counter response is unchanged.
+- Successful cleanup removes device/session/refresh data, identity/profile ciphertext, personal reminder preferences and private replay snapshots. Only a minimal non-identifying account tombstone remains for seven-day backup restore safety and shared-room foreign keys. The destroyed-key journal remains outside database backups. This implementation has no profile-media, moderation or analytics tables requiring additional external cleanup.
+- Flutter clears auth tokens, SDK sign-in state, FCM registration state, widget content/selections, private account/room/image caches and pending invites after acceptance or explicit logout. Opaque session IDs are used only for API revocation, never displayed. Pre-acceptance deletion failures retain the current session and allow retry.
+
+Setup, IAM permissions and operational monitoring are documented in [Android Profile and Settings](../frontend/docs/profile-settings.md).
 
 ### 9.6 Policy status and acceptance
 

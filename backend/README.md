@@ -63,3 +63,7 @@ ArchUnit enforces the internal dependency direction. Cross-feature access must u
 ## Android push reminders
 
 See [Android notification setup and delivery guarantees](../frontend/docs/android-notifications.md) for FCM, authenticated device registration, scheduler OIDC, fixed reminder preferences, privacy handling and live-device checks.
+
+## Android Profile and Settings
+
+See [Profile and Settings setup](../frontend/docs/profile-settings.md) for profile/device contracts, theme persistence, account deletion, Firebase permissions and cleanup-job operations.
