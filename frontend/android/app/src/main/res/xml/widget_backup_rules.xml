@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
     <exclude domain="sharedpref" path="hyped_countdown_widgets.xml" />
+        <exclude domain="file" path="hyped_room_cache.sqlite" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-journal" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-wal" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-shm" />
     <exclude domain="sharedpref" path="hyped_notifications.xml" />
 </full-backup-content>

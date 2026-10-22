@@ -1,3 +1,4 @@
+import 'package:hyped/core/offline/offline_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
 import 'package:hyped/features/android_widgets/data/widget_refresh_coordinator.dart';
@@ -111,6 +112,7 @@ class MemberController extends ChangeNotifier {
 }
 
 String memberErrorMessage(RoomApiException error) => switch (error.code) {
+  'OFFLINE_READ_ONLY' => offlineReadOnlyMessage,
   'ROOM_REVISION_MISMATCH' || 'ROOM_REVISION_REQUIRED' =>
     'This room changed. Reload members before trying again.',
   'ROOM_ARCHIVED' => 'Archived rooms cannot be changed.',

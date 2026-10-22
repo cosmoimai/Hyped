@@ -1,3 +1,5 @@
+import 'package:hyped/features/rooms/data/cache/cache_providers.dart';
+import 'package:hyped/features/rooms/data/cache/cached_room_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:hyped/app/bootstrap/providers.dart';
@@ -11,23 +13,26 @@ final roomApiProvider = Provider<RoomApi>(
 );
 
 final roomRepositoryProvider = Provider<RoomRepository>(
-  (ref) => RoomRepository(ref.read(roomApiProvider)),
+  (ref) => CachedRoomRepository(
+    ref.read(roomApiProvider),
+    ref.read(roomCacheSessionProvider),
+    ref.read(tokenStoreProvider),
+  ),
 );
 
-final roomListControllerProvider = ChangeNotifierProvider<RoomListController>((
-  ref,
-) {
-  ref.watch(authControllerProvider.select((auth) => auth.state.status));
-  final controller = RoomListController(
-    ref.read(roomRepositoryProvider),
-    ref.read(roomWidgetRepositoryProvider),
-  );
-  controller.load();
-  return controller;
-});
+final roomListControllerProvider =
+    ChangeNotifierProvider.autoDispose<RoomListController>((ref) {
+      ref.watch(authControllerProvider.select((auth) => auth.state.status));
+      final controller = RoomListController(
+        ref.read(roomRepositoryProvider),
+        ref.read(roomWidgetRepositoryProvider),
+      );
+      controller.load();
+      return controller;
+    });
 
-final roomDetailControllerProvider =
-    ChangeNotifierProvider.family<RoomDetailController, String>((ref, roomId) {
+final roomDetailControllerProvider = ChangeNotifierProvider.autoDispose
+    .family<RoomDetailController, String>((ref, roomId) {
       ref.watch(authControllerProvider.select((auth) => auth.state.status));
       final controller = RoomDetailController(
         ref.read(roomRepositoryProvider),

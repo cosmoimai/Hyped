@@ -1085,3 +1085,12 @@ These belong to later security, testing, or deployment work:
 - [ ] go_router preserves safe invite intent through authentication.
 - [ ] Widgets receive minimal atomic snapshots and safe unavailable states.
 - [ ] Backend, Flutter, database, provider, and contract tests cover critical flows.
+
+
+## Android offline room projections
+
+The implemented Flutter room cache is a read-only Drift/SQLite projection, version 1, with account/room composite keys and separate list synchronization metadata. A verified exchange or authenticated `/me` establishes the secure session/account binding; the database never stores authentication or invite credentials. Controllers publish cached active rooms before foreground refresh, label them read-only with their last successful sync, and replace them only from authoritative server responses. Archived/deleted/inaccessible rooms are evicted. Widgets receive successful live responses, never cache reads disguised as new syncs.
+
+Credential deletion clears protected rows and the secure binding through the token-store decorator chain. An epoch-fenced serial cache scope prevents late requests from resurrecting logged-out/account-switched data. Known-offline authenticated mutations are rejected before dispatch; there is no offline write queue. Cached room reads remain available to a valid authenticated session during a connectivity failure of the consent-status read, without granting consent or write permissions.
+
+Schema mismatches rebuild this disposable projection, with an exported schema and SQLite tests. Android backup/transfer excludes the database and sidecars. See [the implementation/setup guide](../frontend/docs/offline-room-cache.md) for the field allowlist, capped-list eviction semantics, cleanup limits and generation commands.

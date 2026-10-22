@@ -124,3 +124,5 @@ See [room lifecycle](docs/room-lifecycle.md) for leave/archive/restore/delete ru
 See [Profile and Settings setup](docs/profile-settings.md) for profile/device contracts, theme persistence, account deletion, Firebase permissions and cleanup-job operations.
 
 Android onboarding and versioned legal consent: [setup and publication](docs/onboarding-consent.md).
+
+Android Drift room cache: [architecture, cleanup and generation](docs/offline-room-cache.md).

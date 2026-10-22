@@ -37,7 +37,7 @@ class RoomWidgetData {
         presetKey: safePresets.contains(room.theme.presetKey)
             ? room.theme.presetKey
             : 'soft-blue-01',
-        syncedAt: syncedAt ?? room.serverNow,
+        syncedAt: syncedAt ?? room.lastSyncedAt ?? room.serverNow,
         state: switch (room.status) {
           RoomStatus.active => 'active',
           RoomStatus.archived => 'archived',

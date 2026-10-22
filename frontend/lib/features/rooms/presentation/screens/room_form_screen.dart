@@ -83,6 +83,16 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
         body: Center(child: Text(controller.error ?? 'Room unavailable.')),
       );
     }
+    if (controller.readOnly) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit room')),
+        body: const Center(
+          child: Text(
+            'Cached rooms are read-only. Refresh the room when connected before editing.',
+          ),
+        ),
+      );
+    }
     if (!room.canEdit) {
       return Scaffold(
         appBar: AppBar(title: const Text('Edit room')),

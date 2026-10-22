@@ -1,3 +1,7 @@
+import 'package:hyped/features/rooms/data/cache/cache_providers.dart';
+import 'package:hyped/features/rooms/data/cache/cache_token_store.dart';
+import 'package:hyped/features/rooms/data/cache/cache_invalidation_interceptor.dart';
+import 'package:hyped/core/offline/offline_state.dart';
 import 'package:hyped/features/policy/presentation/policy_providers.dart';
 import 'package:flutter/painting.dart';
 import 'package:hyped/features/invitations/presentation/controllers/invitation_providers.dart';
@@ -22,19 +26,22 @@ import 'package:hyped/features/authentication/domain/identity_provider.dart';
 import 'package:hyped/features/authentication/presentation/controllers/auth_controller.dart';
 
 final tokenStoreProvider = Provider<TokenStore>(
-  (ref) => NotificationTokenStore(
-    WidgetTokenStore(
-      SecureTokenStore(
-        const FlutterSecureStorage(
-          aOptions: AndroidOptions(),
-          iOptions: IOSOptions(
-            accessibility: KeychainAccessibility.first_unlock_this_device,
+  (ref) => CacheTokenStore(
+    NotificationTokenStore(
+      WidgetTokenStore(
+        SecureTokenStore(
+          const FlutterSecureStorage(
+            aOptions: AndroidOptions(),
+            iOptions: IOSOptions(
+              accessibility: KeychainAccessibility.first_unlock_this_device,
+            ),
           ),
         ),
+        ref.read(roomWidgetRepositoryProvider),
       ),
-      ref.read(roomWidgetRepositoryProvider),
+      ref.read(notificationPlatformProvider),
     ),
-    ref.read(notificationPlatformProvider),
+    ref.read(roomCacheSessionProvider),
   ),
 );
 
@@ -88,6 +95,10 @@ final authenticatedDioProvider = Provider<Dio>((ref) {
       },
     ),
   );
+  dio.interceptors.add(OfflineWriteInterceptor(ref.read(offlineStateProvider)));
+  dio.interceptors.add(
+    CacheInvalidationInterceptor(ref.read(roomCacheSessionProvider)),
+  );
   return dio;
 });
 
@@ -111,6 +122,7 @@ final authRepositoryProvider = Provider<AuthRepository>(
       imageCache.clear();
       imageCache.clearLiveImages();
     },
+    ref.read(roomCacheSessionProvider),
   ),
 );
 

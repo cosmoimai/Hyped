@@ -12,7 +12,11 @@ class WidgetRefreshCoordinator {
     int epoch,
   ) async {
     final target = widgets;
-    if (target == null || epoch != target.sessionEpoch) return;
+    if (target == null ||
+        epoch != target.sessionEpoch ||
+        rooms.any((room) => room.isCached)) {
+      return;
+    }
     try {
       await target.cacheRooms(rooms, epoch: epoch);
       final selected = await target.instances();
@@ -33,6 +37,7 @@ class WidgetRefreshCoordinator {
   }
 
   Future<void> afterDetail(Room room, int epoch) async {
+    if (room.isCached) return;
     try {
       await widgets?.cacheRoom(room, epoch: epoch);
     } catch (_) {}

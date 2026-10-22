@@ -2,10 +2,18 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="sharedpref" path="hyped_countdown_widgets.xml" />
+        <exclude domain="file" path="hyped_room_cache.sqlite" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-journal" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-wal" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-shm" />
         <exclude domain="sharedpref" path="hyped_notifications.xml" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="sharedpref" path="hyped_countdown_widgets.xml" />
+        <exclude domain="file" path="hyped_room_cache.sqlite" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-journal" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-wal" />
+        <exclude domain="file" path="hyped_room_cache.sqlite-shm" />
         <exclude domain="sharedpref" path="hyped_notifications.xml" />
     </device-transfer>
 </data-extraction-rules>

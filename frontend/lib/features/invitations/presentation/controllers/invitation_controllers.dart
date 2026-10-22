@@ -1,3 +1,4 @@
+import 'package:hyped/core/offline/offline_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/invitations/data/invitation_api.dart';
 import 'package:hyped/features/invitations/data/invitation_repository.dart';
@@ -101,6 +102,7 @@ String _previewMessage(InvitationApiException error) => switch (error.code) {
 };
 
 String _joinMessage(InvitationApiException error) => switch (error.code) {
+  'OFFLINE_READ_ONLY' => offlineReadOnlyMessage,
   'CURRENT_POLICY_ACCEPTANCE_REQUIRED' =>
     'Review the current legal documents before joining.',
   'INVITATION_INVALID' => 'This invite is invalid, expired, or was rotated.',

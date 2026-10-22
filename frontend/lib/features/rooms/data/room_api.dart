@@ -1,3 +1,4 @@
+import 'package:hyped/core/offline/offline_state.dart';
 import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
 import 'package:dio/dio.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
@@ -9,16 +10,24 @@ class RoomApi {
 
   final Dio _dio;
 
-  Future<List<Room>> listRooms({RoomStatus? status, int limit = 20}) async {
+  Future<List<Room>> listRooms({
+    RoomStatus? status,
+    int limit = 20,
+    String? sessionId,
+  }) async {
     try {
       final response = await _dio.get<Map<String, dynamic>>(
         '/rooms',
+        options: Options(extra: {'expectedSessionId': ?sessionId}),
         queryParameters: {
           if (status != null) 'status': status.wire,
           'limit': limit,
         },
       );
-      final items = response.data?['items'] as List<dynamic>? ?? const [];
+      final items = response.data?['items'];
+      if (items is! List || items.any((item) => item is! Map)) {
+        throw const FormatException('Invalid room list.');
+      }
       return items
           .whereType<Map>()
           .map((item) => Room.fromJson(Map<String, dynamic>.from(item)))
@@ -28,13 +37,28 @@ class RoomApi {
     }
   }
 
-  Future<Room> getRoom(String roomId) async {
+  Future<Room> getRoom(String roomId, [String? sessionId]) async {
     try {
-      final response = await _dio.get<Map<String, dynamic>>('/rooms/$roomId');
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/rooms/$roomId',
+        options: Options(extra: {'expectedSessionId': ?sessionId}),
+      );
       return Room.fromJson(
         response.data!,
         etag: response.headers.value('etag'),
       );
+    } on DioException catch (error) {
+      throw RoomApiException.from(error);
+    }
+  }
+
+  Future<String> accountId(String sessionId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '/me',
+        options: Options(extra: {'expectedSessionId': sessionId}),
+      );
+      return response.data!['id'] as String;
     } on DioException catch (error) {
       throw RoomApiException.from(error);
     }
@@ -172,7 +196,10 @@ class RoomApiException implements Exception {
     final data = error.response?.data;
     String? code;
     if (data is Map<String, dynamic>) code = data['code'] as String?;
-    return RoomApiException(code: code, statusCode: error.response?.statusCode);
+    return RoomApiException(
+      code: code ?? (isTransportFailure(error) ? 'OFFLINE_READ_ONLY' : null),
+      statusCode: error.response?.statusCode,
+    );
   }
 
   @override
