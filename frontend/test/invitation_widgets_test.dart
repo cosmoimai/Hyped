@@ -1,3 +1,5 @@
+import 'package:hyped/features/policy/presentation/policy_controller.dart';
+import 'package:hyped/features/policy/presentation/policy_providers.dart';
 import 'dart:async';
 
 import 'package:dio/dio.dart';
@@ -20,6 +22,14 @@ import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/presentation/controllers/room_providers.dart';
 import 'package:mocktail/mocktail.dart';
+
+class _MockPolicyController extends Mock implements PolicyController {}
+
+PolicyController _acceptedPolicy() {
+  final controller = _MockPolicyController();
+  when(() => controller.accepted).thenReturn(true);
+  return controller;
+}
 
 class _MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -53,6 +63,7 @@ void main() {
         await tester.pumpWidget(
           ProviderScope(
             overrides: [
+              policyControllerProvider.overrideWith((_) => _acceptedPolicy()),
               authControllerProvider.overrideWith((ref) => auth),
               pendingInviteControllerProvider.overrideWith((ref) => pending),
               invitationRepositoryProvider.overrideWith(
@@ -150,6 +161,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          policyControllerProvider.overrideWith((_) => _acceptedPolicy()),
           authControllerProvider.overrideWith((ref) => auth),
           pendingInviteControllerProvider.overrideWith((ref) => pending),
           invitationRepositoryProvider.overrideWith(
@@ -176,6 +188,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
+            policyControllerProvider.overrideWith((_) => _acceptedPolicy()),
             authControllerProvider.overrideWith((ref) => auth),
             pendingInviteControllerProvider.overrideWith((ref) => pending),
             invitationRepositoryProvider.overrideWith(
@@ -214,6 +227,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          policyControllerProvider.overrideWith((_) => _acceptedPolicy()),
           authControllerProvider.overrideWith((ref) => auth),
           pendingInviteControllerProvider.overrideWith((ref) => pending),
           invitationRepositoryProvider.overrideWith(
@@ -241,6 +255,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          policyControllerProvider.overrideWith((_) => _acceptedPolicy()),
           authControllerProvider.overrideWith((ref) => auth),
           pendingInviteControllerProvider.overrideWith((ref) => pending),
           invitationRepositoryProvider.overrideWith(
@@ -274,6 +289,7 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          policyControllerProvider.overrideWith((_) => _acceptedPolicy()),
           authControllerProvider.overrideWith((ref) => auth),
           pendingInviteControllerProvider.overrideWith((ref) => pending),
           invitationRepositoryProvider.overrideWith(

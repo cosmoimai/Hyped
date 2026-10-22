@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @ConditionalOnProperty(prefix = "hyped.invitation", name = "enabled", havingValue = "true")
 public class JoinRoomService {
+    private final com.hyped.app.policy.application.PolicyService policies;
     private final RoomRepository rooms;
     private final InvitationRepository invitations;
     private final PreviewReferenceService references;
@@ -31,7 +32,9 @@ public class JoinRoomService {
     private final Clock clock;
 
     public JoinRoomService(RoomRepository rooms, InvitationRepository invitations, PreviewReferenceService references,
-            InvitationGuard guard, InvitationReplayService replays, Clock clock) {
+            InvitationGuard guard, InvitationReplayService replays, Clock clock,
+            com.hyped.app.policy.application.PolicyService policies) {
+        this.policies = policies;
         this.rooms = rooms;
         this.invitations = invitations;
         this.references = references;
@@ -50,6 +53,7 @@ public class JoinRoomService {
         String operation = roomCode ? "join-code" : "join-link";
         replays.claim(actor, operation, key);
         guard.lockActor(actor);
+        policies.requireCurrent(actor);
         var replay = replays.find(actor, operation, key, value, JoinResult.class);
         CheckedJoin checked;
         try {

@@ -108,6 +108,7 @@ class PushDeliveryIntegrationTest {
                         .substring(7).getBytes(StandardCharsets.UTF_8));
         when(sender.send(anyString(), any())).thenReturn(PushSender.Outcome.SENT);
         clearInvocations(sender);
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, user);
         room = rooms.create(new com.hyped.app.identity.domain.UserId(user), new RoomService.CreateRoomCommand(
                 "Private title", LocalDate.of(2030, 12, 20), LocalTime.of(10, 0), "UTC", null, null)).room().id();
         registrations.register(user, session, installation, "token-one", true);
@@ -121,6 +122,7 @@ class PushDeliveryIntegrationTest {
         jdbc.update("""
                 INSERT INTO app.app_user(id,status,created_at,updated_at) VALUES (?,'active',?,?)
                 """, next, java.sql.Timestamp.from(clock.now), java.sql.Timestamp.from(clock.now));
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, next);
         var newOwner = new com.hyped.app.identity.domain.UserId(next);
         rooms.addMember(room, newOwner);
         rooms.transfer(oldOwner, room, newOwner);

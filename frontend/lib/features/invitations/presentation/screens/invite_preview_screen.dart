@@ -1,3 +1,4 @@
+import 'package:hyped/features/policy/presentation/policy_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -63,6 +64,12 @@ class _InviteContent extends ConsumerWidget {
       context.go('/sign-in');
       return;
     }
+    if (!ref.read(policyControllerProvider).accepted) {
+      ref.read(pendingInviteControllerProvider).remember(intent);
+      context.go('/policy-acceptance');
+      return;
+    }
+    ref.read(pendingInviteControllerProvider).remember(intent);
     final result = await flow.join();
     if (!context.mounted || result == null) return;
     if (result.created) {
@@ -155,6 +162,14 @@ class _InviteContent extends ConsumerWidget {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Text(authenticated ? 'Join room' : 'Sign in to join'),
+          ),
+        if (!authenticated)
+          TextButton(
+            onPressed: () {
+              ref.read(pendingInviteControllerProvider).remember(intent);
+              context.go('/onboarding');
+            },
+            child: const Text('Try the countdown demo'),
           ),
         TextButton(
           onPressed: flow.loading || flow.joining ? null : flow.loadPreview,

@@ -39,6 +39,7 @@ public class SecurityConfiguration {
                         .permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
+                                "/api/v1/public/policies", "/api/v1/public/legal/*/*",
                                 "/api/v1/system/health",
                                 "/actuator/health",
                                 "/actuator/health/**")
@@ -75,6 +76,8 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/devices/*").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/devices/*").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/me/policy-status").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/me/policy-acceptances").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/me", "/api/v1/me/deletion-readiness").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/me/deletion-requests").authenticated()
                         .anyRequest()

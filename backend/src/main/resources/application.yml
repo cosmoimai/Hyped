@@ -34,6 +34,13 @@ server:
   forward-headers-strategy: none
 
 hyped:
+  policy:
+    terms-version: ${TERMS_VERSION:2026-10-22}
+    privacy-version: ${PRIVACY_VERSION:2026-10-22}
+    content-rules-version: ${CONTENT_RULES_VERSION:2026-10-22}
+    publication-ready: ${LEGAL_PUBLICATION_READY:false}
+    operator: ${LEGAL_OPERATOR:}
+    contact-email: ${LEGAL_CONTACT_EMAIL:}
   account-deletion:
     enabled: ${ACCOUNT_DELETION_ENABLED:false}
   push:

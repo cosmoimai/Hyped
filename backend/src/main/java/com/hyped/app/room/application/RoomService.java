@@ -34,6 +34,7 @@ public class RoomService {
     public static final int MAX_OWNED_ROOMS = 10;
     public static final int MAX_JOINED_ROOMS = 25;
     public static final int MAX_MEMBERS = 25;
+    private final com.hyped.app.policy.application.PolicyService policies;
     private final RoomRepository rooms;
     private final ObjectProvider<AuthenticationProfileReader> profiles;
     private final Clock clock;
@@ -44,7 +45,9 @@ public class RoomService {
     public RoomService(RoomRepository rooms, Clock clock, ObjectProvider<InvitationService> invitations,
             ObjectProvider<RoomReminderService> reminders,
             ObjectProvider<ReminderPreferencesService> reminderPreferences,
-            ObjectProvider<AuthenticationProfileReader> profiles) {
+            ObjectProvider<AuthenticationProfileReader> profiles,
+            com.hyped.app.policy.application.PolicyService policies) {
+        this.policies = policies;
         this.rooms = rooms;
         this.profiles = profiles;
         this.clock = clock;
@@ -56,6 +59,7 @@ public class RoomService {
     @Transactional
     public AuthorizedRoom create(UserId actor, CreateRoomCommand command) {
         rooms.lockUser(actor);
+        policies.requireCurrent(actor);
         if (rooms.countActiveOwned(actor) >= MAX_OWNED_ROOMS) {
             throw problem(RoomOperationException.Kind.CONFLICT, "OWNED_ROOM_LIMIT_REACHED", "Owned room limit reached",
                     "This account already owns ten active rooms.");
@@ -285,6 +289,7 @@ public class RoomService {
     @Transactional
     public RoomMembership addMember(RoomId roomId, UserId userId) {
         rooms.lockUser(userId);
+        policies.requireCurrent(userId);
         Room room = rooms.findForUpdate(roomId).orElseThrow(RoomService::unavailable);
         if (room.status() != RoomStatus.ACTIVE) {
             throw problem(RoomOperationException.Kind.CONFLICT, "ROOM_ARCHIVED", "Room archived",

@@ -1,3 +1,4 @@
+import 'package:hyped/features/policy/presentation/policy_providers.dart';
 import 'package:hyped/features/settings/data/theme_preference.dart';
 import 'dart:async';
 import 'package:hyped/features/notifications/presentation/push_providers.dart';
@@ -75,6 +76,7 @@ class _HypedAppState extends ConsumerState<HypedApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(ref.read(pushControllerProvider).sync(force: true));
+      unawaited(ref.read(policyControllerProvider).load());
     }
   }
 
@@ -93,6 +95,7 @@ class _HypedAppState extends ConsumerState<HypedApp>
     _router ??= createRouter(
       ref.read(authControllerProvider),
       ref.read(pendingInviteControllerProvider),
+      ref.read(policyControllerProvider),
     );
     return MaterialApp.router(
       title: 'Hyped!',

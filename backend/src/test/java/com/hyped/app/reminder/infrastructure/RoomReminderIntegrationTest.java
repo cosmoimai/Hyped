@@ -215,6 +215,7 @@ class RoomReminderIntegrationTest {
                 INSERT INTO app.app_user (id, status, created_at, updated_at)
                 VALUES (?, 'active', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """, id.value());
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, id.value());
         return id;
     }
 

@@ -127,6 +127,7 @@ public class JdbcAccountStore implements AccountStore {
         if (claims.isEmpty()) { return; }
         jdbc.update("DELETE FROM app.device_registration WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.auth_session WHERE user_id=?", job.userId());
+        jdbc.update("DELETE FROM app.user_policy_acceptance WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.user_identity WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.user_profile WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM ops.idempotency_record WHERE user_id=?", job.userId());

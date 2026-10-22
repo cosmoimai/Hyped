@@ -101,6 +101,8 @@ String _previewMessage(InvitationApiException error) => switch (error.code) {
 };
 
 String _joinMessage(InvitationApiException error) => switch (error.code) {
+  'CURRENT_POLICY_ACCEPTANCE_REQUIRED' =>
+    'Review the current legal documents before joining.',
   'INVITATION_INVALID' => 'This invite is invalid, expired, or was rotated.',
   'ROOM_ENDED' => 'This room is no longer available.',
   'ROOM_FULL' => 'This room is full.',

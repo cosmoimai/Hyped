@@ -247,19 +247,20 @@ Unique on `(user_id, installation_id)`. Invalid tokens are retained only briefly
 
 ### 6.7 `app.user_policy_acceptance`
 
-Records explicit eligibility and legal acceptance without storing a date of birth.
+Records explicit eligibility and legal acceptance without storing a date of birth. Implemented by Flyway V13; no existing account is backfilled as accepted.
 
 | Column | Type | Null | Notes |
 |---|---|---:|---|
 | `id` | `uuid` | No | Primary key |
 | `user_id` | `uuid` | No | Foreign key to `app_user` |
 | `terms_version` | `varchar(32)` | No | Exact accepted Terms version |
-| `content_rules_version` | `varchar(32)` | No | Exact accepted rules version |
+| `privacy_version` | `varchar(32)` | No | Exact accepted Privacy Policy version |
+| `content_rules_version` | `varchar(32)` | No | Exact accepted rules version (bundled with Terms) |
 | `adult_affirmed` | `boolean` | No | Must be true for the initial 18+ launch |
 | `accepted_at` | `timestamptz` | No | Server acceptance time |
 | `created_at` | `timestamptz` | No | Audit field |
 
-Unique on `(user_id, terms_version, content_rules_version)`. Create, join, and upload operations check that the current required versions have been accepted. The checkbox state itself is never inferred from sign-in or preselected by the server.
+Unique on `(user_id, terms_version, privacy_version, content_rules_version)`. Adult affirmation is constrained true. The backend supplies acceptance/creation timestamps; repeated acceptance retains the first timestamp. The account row is locked before acceptance and before guarded create/join mutations. Existing room reads are not consent-gated; any future upload must use the guard. Historical rows remain while the account is active and are purged during accepted account deletion. Current required versions are deployment-controlled; no client chooses which version satisfies the guard. The checkbox state itself is never inferred from sign-in or preselected by the server.
 
 ### 6.8 `app.user_block`
 

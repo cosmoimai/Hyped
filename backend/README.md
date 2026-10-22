@@ -67,3 +67,5 @@ See [Android notification setup and delivery guarantees](../frontend/docs/androi
 ## Android Profile and Settings
 
 See [Profile and Settings setup](../frontend/docs/profile-settings.md) for profile/device contracts, theme persistence, account deletion, Firebase permissions and cleanup-job operations.
+
+Android onboarding and versioned legal consent: [setup and publication](../frontend/docs/onboarding-consent.md).

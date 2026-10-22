@@ -776,6 +776,27 @@ class InvitationIntegrationTest {
                 .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void publicPreviewRemainsAvailableWhileJoinAndReplayRequireCurrentConsent(boolean roomCode) throws Exception {
+        UserId owner = user();
+        UserId member = user();
+        RoomId room = room(owner);
+        Share share = invitations.get(owner, room);
+        jdbc.update("DELETE FROM app.user_policy_acceptance WHERE user_id=?", member.value());
+        String reference = json(publicPreview(roomCode ? share.roomCode() : token(share), roomCode)
+                .andExpect(status().isOk())).get("previewReference").asText();
+        httpJoin(member, reference, roomCode, "consent-attempt").andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("CURRENT_POLICY_ACCEPTANCE_REQUIRED"));
+        assertCounts(room, 1);
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, member.value());
+        httpJoin(member, reference, roomCode, "consent-attempt").andExpect(status().isCreated());
+        jdbc.update("DELETE FROM app.user_policy_acceptance WHERE user_id=?", member.value());
+        httpJoin(member, reference, roomCode, "consent-attempt").andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("CURRENT_POLICY_ACCEPTANCE_REQUIRED"));
+        assertCounts(room, 2);
+    }
+
     private UserId user() {
         UserId id = new UserId(UUID.randomUUID());
         jdbc.update("""
@@ -786,6 +807,7 @@ class InvitationIntegrationTest {
                 INSERT INTO app.user_profile (user_id, display_name_ciphertext, created_at, updated_at)
                 VALUES (?, ?, ?, ?)
                 """, id.value(), new byte[] {1}, java.sql.Timestamp.from(NOW), java.sql.Timestamp.from(NOW));
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, id.value());
         return id;
     }
 
