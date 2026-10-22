@@ -1,0 +1,34 @@
+Hyped — Privacy Policy
+Version: 2026-10-22
+
+1. Who handles your information
+{{operator}} operates Hyped, the Android private shared-countdown service. For privacy questions, correction or deletion requests, consent withdrawal or complaints, contact {{contact}}. This policy covers the implemented Android app and its backend. The service is for adults aged 18 or older.
+
+2. Information used and why
+Account and authentication: Google/Firebase identity proof, a provider identity reference and display name establish and secure your account. Hyped issues its own access and refresh credentials and tracks sessions. Private provider identifiers and credentials are not shown to other members.
+Device and session information: an installation identifier, device name, Android platform, app version, session activity and revocation state support sign-in, device limits and device management. Android push-registration tokens, linked to the authenticated device/session, deliver enabled reminders and are invalidated on logout, revocation, replacement or account deletion.
+Rooms: titles, event instants and time zones, optional location and description, safe theme values, ownership, membership roles, invitations and reminder preferences provide shared countdowns and room controls.
+Legal choices: required document versions, your explicit 18+ affirmation and a server-generated acceptance timestamp record your choices. We do not collect a date of birth for the age affirmation.
+Operational information: limited request metadata and security/error classifications support reliability and abuse prevention. Authentication credentials, invitation credentials and private provider responses must not be copied into app analytics, ordinary preferences or user-facing diagnostics.
+
+3. Who can see room information
+Authorized room participants can see room information and the safe member view, including display names and roles. Owners manage members and co-hosts. Holders of a valid invitation or room code can see a limited event preview before signing in: title, event time, theme, inviter display name and member count. Never put sensitive information in an event title or distribute invitations publicly if you do not want recipients to see that preview. Recipients may copy information they can see; removing access cannot recall their independent copies.
+
+4. Service providers and disclosures
+Google Sign-In and Firebase Authentication handle identity. Firebase Cloud Messaging delivers enabled Android reminders. The backend uses its configured database and hosting infrastructure; Google Cloud KMS and Firestore support protected personal-data keys. Providers process information necessary to deliver these functions, subject to their terms and safeguards. Processing locations depend on the deployed provider/project configuration and may include countries outside your own. We may disclose information when required by law or reasonably necessary to investigate misuse, protect users or operate the service. We do not sell personal information. This implementation adds no advertising, marketing opt-in or unrelated analytics consent.
+
+5. Your phone, notifications and widgets
+Android notification permission is optional and can be denied or changed in device settings. Per-room reminder choices are separate from legal acceptance. Notifications use protected authenticated session handling; room information is not intended to be exposed after logout or an account change. Home-screen widgets store only widget/room identifiers, room title, event instant, safe theme values and last successful sync time, with limited availability state. They keep cached room data offline and can be visible to anyone who can see your home screen. Logout, account change and accepted account deletion clear protected widget content and pending invites. Removed room data is cleared when access loss is synchronized. App theme is a device preference and may remain after logout. Device copies and screenshots outside Hyped's control cannot be recalled.
+
+6. Retention and deletion
+Active account, room and session data is retained as needed to provide the service and enforce access. Expired or revoked credentials cannot authorize new sessions. Room archival provides a 24-hour recovery period, after which permanent deletion becomes eligible under the room lifecycle. Account deletion requires resolution of all owned and joined rooms, including archived memberships; the app explains these blockers rather than silently deleting other people's rooms.
+Once account deletion is accepted, access ends immediately and cannot be recovered. Firebase account cleanup, destruction of the external personal-data key and personal-row purge are performed with durable retries and a 24-hour purge target. External failures leave the account disabled while cleanup retries; they do not restore access. Encrypted database backups expire within seven days. Destroyed keys are tracked outside database backups to prevent restored personal ciphertext from becoming readable. A minimal non-identifying UUID/timestamp tombstone can remain for restore safety and existing shared-room references. Legal acceptance records are purged with the account. Deleting Hyped does not delete your Google account or content independently copied by other people.
+
+7. Your choices and requests
+Use Settings to inspect your profile and active devices, revoke access, change theme, manage notifications, sign out or request permanent account deletion. Room controls let you leave, manage eligible rooms and change reminders. You may contact {{contact}} to request access to or correction of your personal information, withdraw consent, ask about retention or raise a complaint. We may verify identity and explain any legal or technical restriction. You may stop using Hyped or sign out without accepting a new document version. Withdrawal that prevents operating your account can require account deletion; the in-app deletion rules are explained before confirmation. Applicable rights to complain to a competent authority remain unaffected.
+
+8. Children and security
+Hyped does not knowingly enroll children under 18. If you believe a child is using it, contact {{contact}} so the account can be investigated. We use access controls, verified identities and protected personal-data keys; no network or storage system is risk-free. Protect your device and invitations and report suspected unauthorized access promptly.
+
+9. Updates and contact
+Material policy changes receive a new version and require explicit acceptance before further room creation or joining. We do not treat sign-in, inactivity or preselected boxes as consent. For privacy or grievance handling, contact {{operator}} at {{contact}}.

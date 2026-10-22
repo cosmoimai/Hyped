@@ -11,12 +11,14 @@ class AuthenticationInterceptor extends Interceptor {
     this._refresher, {
     this.onAuthenticationFailed,
     this.onAccountDeleted,
+    this.onPolicyRequired,
   });
   final Dio _dio;
   final TokenStore _tokens;
   final TokenRefresher _refresher;
   final void Function()? onAuthenticationFailed;
   final void Function()? onAccountDeleted;
+  final void Function()? onPolicyRequired;
   Future<AuthTokens>? _refreshing;
 
   @override
@@ -54,6 +56,13 @@ class AuthenticationInterceptor extends Interceptor {
         onAccountDeleted?.call();
       } catch (_) {}
       await _invalidate();
+      handler.next(err);
+      return;
+    }
+
+    if (code == 'CURRENT_POLICY_ACCEPTANCE_REQUIRED' ||
+        code == 'POLICY_VERSION_CHANGED') {
+      onPolicyRequired?.call();
       handler.next(err);
       return;
     }

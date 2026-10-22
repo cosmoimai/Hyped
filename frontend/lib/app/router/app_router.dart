@@ -1,3 +1,6 @@
+import 'package:hyped/features/policy/presentation/policy_controller.dart';
+import 'package:hyped/features/policy/presentation/policy_screen.dart';
+import 'package:hyped/features/policy/presentation/legal_document_screen.dart';
 import 'package:hyped/features/settings/presentation/settings_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/room_lifecycle_screen.dart';
 import 'package:hyped/features/rooms/presentation/screens/member_screen.dart';
@@ -21,97 +24,134 @@ import 'package:hyped/features/reminders/presentation/screens/reminder_settings_
 GoRouter createRouter(
   AuthController auth, [
   PendingInviteController? pending,
-]) => GoRouter(
-  initialLocation: '/splash',
-  // Router errors can contain the full URI, including invite credentials.
-  errorBuilder: (_, _) =>
-      const Scaffold(body: Center(child: Text('This page is unavailable.'))),
-  refreshListenable: pending == null ? auth : Listenable.merge([auth, pending]),
-  redirect: (context, state) {
-    final status = auth.state.status;
-    final path = state.matchedLocation;
-    if (status == AuthStatus.initializing) {
-      return path == '/splash' || _isInvitePath(path) ? null : '/splash';
-    }
-    if (auth.state.isAuthenticated) {
-      final pendingLocation = pending?.intent?.location;
-      if (pendingLocation != null && _isAuthEntryPath(path)) {
-        return pendingLocation;
+  PolicyController? policy,
+]) {
+  String? afterConsent;
+  return GoRouter(
+    initialLocation: '/splash',
+    // Router errors can contain the full URI, including invite credentials.
+    errorBuilder: (_, _) =>
+        const Scaffold(body: Center(child: Text('This page is unavailable.'))),
+    refreshListenable: Listenable.merge([auth, ?pending, ?policy]),
+    redirect: (context, state) {
+      final status = auth.state.status;
+      final path = state.matchedLocation;
+      if (status == AuthStatus.initializing) {
+        return path == '/splash' || _isInvitePath(path) || _isLegalPath(path)
+            ? null
+            : '/splash';
       }
-      return _isPrivatePath(path) || _isInvitePath(path) ? null : '/home';
-    }
-    if (status == AuthStatus.failure && path == '/splash') return '/sign-in';
-    if (path == '/splash') return '/onboarding';
-    if (_isPrivatePath(path)) return '/sign-in';
-    return null;
-  },
-  routes: [
-    GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
-    GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
-    GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
-    GoRoute(
-      path: '/notifications',
-      builder: (_, _) => const NotificationSettingsScreen(),
-    ),
-    GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
-    GoRoute(
-      path: '/settings/rooms',
-      builder: (_, _) => const RoomNotificationChoicesScreen(),
-    ),
-    GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
-    GoRoute(
-      path: '/widgets/room',
-      builder: (_, state) => RoomWidgetSettingsScreen(
-        appWidgetId: int.tryParse(state.uri.queryParameters['widgetId'] ?? ''),
+      if (auth.state.isAuthenticated) {
+        if (_isLegalPath(path) || path.startsWith('/settings')) return null;
+        if (policy != null && !policy.accepted) {
+          if (_isInvitePath(path)) return null;
+          if (path != '/policy-acceptance' && !_isAuthEntryPath(path)) {
+            afterConsent = state.uri.toString();
+          }
+          return path == '/policy-acceptance' ? null : '/policy-acceptance';
+        }
+        if (path == '/policy-acceptance') {
+          final destination =
+              pending?.intent?.location ?? afterConsent ?? '/home';
+          afterConsent = null;
+          return destination;
+        }
+        final pendingLocation = pending?.intent?.location;
+        if (pendingLocation != null && _isAuthEntryPath(path)) {
+          return pendingLocation;
+        }
+        return _isPrivatePath(path) || _isInvitePath(path) ? null : '/home';
+      }
+      if (status == AuthStatus.failure && path == '/splash') return '/sign-in';
+      if (path == '/splash') return '/onboarding';
+      if (_isPrivatePath(path) || path == '/policy-acceptance') {
+        return '/sign-in';
+      }
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/policy-acceptance',
+        builder: (_, _) => const PolicyScreen(),
       ),
-    ),
-    GoRoute(path: '/join', builder: (_, _) => const RoomCodeEntryScreen()),
-    GoRoute(
-      path: '/join/room-code/:code',
-      builder: (_, state) => InvitePreviewScreen(
-        intent: PendingInviteIntent(
-          kind: InviteKind.roomCode,
-          credential: state.pathParameters['code']!,
+      GoRoute(
+        path: '/legal/:kind',
+        builder: (_, state) => LegalDocumentScreen(
+          kind: state.pathParameters['kind']!,
+          version: state.uri.queryParameters['version'],
         ),
       ),
-    ),
-    GoRoute(
-      path: '/invite/:token',
-      builder: (_, state) => InvitePreviewScreen(
-        intent: PendingInviteIntent(
-          kind: InviteKind.link,
-          credential: state.pathParameters['token']!,
+      GoRoute(path: '/splash', builder: (_, _) => const SplashScreen()),
+      GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(path: '/sign-in', builder: (_, _) => const SignInScreen()),
+      GoRoute(
+        path: '/notifications',
+        builder: (_, _) => const NotificationSettingsScreen(),
+      ),
+      GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(
+        path: '/settings/rooms',
+        builder: (_, _) => const RoomNotificationChoicesScreen(),
+      ),
+      GoRoute(path: '/home', builder: (_, _) => const HomeScreen()),
+      GoRoute(
+        path: '/widgets/room',
+        builder: (_, state) => RoomWidgetSettingsScreen(
+          appWidgetId: int.tryParse(
+            state.uri.queryParameters['widgetId'] ?? '',
+          ),
         ),
       ),
-    ),
-    GoRoute(path: '/rooms/new', builder: (_, _) => const CreateRoomScreen()),
-    GoRoute(
-      path: '/rooms/:roomId',
-      builder: (_, state) =>
-          RoomDetailScreen(roomId: state.pathParameters['roomId']!),
-    ),
-    GoRoute(
-      path: '/rooms/:roomId/edit',
-      builder: (_, state) =>
-          EditRoomScreen(roomId: state.pathParameters['roomId']!),
-    ),
-    GoRoute(
-      path: '/rooms/:roomId/lifecycle',
-      builder: (_, state) =>
-          RoomLifecycleScreen(roomId: state.pathParameters['roomId']!),
-    ),
-    GoRoute(
-      path: '/rooms/:roomId/members',
-      builder: (_, state) =>
-          MemberScreen(roomId: state.pathParameters['roomId']!),
-    ),
-    GoRoute(
-      path: '/rooms/:roomId/reminders',
-      builder: (_, state) =>
-          ReminderSettingsScreen(roomId: state.pathParameters['roomId']!),
-    ),
-  ],
-);
+      GoRoute(path: '/join', builder: (_, _) => const RoomCodeEntryScreen()),
+      GoRoute(
+        path: '/join/room-code/:code',
+        builder: (_, state) => InvitePreviewScreen(
+          intent: PendingInviteIntent(
+            kind: InviteKind.roomCode,
+            credential: state.pathParameters['code']!,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/invite/:token',
+        builder: (_, state) => InvitePreviewScreen(
+          intent: PendingInviteIntent(
+            kind: InviteKind.link,
+            credential: state.pathParameters['token']!,
+          ),
+        ),
+      ),
+      GoRoute(path: '/rooms/new', builder: (_, _) => const CreateRoomScreen()),
+      GoRoute(
+        path: '/rooms/:roomId',
+        builder: (_, state) =>
+            RoomDetailScreen(roomId: state.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/rooms/:roomId/edit',
+        builder: (_, state) =>
+            EditRoomScreen(roomId: state.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/rooms/:roomId/lifecycle',
+        builder: (_, state) =>
+            RoomLifecycleScreen(roomId: state.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/rooms/:roomId/members',
+        builder: (_, state) =>
+            MemberScreen(roomId: state.pathParameters['roomId']!),
+      ),
+      GoRoute(
+        path: '/rooms/:roomId/reminders',
+        builder: (_, state) =>
+            ReminderSettingsScreen(roomId: state.pathParameters['roomId']!),
+      ),
+    ],
+  );
+}
+
+bool _isLegalPath(String path) => path.startsWith('/legal/');
 
 bool _isPrivatePath(String path) =>
     path.startsWith('/settings') ||

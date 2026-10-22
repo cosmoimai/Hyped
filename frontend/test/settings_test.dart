@@ -492,10 +492,17 @@ void main() {
         ),
       );
       expect(find.text('Mira'), findsOneWidget);
-      expect(find.textContaining('This device'), findsOneWidget);
       expect(find.textContaining('internal-current-session'), findsNothing);
       expect(find.text('Notifications'), findsOneWidget);
       expect(find.text('Per-room reminders'), findsOneWidget);
+      expect(find.text('Terms of Service'), findsOneWidget);
+      expect(find.text('Privacy Policy'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.textContaining('This device'),
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.textContaining('This device'), findsOneWidget);
     },
   );
   testWidgets('revocation confirmation cancellation sends no request', (

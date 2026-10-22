@@ -101,6 +101,7 @@ class AccountDeletionIntegrationTest {
         jdbc.update("""
                 INSERT INTO app.user_profile(user_id,display_name_ciphertext,created_at,updated_at) VALUES (?,?,?,?)
                 """, user, new byte[] {1}, Timestamp.from(NOW), Timestamp.from(NOW));
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, user);
         verifier = mock(IdentityTokenVerifier.class);
         identities = mock(UserIdentityRepository.class);
         var lookup = mock(IdentityLookupProtector.class);
@@ -146,7 +147,8 @@ class AccountDeletionIntegrationTest {
         assertThat(status()).isEqualTo("deleted");
         verify(firebase).delete("private-firebase-uid");
         verify(keys).destroyKey(new UserId(user), "key");
-        for (String table : new String[] {"auth_session", "device_registration", "user_profile", "user_identity"}) {
+        for (String table : new String[] {"auth_session", "device_registration", "user_profile", "user_identity",
+                "user_policy_acceptance"}) {
             assertThat(jdbc.queryForObject("SELECT count(*) FROM app." + table + " WHERE user_id=?",
                     Integer.class, user)).isZero();
         }
@@ -220,6 +222,7 @@ class AccountDeletionIntegrationTest {
         UUID other = UUID.randomUUID();
         jdbc.update("INSERT INTO app.app_user(id,status,created_at,updated_at) VALUES (?,'active',?,?)",
                 other, Timestamp.from(NOW), Timestamp.from(NOW));
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, other);
         var room = rooms.create(new UserId(other), new RoomService.CreateRoomCommand("Joined room",
                 LocalDate.of(2040, 1, 1), LocalTime.NOON, "UTC", null, null)).room().id();
         rooms.addMember(room, new UserId(user));

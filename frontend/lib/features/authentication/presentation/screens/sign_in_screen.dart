@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyped/app/bootstrap/providers.dart';
@@ -62,6 +63,14 @@ class SignInScreen extends ConsumerWidget {
                   child: const Text('Continue with Google'),
                 ),
               ],
+              TextButton(
+                onPressed: () => context.push('/legal/terms'),
+                child: const Text('Terms of Service'),
+              ),
+              TextButton(
+                onPressed: () => context.push('/legal/privacy'),
+                child: const Text('Privacy Policy'),
+              ),
             ],
           ),
         ),

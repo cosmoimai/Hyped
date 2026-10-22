@@ -149,6 +149,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               ),
               onTap: () => context.push('/settings/rooms'),
             ),
+            ListTile(
+              title: const Text('Terms of Service'),
+              leading: const Icon(Icons.description_outlined),
+              onTap: () => context.push('/legal/terms'),
+            ),
+            ListTile(
+              title: const Text('Privacy Policy'),
+              leading: const Icon(Icons.privacy_tip_outlined),
+              onTap: () => context.push('/legal/privacy'),
+            ),
             const Divider(),
             Text(
               'Active devices',

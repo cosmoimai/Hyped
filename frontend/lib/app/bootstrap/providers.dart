@@ -1,3 +1,4 @@
+import 'package:hyped/features/policy/presentation/policy_providers.dart';
 import 'package:flutter/painting.dart';
 import 'package:hyped/features/invitations/presentation/controllers/invitation_providers.dart';
 import 'package:hyped/features/notifications/data/notification_platform.dart';
@@ -78,6 +79,8 @@ final authenticatedDioProvider = Provider<Dio>((ref) {
       ref.read(tokenStoreProvider),
       refresher,
       onAuthenticationFailed: ref.read(sessionInvalidationProvider).invalidate,
+      onPolicyRequired: () =>
+          ref.read(policyControllerProvider).requireReview(),
       onAccountDeleted: () {
         ref.read(pendingInviteControllerProvider).clear();
         imageCache.clear();

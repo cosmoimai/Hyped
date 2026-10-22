@@ -344,7 +344,7 @@ Rules:
 | `PATCH` | `/me` | Edit display name or profile photo reference |
 | `GET` | `/me/deletion-readiness` | List blockers before deletion |
 | `POST` | `/me/deletion-requests` | Request irreversible account deletion |
-| `GET` | `/me/policy-status` | Get current Terms/rules/18+ acceptance state |
+| `GET` | `/me/policy-status` | Get current Terms/Privacy/rules/18+ acceptance state |
 | `POST` | `/me/policy-acceptances` | Explicitly accept the current policies and affirm 18+ |
 | `GET` | `/me/blocks` | List accounts the current user blocked |
 | `PUT` | `/me/blocks/{userId}` | Block an account with safe-room handling |
@@ -478,18 +478,42 @@ Setup, IAM permissions and operational monitoring are documented in [Android Pro
 
 ### 9.6 Policy status and acceptance
 
-`GET /me/policy-status` returns required and accepted Terms/content-rules versions plus whether the adult affirmation is complete. `POST /me/policy-acceptances` requires an `Idempotency-Key` and an explicit body:
+`GET /public/policies` is a public no-store read returning `required` (Terms, Privacy and content-rules versions), `documents` (relative public document paths) and `documentsAvailable`. `GET /public/legal/{kind}/{version}` returns `{title, version, content, published}` for bundled `terms` or `privacy` documents. Draft documents are readable but cannot authorize acceptance. Unsupported kinds/versions return `404 LEGAL_DOCUMENT_NOT_FOUND`.
+
+`GET /me/policy-status` requires a live verified JWT session and returns:
 
 ```json
 {
-  "termsVersion": "2026-09-14",
-  "contentRulesVersion": "2026-09-14",
+  "required": {"termsVersion":"2026-10-22","privacyVersion":"2026-10-22","contentRulesVersion":"2026-10-22"},
+  "documents": {"termsUrl":"/public/legal/terms/2026-10-22","privacyUrl":"/public/legal/privacy/2026-10-22"},
+  "documentsAvailable": true,
+  "accepted": null,
+  "currentAccepted": false
+}
+```
+
+After acceptance, `accepted` contains `versions`, `adultAffirmed:true` and the first server-generated `acceptedAt`. It may contain an older acceptance while `currentAccepted:false`; only an exact current version tuple satisfies the guard. No raw identity/session/security fields are returned. All policy responses are `Cache-Control: private, no-store`.
+
+`POST /me/policy-acceptances` requires an `Idempotency-Key` (1–128 characters) and an explicit allowlisted body:
+
+```json
+{
+  "termsVersion": "2026-10-22",
+  "privacyVersion": "2026-10-22",
+  "contentRulesVersion": "2026-10-22",
   "accepted": true,
+  "privacyAccepted": true,
   "adultAffirmed": true
 }
 ```
 
-The server rejects missing, false, stale, or unsupported versions. Create, join, and upload return `403 CURRENT_POLICY_ACCEPTANCE_REQUIRED` until the current acceptance exists. Authentication and policy/legal-page access remain available so the user can make a choice or sign out.
+Success is `200` with the status shape above. Terms includes the content rules. Ownership comes only from the verified JWT; `userId`, `acceptedAt` and all unknown body fields are rejected. The backend supplies Clock timestamps and locks the account before insertion. The unique user/version tuple makes repeated/concurrent acceptance return the same original timestamp; it does not infer consent from sign-in or a new idempotency key.
+
+False/missing confirmations return `422 EXPLICIT_CONSENT_REQUIRED`; blank/missing versions return validation failure. Stale/unsupported version combinations return `409 POLICY_VERSION_CHANGED`, requiring fresh review. Unpublished/missing legal documents return `503 LEGAL_DOCUMENTS_UNAVAILABLE`. The generated initial versions are `2026-10-22`; `LEGAL_PUBLICATION_READY` defaults false, and enabling publication requires real operator/contact details and matching bundled documents.
+
+Create and join (including internal add-member and previously successful join replays) return `403 CURRENT_POLICY_ACCEPTANCE_REQUIRED` until current acceptance exists. Authentication, public invite preview, legal reads, sign-out, account deletion and existing-room/lifecycle operations remain available. A future upload implementation must use the same guard. Historical acceptances are removed during account deletion under existing retention rules.
+
+See [Android onboarding/consent setup](../frontend/docs/onboarding-consent.md) for publication, draft review, required-version rollover and router behavior.
 
 ### 9.7 Public web deletion entry
 

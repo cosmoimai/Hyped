@@ -122,3 +122,5 @@ See [room lifecycle](docs/room-lifecycle.md) for leave/archive/restore/delete ru
 ## Android Profile and Settings
 
 See [Profile and Settings setup](docs/profile-settings.md) for profile/device contracts, theme persistence, account deletion, Firebase permissions and cleanup-job operations.
+
+Android onboarding and versioned legal consent: [setup and publication](docs/onboarding-consent.md).

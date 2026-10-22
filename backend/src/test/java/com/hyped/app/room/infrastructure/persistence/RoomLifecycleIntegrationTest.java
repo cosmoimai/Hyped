@@ -342,6 +342,7 @@ class RoomLifecycleIntegrationTest {
         var id = new UserId(UUID.randomUUID());
         jdbc.update("INSERT INTO app.app_user(id,status,created_at,updated_at) VALUES (?,'active',?,?)", id.value(),
                 Timestamp.from(clock.now), Timestamp.from(clock.now));
+        com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, id.value());
         return id;
     }
 
