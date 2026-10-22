@@ -20,14 +20,15 @@ data class WidgetRoom(
         "presetKey" to presetKey, "syncedAt" to syncedAt, "state" to state,
     )
 
-    fun restricted(state: String) = copy(title = "", eventAt = 0, presetKey = "soft-blue-01", state = state)
+    fun restricted(state: String) = copy(roomId = if (state == "removed") "" else roomId,
+        title = "", eventAt = 0, presetKey = "soft-blue-01", state = state)
 
     companion object {
         val presets = setOf("soft-blue-01", "mint-sky-01", "blue-lilac-02", "sunset-peach-01", "forest-glow-01")
         fun from(values: Map<*, *>): WidgetRoom? {
             val id = values["roomId"] as? String ?: return null
-            if (!id.matches(Regex("[A-Za-z0-9_-]{1,128}"))) return null
             val state = values["state"] as? String ?: return null
+            if (!id.matches(Regex("[A-Za-z0-9_-]{1,128}")) && !(id.isEmpty() && state == "removed")) return null
             if (state !in setOf("active", "archived", "removed", "unavailable")) return null
             val room = WidgetRoom(
                 id,
@@ -37,7 +38,8 @@ data class WidgetRoom(
                 (values["syncedAt"] as? Number)?.toLong()?.coerceAtLeast(0) ?: return null,
                 state,
             )
-            return if (state in setOf("removed", "unavailable")) room.restricted(state) else room
+            return if (state in setOf("removed", "unavailable"))
+                room.copy(title = "", eventAt = 0, presetKey = "soft-blue-01") else room
         }
     }
 }
@@ -61,7 +63,8 @@ class WidgetSnapshotStore(private val disk: WidgetPersistence) {
     fun select(id: Int, room: WidgetRoom, activeIds: Set<Int>): Boolean {
         prune(activeIds)
         if (id !in activeIds) return false
-        disk.write(id, JSONObject(room.payload() + ("appWidgetId" to id)).toString())
+        val safe = if (room.state in setOf("removed", "unavailable")) room.restricted(room.state) else room
+        disk.write(id, JSONObject(safe.payload() + ("appWidgetId" to id)).toString())
         return true
     }
 

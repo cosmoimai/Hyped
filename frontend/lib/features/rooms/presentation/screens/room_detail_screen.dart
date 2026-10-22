@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,15 +22,22 @@ class RoomDetailScreen extends ConsumerWidget {
         actions: [
           if (room != null)
             IconButton(
+              onPressed: () => context.go('/rooms/$roomId/lifecycle'),
+              tooltip: 'Room actions',
+              icon: const Icon(Icons.more_horiz),
+            ),
+          if (room != null)
+            IconButton(
               onPressed: () => context.go('/rooms/$roomId/members'),
               tooltip: 'Members',
               icon: const Icon(Icons.group_outlined),
             ),
-          IconButton(
-            onPressed: () => context.go('/rooms/$roomId/reminders'),
-            tooltip: 'Reminders',
-            icon: const Icon(Icons.notifications_none),
-          ),
+          if (room?.status == RoomStatus.active)
+            IconButton(
+              onPressed: () => context.go('/rooms/$roomId/reminders'),
+              tooltip: 'Reminders',
+              icon: const Icon(Icons.notifications_none),
+            ),
           if (room?.canEdit == true)
             IconButton(
               onPressed: () => context.go('/rooms/$roomId/edit'),
@@ -64,6 +72,11 @@ class _RoomDetail extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
+          if (room.status != RoomStatus.active)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Text(lifecycleLabel(room, room.serverNow)),
+            ),
           RoomThemeView(
             theme: room.theme,
             padding: const EdgeInsets.all(24),

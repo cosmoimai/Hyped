@@ -504,6 +504,9 @@ Future joins are denied with the normal safe unavailable response when either ac
 | `PATCH` | `/rooms/{roomId}` | Creator or co-host | Edit room/theme |
 | `DELETE` | `/rooms/{roomId}` | Owner | Archive room for delayed deletion |
 | `POST` | `/rooms/{roomId}/ownership-transfer` | Owner | Transfer ownership |
+| `POST` | `/rooms/{roomId}/leave` | Member or co-host | Leave active or archived room |
+| `POST` | `/rooms/{roomId}/restore` | Owner | Restore before recovery expiry |
+| `DELETE` | `/rooms/{roomId}/permanent` | Owner | Permanently delete eligible archive |
 
 ### 10.2 Room summary
 
@@ -525,7 +528,7 @@ Future joins are denied with the normal safe unavailable response when either ac
 
 `GET /rooms?status=ACTIVE&limit=20`
 
-Allowed status filters: `ACTIVE`, `ARCHIVED`, or omitted for both. Archived rooms remain available only during their 24-hour archive window.
+Allowed status filters: `ACTIVE`, `ARCHIVED`, or omitted for both. Archived rooms remain readable to current participants until physical cleanup; restoration is strictly limited to the 24-hour window. Omitted status orders active rooms first (event time ascending), then recent archives (archive time descending), so archived history cannot displace active rooms from a bounded list.
 The initial room foundation returns at most 50 records. Cursor pagination is introduced with the broader room lifecycle.
 
 ### 10.4 Create room
@@ -657,12 +660,13 @@ The API does not send a ticking countdown value. It sends `eventAt` and `serverN
   "roomId": "019b1f33-e664-7ef4-985e-76b3ac298620",
   "status": "ARCHIVED",
   "archivedAt": "2026-09-09T10:30:00Z",
-  "deleteAfter": "2026-09-10T10:30:00Z"
+  "deleteAfter": "2026-09-10T10:30:00Z",
+  "revision": 5,
+  "serverNow": "2026-09-09T10:30:00Z"
 }
 ```
 
-The operation is idempotent. The room remains readable to current members during the 24-hour recovery window, rejects
-all mutations and joins, and becomes eligible for asynchronous physical deletion at `deleteAfter`.
+Only the current owner can archive. The response retains its existing fields and adds `revision`, `serverNow`, the strong room ETag and `Cache-Control: private, no-store`. The first archive increments revision, cancels pending/claimed reminder jobs and pending/sending device deliveries in the same transaction. Retries preserve the original archive instant, deadline and revision even if an older ETag is supplied; they cannot extend recovery. Event edits, membership/role changes and invitation joins/rotation are blocked while archived. Participants may still leave; the owner may restore within the recovery window or permanently delete after eligibility. Archived snapshots remain readable until physical cleanup, and existing invitation credentials remain unusable until an authorized restoration.
 
 ### 10.10 Transfer ownership
 
@@ -675,6 +679,28 @@ all mutations and joins, and becomes eligible for asynchronous physical deletion
 ```
 
 The target must be a current member or co-host. Success returns the updated room and both affected memberships. The previous owner becomes a co-host by default.
+
+### 10.11 Leave, restore, and permanent deletion
+
+| Method | Path | Authorization | Success |
+|---|---|---|---|
+| `POST` | `/rooms/{roomId}/leave` | Current MEMBER or CO_HOST | `204 No Content` |
+| `POST` | `/rooms/{roomId}/restore` | Current OWNER | `200 OK`, full authorized room snapshot and ETag |
+| `DELETE` | `/rooms/{roomId}/permanent` | Current OWNER, eligible archived room | `204 No Content` |
+
+All identity/authorization comes from the verified JWT subject. These actions have no client ownership/user ID field. Lifecycle mutations accept a strong room `If-Match` and Flutter always supplies it; omission remains compatible with the original archive contract. A supplied malformed ETag returns `428 ROOM_REVISION_REQUIRED`; stale state returns `412 ROOM_REVISION_MISMATCH`. Role/ownership checks remain authoritative after waiting for row locks.
+
+- MEMBER and CO_HOST may leave active or archived rooms. OWNER receives `409 OWNERSHIP_TRANSFER_REQUIRED` and must transfer first using the existing ownership-transfer contract (previous owner becomes CO_HOST). An archived owner must restore before transferring. Leave removes only the caller's membership/preferences, cancels their pending/sending deliveries, decrements member count and increments revision once.
+- A repeated leave, a leave of a missing room, or a nonmember's leave returns `204` without disclosing relationships. An absent membership ignores an old revision because the desired state already holds.
+- Recovery is allowed only while server UTC `now < deleteAfter`. At exact equality or later, restore returns `409 ROOM_RECOVERY_EXPIRED`. Owner restore of an already active room is a no-op `200`, including a retry with the pre-restore ETag. Successful restore clears both archive timestamps, increments revision and rebuilds the existing three reminder jobs. Past boundaries do not generate catch-up notifications; durable occurrence/device records prevent repeat delivery.
+- Restoration rechecks the 10 active owned-room and 25 active joined-room limits for every affected participant. Sorted account locks precede the room lock. A membership-set race returns `409 ROOM_MEMBERS_CHANGED` for a reload; quota failures use the existing distinct room-limit codes and roll back the whole restore.
+- Permanent deletion is allowed only for ARCHIVED rooms with `now >= deleteAfter`; active or early requests return `409 ROOM_DELETE_NOT_ELIGIBLE`. There is no immediate-delete bypass. Current nonowner participants receive `403 ROOM_ACTION_FORBIDDEN`.
+- Repeated permanent deletion and nonmember requests return the same `204` no-op to avoid disclosing whether a foreign room exists. They never modify a room without current owner authorization. No tombstone containing room content or former membership is retained.
+- The deletion transaction briefly marks the row `deleting`, clears encrypted room-linked join/rotation replays and physically deletes the room. Existing FKs cascade memberships, invitation credentials, reminder preferences/jobs/device deliveries and themes. The current implementation has preset/gradient themes and no room media objects requiring external deletion.
+- The existing OIDC-protected `POST /internal/jobs/tick` also purges up to 100 eligible archives after processing reminder deliveries, using `FOR UPDATE SKIP LOCKED`. Repeated/concurrent owner and worker deletion is safe. The response's existing reminder counters are unchanged. Deployments must keep the documented protected scheduler enabled for automatic cleanup; eligibility and restore limits are enforced independently of worker timing.
+- Successful Flutter leave/delete clears room/member caches and revokes every associated widget selection. Other devices clear protected fields after their next authoritative synchronization; offline widgets retain the last successful snapshot until then. Known removed selections are cleared and cannot be resurrected by a late response. Logout/account change continues to clear all protected widget data.
+
+The Android Room actions page shows the current state and server-time-based eligibility, with action-specific confirmations, ownership-transfer guidance, reload on conflicts, and a removed state after leave/delete. Inaccessible and missing room IDs share a safe unavailable message. No recurring lifecycle or recovery extension is introduced.
 
 ## 11. Members and roles
 
@@ -709,7 +735,7 @@ Rules:
 - All current participants can read the member list. Outsiders receive `404 ROOM_UNAVAILABLE` for list and mutation attempts.
 - Owners may remove members or co-hosts. Co-hosts may remove only regular members. Regular members cannot manage others.
 - No caller may remove themselves or change/remove the owner through these endpoints. Ownership changes use the existing transfer endpoint, which demotes the previous owner to co-host.
-- Archived rooms remain readable but reject member mutations with `409 ROOM_ARCHIVED`.
+- Archived rooms remain readable but reject member-management mutations with `409 ROOM_ARCHIVED`; self-leave uses the lifecycle endpoint.
 - Removal is idempotent for an already absent target after caller authorization, returning `204` even with an older revision; it does not reveal whether the target belongs to another room. There is no permanent ban: valid invitations can permit re-entry.
 - A successful role change, removal, or ownership transfer increments room revision once. A no-op role change does not increment it. These mutations accept the current strong room ETag in `If-Match`; Flutter always supplies it. Omission remains supported for compatibility with the existing role/transfer contract. A supplied malformed ETag returns `428 ROOM_REVISION_REQUIRED`; a stale ETag returns `412 ROOM_REVISION_MISMATCH`. Authorization precedes revision evaluation.
 - Room and user locks serialize membership/ownership writes. Existing unique owner and deferred membership/count consistency constraints enforce exactly one owner and the 25-member limit at transaction commit. Transfers lock both users in stable ID order before the room and re-evaluate permissions after waiting.
@@ -1174,6 +1200,8 @@ Mobile local caching is governed by authorization and offline requirements, not 
 | Room | `DELETE` | `/rooms/{roomId}` |
 | Room | `POST` | `/rooms/{roomId}/ownership-transfer` |
 | Room | `POST` | `/rooms/{roomId}/leave` |
+| Room | `POST` | `/rooms/{roomId}/restore` |
+| Room | `DELETE` | `/rooms/{roomId}/permanent` |
 | Member | `GET` | `/rooms/{roomId}/members` |
 | Member | `PATCH` | `/rooms/{roomId}/members/{userId}` |
 | Member | `DELETE` | `/rooms/{roomId}/members/{userId}` |

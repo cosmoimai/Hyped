@@ -37,8 +37,8 @@ The database design shall:
 | Maximum owned rooms | 10 active rooms per user |
 | Maximum joined rooms | 25 active joined rooms, excluding rooms the user owns |
 | Event recurrence | One-time events only |
-| Room archive | At the event instant |
-| Room deletion | 24 hours after archiving, or immediately after creator-confirmed deletion |
+| Room archive | Explicit owner action; event-completion archiving uses the same 24-hour state policy |
+| Room deletion | Eligible exactly 24 hours after archiving; no immediate-delete bypass |
 | Room code | Eight unambiguous uppercase characters, displayed `XXXX-XXXX` |
 | Event title | Maximum 80 characters |
 | Location | Maximum 120 characters |
@@ -622,22 +622,28 @@ The exact external key store, destruction guarantees, key versioning, and deleti
 
 ## 14. Room deletion
 
-### 14.1 Automatic completion
+### 14.1 Archiving and recovery
 
-- A worker selects due active rooms using `(status, event_at)`.
-- It locks a bounded batch, sets `status = 'archived'`, sets `archived_at`, and sets `delete_after = archived_at + interval '24 hours'`.
-- It creates the celebration/invalidation outbox record in the same transaction.
+The implemented owner archive transaction locks the room, sets `status = 'archived'`, sets `archived_at`, sets `delete_after = archived_at + interval '24 hours'` and increments revision. Pending/claimed room reminders and pending/sending device deliveries are canceled in the same transaction. Archive retries preserve the original deadline. Event-completion automation is separate from this explicit owner lifecycle; no repeating-event worker is introduced.
+
+Owner restoration requires `now < delete_after`. The existing archive CHECK constraint requires both archive timestamps to be cleared together when returning to `active`. Restoration increments revision and replaces reminder jobs, preserving durable per-occurrence delivery deduplication. Only future reminder boundaries are delivered. The 25-member constraint and single-owner deferred consistency checks remain unchanged.
+
+Restoration first snapshots the bounded membership set, then locks participant accounts in UUID order, then the room. It rechecks ownership, status, time, membership and all active owned/joined quotas before committing. New membership IDs outside the locked set cause a retryable application conflict instead of acquiring accounts after the room. Self-leave locks account, room, then membership; nonowners may leave archived rooms. Leave deletes personal preferences and cancels device deliveries without canceling other participants' reminders.
 
 ### 14.2 Permanent deletion
 
-At `delete_after`, or after creator-confirmed deletion:
+Only archived rooms with `now >= delete_after` may be permanently deleted. Owner confirmation cannot bypass this boundary. The owner endpoint and protected backend tick share transactional cleanup; the tick claims a bounded batch of 100 eligible rows with `FOR UPDATE SKIP LOCKED` using the existing archive eligibility index.
 
-- The room first enters `deleting` so new reads and joins are blocked.
-- Pending notifications are cancelled.
-- Current memberships, preferences, invitation, and theme references are removed.
-- R2 object-deletion work is placed in the durable outbox.
-- The room row is physically deleted after required cleanup state is durably captured.
-- Deletion is idempotent; retrying cannot recreate access or decrement counts twice.
+- The row enters `deleting` and is physically removed within the same database transaction, so there is no externally visible half-deleted state.
+- `ops.idempotency_record` rows with matching `resource_id` are explicitly deleted, including encrypted join/rotation snapshots outside the FK tree.
+- Memberships, reminder preferences, invitation credentials, room reminder jobs, device delivery records and themes are removed through existing cascade FKs.
+- There are no remote media objects in the current preset/gradient theme implementation. A future media implementation must durably capture object deletion work before removing its references.
+- Repeated deletion is a safe no-op and cannot recreate relationships or decrement counts twice. Repeated leave is likewise harmless; no former-membership tombstone is needed.
+- Mobile caches and protected widget fields/selections clear on acknowledged leave/delete or authoritative access-loss synchronization. Other devices cannot be remotely rewritten while offline; no new background network jobs are introduced.
+
+Migration `V11__index_room_lifecycle_replay_cleanup.sql` adds a partial index on non-null `ops.idempotency_record.resource_id` for bounded cleanup. No lifecycle table or extra personal data is added. The existing room archive timestamp, count, owner and FK constraints remain authoritative.
+
+The existing OIDC-protected scheduler tick performs eligible deletion after reminder delivery processing. It must remain scheduled using the documented service account/audience configuration. Manual owner deletion enforces the same eligibility time even when the scheduler is disabled or delayed.
 
 Room content may remain encrypted inside a daily database backup until its normal seven-day expiry. The public product must document this operational backup window accurately rather than claiming physical backup rewriting.
 

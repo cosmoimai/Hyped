@@ -85,6 +85,29 @@ class WidgetSnapshotTest {
             assertEquals(room().syncedAt, store.room(41)?.syncedAt)
         }
     }
+    @Test fun leavingOrDeletingRoomRemovesMappingsAndLateSyncCannotReviveThem() {
+        val disk = Disk()
+        val store = WidgetSnapshotStore(disk)
+        val ids = setOf(41, 42, 43)
+        store.select(41, room(), ids)
+        store.select(42, room(), ids)
+        store.select(43, room("other-room"), ids)
+        store.mark("room-one", "removed", ids)
+        assertEquals("", store.room(41)?.roomId)
+        assertEquals("removed", store.room(42)?.state)
+        assertFalse(disk.read(41)!!.contains("room-one"))
+        store.sync(listOf(room().copy(title = "Stale private title")), ids)
+        assertEquals("", store.room(41)?.title)
+        assertEquals("removed", WidgetSnapshotStore(disk).room(42)?.state)
+        assertEquals("other-room", store.room(43)?.roomId)
+    }
+    @Test fun restoredRoomResumesAnExistingArchivedSelection() {
+        val store = WidgetSnapshotStore(Disk())
+        store.select(41, room(state = "archived"), setOf(41))
+        store.sync(listOf(room()), setOf(41))
+        assertEquals("active", store.room(41)?.state)
+        assertEquals("Trip", store.room(41)?.title)
+    }
     @Test fun logoutClearsEverySnapshotAndSelection() {
         val disk = Disk()
         val store = WidgetSnapshotStore(disk)

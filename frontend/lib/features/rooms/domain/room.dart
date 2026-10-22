@@ -37,9 +37,19 @@ class Room {
   final DateTime serverNow;
   final String? etag;
 
-  bool get canEdit => role == RoomRole.owner || role == RoomRole.coHost;
+  bool get canEdit =>
+      status == RoomStatus.active &&
+      (role == RoomRole.owner || role == RoomRole.coHost);
 
-  Room copyWith({String? etag}) => Room(
+  Room copyWith({
+    String? etag,
+    RoomStatus? status,
+    int? revision,
+    DateTime? archivedAt,
+    DateTime? deleteAfter,
+    DateTime? serverNow,
+    DateTime? updatedAt,
+  }) => Room(
     id: id,
     title: title,
     eventAt: eventAt,
@@ -47,15 +57,15 @@ class Room {
     location: location,
     description: description,
     theme: theme,
-    status: status,
+    status: status ?? this.status,
     role: role,
     memberCount: memberCount,
-    revision: revision,
-    archivedAt: archivedAt,
-    deleteAfter: deleteAfter,
+    revision: revision ?? this.revision,
+    archivedAt: archivedAt ?? this.archivedAt,
+    deleteAfter: deleteAfter ?? this.deleteAfter,
     createdAt: createdAt,
-    updatedAt: updatedAt,
-    serverNow: serverNow,
+    updatedAt: updatedAt ?? this.updatedAt,
+    serverNow: serverNow ?? this.serverNow,
     etag: etag ?? this.etag,
   );
 

@@ -135,6 +135,33 @@ class PushDeliveryIntegrationTest {
     }
 
     @Test
+    void archiveCancelsClaimedDeliveriesAndRestoreDoesNotRepeatPastBoundaries() {
+        records.prepare(100, clock.now);
+        var claimed = records.claim(100, clock.now).getFirst();
+        var actor = new com.hyped.app.identity.domain.UserId(user);
+        rooms.archive(actor, room);
+        assertThat(count("canceled")).isEqualTo(1);
+        assertThat(records.stillEligible(claimed, clock.now)).isFalse();
+        clock.now = NOW.plusSeconds(1);
+        rooms.restore(actor, room, 2L);
+        assertThat(deliveries.tick().sent()).isZero();
+        clock.now = Instant.parse("2030-12-20T09:00:00Z");
+        assertThat(deliveries.tick().sent()).isEqualTo(1);
+    }
+
+    @Test
+    void permanentDeletionRemovesDeviceDeliveryRecords() {
+        records.prepare(100, clock.now);
+        var actor = new com.hyped.app.identity.domain.UserId(user);
+        rooms.archive(actor, room);
+        clock.now = NOW.plusSeconds(86400);
+        rooms.deletePermanently(actor, room, 2L);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM app.reminder_delivery WHERE room_id = ?",
+                Integer.class, room.value())).isZero();
+        assertThat(deliveries.tick().sent()).isZero();
+    }
+
+    @Test
     void registrationBindsSessionOwnerAndEncryptsWithoutExposingToken() {
         assertThat(jdbc.queryForObject("SELECT push_session_id FROM app.device_registration WHERE id = ?",
                 UUID.class, device)).isEqualTo(session);

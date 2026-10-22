@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
 import 'package:flutter/material.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_formatters.dart';
@@ -84,7 +85,9 @@ class CompactRoomCard extends StatelessWidget {
         ),
         title: Text(room.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
-          '${compactDate(room.eventAt)} • ${countdown(room.eventAt, DateTime.now())}',
+          room.status == RoomStatus.active
+              ? '${compactDate(room.eventAt)} • ${countdown(room.eventAt, DateTime.now())}'
+              : lifecycleLabel(room, room.serverNow),
         ),
         trailing: const Icon(Icons.chevron_right),
       ),

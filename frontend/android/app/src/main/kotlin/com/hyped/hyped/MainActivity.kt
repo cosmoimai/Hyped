@@ -39,7 +39,7 @@ class MainActivity : FlutterActivity() {
                         store.prune(ids)
                         result.success(ids.sorted().map { id -> mapOf(
                             "appWidgetId" to id,
-                            "roomId" to store.room(id)?.roomId,
+                            "roomId" to store.room(id)?.roomId?.takeIf { it.isNotEmpty() },
                             "size" to if (android.appwidget.AppWidgetManager.getInstance(this).getAppWidgetInfo(id)?.provider?.className == HypedMediumWidgetProvider::class.java.name) "medium" else "small",
                         ) })
                         return@setMethodCallHandler

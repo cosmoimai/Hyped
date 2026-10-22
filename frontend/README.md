@@ -114,3 +114,7 @@ See [Android notification setup and delivery guarantees](docs/android-notificati
 ## Room members
 
 See [room member management](docs/room-members.md) for permissions, confirmation behavior, revision conflicts, and access-loss cleanup.
+
+## Room lifecycle
+
+See [room lifecycle](docs/room-lifecycle.md) for leave/archive/restore/delete rules, confirmations, server-time eligibility and widget cleanup.

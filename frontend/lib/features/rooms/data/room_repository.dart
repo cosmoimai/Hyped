@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
 import 'package:hyped/features/rooms/data/room_api.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/domain/room_commands.dart';
@@ -7,7 +8,10 @@ class RoomRepository {
 
   final RoomApi _api;
 
-  Future<List<Room>> listRooms() => _api.listRooms(status: RoomStatus.active);
+  Future<List<Room>> listRooms() => _api.listRooms(limit: 50);
+
+  Future<Room?> lifecycle(Room room, RoomLifecycleAction action) =>
+      _api.lifecycle(room, action);
 
   Future<Room> getRoom(String roomId) => _api.getRoom(roomId);
 
