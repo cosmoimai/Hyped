@@ -34,6 +34,10 @@ server:
   forward-headers-strategy: none
 
 hyped:
+  integrity:
+    mode: ${PLAY_INTEGRITY_MODE:observe}
+    package-name: ${PLAY_INTEGRITY_PACKAGE:com.hyped.hyped}
+    certificate-digests: ${PLAY_INTEGRITY_CERTIFICATE_DIGESTS:}
   policy:
     terms-version: ${TERMS_VERSION:2026-10-22}
     privacy-version: ${PRIVACY_VERSION:2026-10-22}
@@ -106,3 +110,9 @@ info:
 logging:
   level:
     org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO
+
+# Never render container exception details or enable request/header logging in production.
+server.error.include-message: never
+server.error.include-stacktrace: never
+server.error.include-binding-errors: never
+spring.mvc.log-request-details: false

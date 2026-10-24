@@ -69,3 +69,8 @@ See [Android notification setup and delivery guarantees](../frontend/docs/androi
 See [Profile and Settings setup](../frontend/docs/profile-settings.md) for profile/device contracts, theme persistence, account deletion, Firebase permissions and cleanup-job operations.
 
 Android onboarding and versioned legal consent: [setup and publication](../frontend/docs/onboarding-consent.md).
+
+Android request attestation defaults to `PLAY_INTEGRITY_MODE=observe` so local
+verification needs no Google credentials. See [production security setup](../docs/production-security.md)
+for official decoding, protected write scope, replay migration V14, signing
+allowlists, enforcement rollout and ingress requirements.

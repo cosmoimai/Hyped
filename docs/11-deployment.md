@@ -674,3 +674,16 @@ signing certificate in `/.well-known/assetlinks.json`, configure private URL log
 redaction and a generic web/Play fallback, and verify the domain on a device.
 Default debug builds disable external invitation links; release builds require
 an explicit hostname. No Firebase Dynamic Links or iOS Universal Links are added.
+
+## Android and backend security rollout
+
+Follow [production security hardening](production-security.md) before deploying:
+`PLAY_INTEGRITY_MODE=observe` initially, numeric Android
+`PLAY_INTEGRITY_PROJECT_NUMBER`, Google API/Play project linkage, runtime ADC, and
+base64url signing-certificate allowlists. Apply V14 before rollout. Only enable
+enforce after internal-track/device/provider-outage checks. Production ingress
+must provide TLS/HSTS and distributed bootstrap/global rate limits; backend
+forwarded headers remain disabled. Release signing uses controlled environment
+values and rejects debug certificates, placeholder API URLs and absent local
+Firebase client configuration. Debug builds remain available without production
+credentials. Run the documented local scanners and release checks before delivery.

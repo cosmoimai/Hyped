@@ -16,6 +16,8 @@ import org.springframework.security.oauth2.server.resource.web.authentication.Be
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration(proxyBeanMethods = false)
+@org.springframework.boot.context.properties.EnableConfigurationProperties(
+        com.hyped.app.common.security.integrity.IntegrityProperties.class)
 public class SecurityConfiguration {
 
     @Bean
@@ -25,8 +27,16 @@ public class SecurityConfiguration {
             SecurityProblemHandlers problemHandlers,
             UserAccountRepository accounts,
             ApiProblemWriter problems,
-            BearerTokenResolver bearerTokenResolver) throws Exception {
-        AccountStateFilter accountStateFilter = new AccountStateFilter(accounts, problems);
+            BearerTokenResolver bearerTokenResolver,
+            org.springframework.beans.factory.ObjectProvider<SessionStateVerifier> sessions,
+            com.hyped.app.common.security.integrity.IntegrityProperties integrity,
+            org.springframework.beans.factory.ObjectProvider<
+                    com.hyped.app.common.security.integrity.IntegrityVerifier> verifier,
+            org.springframework.beans.factory.ObjectProvider<
+                    com.hyped.app.common.security.integrity.IntegrityReplayStore> replay,
+            org.springframework.beans.factory.ObjectProvider<io.micrometer.core.instrument.MeterRegistry> metrics,
+            org.springframework.beans.factory.ObjectProvider<java.time.Clock> clocks) throws Exception {
+        AccountStateFilter accountStateFilter = new AccountStateFilter(accounts, problems, sessions.getIfAvailable());
         return http
                 .csrf(csrf -> csrf.disable())
                 .cors(withDefaults())
@@ -91,6 +101,10 @@ public class SecurityConfiguration {
                         .authenticationEntryPoint(problemHandlers)
                         .accessDeniedHandler(problemHandlers))
                 .addFilterAfter(accountStateFilter, BearerTokenAuthenticationFilter.class)
+                .addFilterAfter(new com.hyped.app.common.security.integrity.IntegrityFilter(
+                        integrity, verifier.getIfAvailable(), replay.getIfAvailable(), problems,
+                        metrics.getIfAvailable(), clocks.getIfAvailable(java.time.Clock::systemUTC)),
+                        AccountStateFilter.class)
                 .build();
     }
 

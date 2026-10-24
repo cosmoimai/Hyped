@@ -1,0 +1,9 @@
+# Reviewed historical Firebase Android client API key (public client identifier,
+# not a service credential). Exact history findings only; new keys still fail.
+# Restrict the key in Google Cloud as documented in production-security.md.
+5bcd6adf15a45994fc7ecfb745ede6a9c2525fd0:frontend/android/google-services.json:gcp-api-key:18
+9d4a686d586d9b269c88b566e9c173f9ea4cdc4d:frontend/android/google-services.json:gcp-api-key:18
+# Local-only Firebase client configuration; Git scan still catches any newly
+# committed client keys. Private/service-account credentials are never exempted.
+frontend/android/google-services.json:gcp-api-key:18
+frontend/android/app/google-services.json:gcp-api-key:18

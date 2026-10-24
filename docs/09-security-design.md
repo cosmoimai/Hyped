@@ -584,3 +584,12 @@ These do not change the approved product policy but require concrete selection b
 - Exact JWT rotation automation and emergency key-revocation procedure
 - App Attest/Play Integrity fallback rules for supported OS versions
 - Backup recovery-point and recovery-time objectives
+
+## Android implementation and rollout
+
+The Android Standard Play Integrity implementation, protected-operation scope,
+request binding, observe/enforce rollout, session-state validation, local scans,
+and remaining deployment gates are specified in
+[production security hardening](production-security.md). No iOS attestation or
+certificate pinning is added. Observe is the safe default; enforcement requires
+real Play/Cloud configuration and internal-track verification.

@@ -20,8 +20,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class AccountStateFilter extends OncePerRequestFilter {
     private final UserAccountRepository accounts;
     private final ApiProblemWriter problems;
+    private final SessionStateVerifier sessions;
 
     public AccountStateFilter(UserAccountRepository accounts, ApiProblemWriter problems) {
+        this(accounts, problems, null);
+    }
+
+    public AccountStateFilter(UserAccountRepository accounts, ApiProblemWriter problems,
+            SessionStateVerifier sessions) {
+        this.sessions = sessions;
         this.accounts = accounts;
         this.problems = problems;
     }
@@ -53,6 +60,17 @@ public class AccountStateFilter extends OncePerRequestFilter {
         }
         if (denied(account.status())) {
             writeUnavailable(request, response, account.status());
+            return;
+        }
+        try {
+            if (sessions != null && !sessions.active(jwt)) {
+                problems.write(request, response, 401, "ACCESS_TOKEN_INVALID", "Access token invalid",
+                        "The access token is invalid or expired.");
+                return;
+            }
+        } catch (RuntimeException unavailable) {
+            problems.write(request, response, 503, "DEPENDENCY_UNAVAILABLE", "Service temporarily unavailable",
+                    "A required service is temporarily unavailable.");
             return;
         }
         filterChain.doFilter(request, response);

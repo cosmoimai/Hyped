@@ -1,0 +1,7 @@
+title = "Hyped local secret scanning"
+[extend]
+useDefault = true
+# Generated build caches are excluded, never credential/source files.
+[[allowlists]]
+description = "Generated dependency/build caches"
+paths = ['''(^|/)(\.git|\.dart_tool|\.gradle|\.kotlin|build|target|node_modules)(/|$)''']

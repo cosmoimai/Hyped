@@ -25,7 +25,7 @@ class AuthTokens {
   );
 
   @override
-  String toString() => 'AuthTokens([REDACTED], sessionId: $sessionId)';
+  String toString() => 'AuthTokens[REDACTED]';
 }
 
 class AuthUser {
