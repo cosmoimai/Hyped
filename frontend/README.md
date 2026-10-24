@@ -12,11 +12,13 @@ kept enabled. Staging and production builds must supply their HTTPS URL with
 `HYPED_API_BASE_URL`. Release startup rejects the development URL and every
 non-HTTPS URL.
 
-Release signing is intentionally absent. Create an untracked
-`android/key.properties`, reference an externally stored upload keystore from a
-local or CI Gradle configuration, and verify the release certificate matches
-the selected Firebase project. The project has no debug-signing fallback for
-release builds.
+Release signing reads only excluded local/CI process environment:
+`HYPED_KEYSTORE_PATH`, `HYPED_KEYSTORE_PASSWORD`, `HYPED_KEY_ALIAS`, and
+`HYPED_KEY_PASSWORD`. The ignored `android/key.properties` file is not consumed
+by this Gradle setup. Keep the upload keystore outside Git or at an explicitly
+ignored path; there is no debug-signing fallback for release builds. See
+[Android closed-testing preparation](../docs/android-closed-testing.md) for
+version codes, reproducible verification, AAB validation and manual gates.
 
 ## Android Firebase and Google sign-in setup
 

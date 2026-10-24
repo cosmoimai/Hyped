@@ -16,12 +16,13 @@ for key in ['INVITE_HOST', 'HYPED_KEYSTORE_PATH', 'HYPED_KEYSTORE_PASSWORD',
     base.pop(key, None)
 
 
-def check(url, host, expected, extra=None):
+def check(url, host, expected, extra=None, task=':app:validateReleaseConfiguration'):
     env = base | (extra or {}) | {'INVITE_HOST': host}
     defines = base64.b64encode(('HYPED_API_BASE_URL=' + url).encode()).decode()
-    result = subprocess.run(['./gradlew', ':app:validateReleaseConfiguration',
-                             '-Pdart-defines=' + defines, '--console=plain'],
-                            cwd=android, env=env, capture_output=True, text=True)
+    command = ['./gradlew', task, '-Pdart-defines=' + defines, '--console=plain']
+    if task == ':app:bundleRelease':
+        command.append('--dry-run')
+    result = subprocess.run(command, cwd=android, env=env, capture_output=True, text=True)
     if expected is None:
         assert result.returncode == 0, 'Valid release configuration was rejected'
     else:
@@ -36,6 +37,7 @@ for url in ['http://api.hyped.app/api/v1', 'https://api.example.com/api/v1',
 for host in ['', 'links.hyped.example', '127.0.0.1']:
     check('https://api.hyped.app/api/v1', host, 'owned production INVITE_HOST')
 check('https://api.hyped.app/api/v1', 'links.hyped.app', 'controlled release signing')
+check('http://api.hyped.app/api/v1', 'links.hyped.app', 'HTTPS production HYPED_API_BASE_URL', task=':app:bundleRelease')
 with tempfile.TemporaryDirectory(prefix='hyped-signing-check-') as directory:
     store = str(Path(directory) / 'fixture.p12')
     password = secrets.token_hex(24)
@@ -60,6 +62,7 @@ with tempfile.TemporaryDirectory(prefix='hyped-signing-check-') as directory:
           'local Firebase Android client configuration', env | {'HYPED_DISABLE_FIREBASE': 'true'})
     if (android / 'app/google-services.json').is_file():
         check('https://api.hyped.app/api/v1', 'links.hyped.app', None, env)
-        print('11 negative + 1 valid Gradle release configuration checks passed')
+        check('https://api.hyped.app/api/v1', 'links.hyped.app', None, env, task=':app:bundleRelease')
+        print('12 negative + 2 valid Gradle release/AAB configuration checks passed (no release artifact built)')
     else:
-        print('11 negative Gradle release configuration checks passed; valid check needs local Firebase client config')
+        print('12 negative Gradle release/AAB configuration checks passed; valid checks need local Firebase client config')

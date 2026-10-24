@@ -503,3 +503,14 @@ Generated reports, test databases, object-store data, keys, screenshots with per
 - [ ] Critical/high defects block release.
 - [ ] Real Android and iPhone smoke tests are recorded.
 - [ ] Deferred failure/security/provider tests remain explicit in the debt register.
+
+## Android closed-testing execution package
+
+The current Android-only pre-release entry point is
+`python3 scripts/verify-pre-release.py`; it enforces full automated execution
+without skipped PostgreSQL integration tests and records versioned local artifacts.
+Use [closed-testing preparation](android-closed-testing.md),
+[physical-device smoke records](android-device-smoke-test.md) and
+[Crashlytics symbol handoff](android-crash-symbols.md) for this branch. These
+Android gates do not certify iOS or replace live provider/physical-device checks.
+The 12-slot/14-day plan is unexecuted until separately authorized and recorded.

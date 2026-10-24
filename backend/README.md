@@ -74,3 +74,7 @@ Android request attestation defaults to `PLAY_INTEGRITY_MODE=observe` so local
 verification needs no Google credentials. See [production security setup](../docs/production-security.md)
 for official decoding, protected write scope, replay migration V14, signing
 allowlists, enforcement rollout and ingress requirements.
+
+Android candidate verification: run `python3 scripts/verify-pre-release.py` from
+the repository root. It requires running Docker and rejects skipped integration
+tests; see [closed-testing preparation](../docs/android-closed-testing.md).

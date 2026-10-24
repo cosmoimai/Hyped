@@ -529,3 +529,10 @@ These controls should be reconsidered when traffic, revenue, team size, incident
 - [Google Cloud budgets and alerts](https://cloud.google.com/billing/docs/how-to/budgets)
 - [Firebase Crashlytics](https://firebase.google.com/docs/crashlytics)
 - [Cloudflare Pages](https://developers.cloudflare.com/pages/)
+
+## Android closed-test crash evidence
+
+See [Android Crashlytics symbols and mapping](android-crash-symbols.md) for the
+current SDK/plugin gap, exact-build archive, Dart/R8/native distinctions, future
+manual upload commands and privacy checks. The existence of these instructions
+is not proof that Crashlytics is installed or that a live crash is readable.
