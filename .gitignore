@@ -40,3 +40,7 @@ frontend/**/*.key
 frontend/android/google-services.json
 # macOS resource forks can copy metadata from local credential files.
 ._*
+
+# Local Python verification bytecode
+__pycache__/
+*.pyc

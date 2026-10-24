@@ -687,3 +687,13 @@ forwarded headers remain disabled. Release signing uses controlled environment
 values and rejects debug certificates, placeholder API URLs and absent local
 Firebase client configuration. Debug builds remain available without production
 credentials. Run the documented local scanners and release checks before delivery.
+
+## Android closed-testing handoff
+
+Use [Android closed-testing preparation](android-closed-testing.md) for the
+single reproducible local verification command, release version/build-number
+policy, excluded environment-only signing, conditional AAB validation and the
+12-tester/14-day plan. Complete the [physical smoke checklist](android-device-smoke-test.md)
+and [Crashlytics symbols/mapping gate](android-crash-symbols.md) before distribution.
+No Play publication, tester recruitment/contact, or symbol upload is authorized
+or performed by the local preparation scripts.
