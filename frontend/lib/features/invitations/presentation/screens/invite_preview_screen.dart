@@ -71,9 +71,13 @@ class _InviteContent extends ConsumerWidget {
     }
     ref.read(pendingInviteControllerProvider).remember(intent);
     final result = await flow.join();
-    if (!context.mounted || result == null) return;
+    if (!context.mounted ||
+        result == null ||
+        ref.read(pendingInviteControllerProvider).intent != intent) {
+      return;
+    }
     if (result.created) {
-      ref.read(pendingInviteControllerProvider).clear();
+      ref.read(pendingInviteControllerProvider).complete(intent);
       context.go('/rooms/${result.room.id}');
     }
   }
@@ -146,7 +150,7 @@ class _InviteContent extends ConsumerWidget {
         if (authenticated && result != null && result.created == false)
           FilledButton(
             onPressed: () {
-              ref.read(pendingInviteControllerProvider).clear();
+              ref.read(pendingInviteControllerProvider).complete(intent);
               context.go('/rooms/${result.room.id}');
             },
             child: const Text('Open room'),

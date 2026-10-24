@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:hyped/core/offline/offline_state.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/invitations/data/invitation_api.dart';
@@ -5,19 +7,65 @@ import 'package:hyped/features/invitations/data/invitation_repository.dart';
 import 'package:hyped/features/invitations/domain/invitation.dart';
 
 class PendingInviteController extends ChangeNotifier {
+  PendingInviteController({this.onClear, DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
+  final DateTime Function() _clock;
+  final void Function()? onClear;
   PendingInviteIntent? _intent;
-
+  final _delivered = <String, DateTime>{};
+  int _generation = 0;
   PendingInviteIntent? get intent => _intent;
+  int get generation => _generation;
 
   void remember(PendingInviteIntent intent) {
+    if (_intent == intent) return;
     _intent = intent;
+    _generation++;
+    notifyListeners();
+  }
+
+  String _fingerprint(PendingInviteIntent intent) =>
+      sha256.convert(utf8.encode(intent.credential)).toString();
+  void _markDelivered(PendingInviteIntent intent) {
+    _delivered.removeWhere(
+      (_, at) => _clock().difference(at) >= const Duration(seconds: 30),
+    );
+    final digest = _fingerprint(intent);
+    if (_delivered.length == 16 && !_delivered.containsKey(digest)) {
+      _delivered.remove(_delivered.keys.first);
+    }
+    _delivered[digest] = _clock();
+  }
+
+  bool acceptExternal(PendingInviteIntent intent) {
+    if (intent.kind != InviteKind.link || _intent == intent) return false;
+    final previous = _delivered[_fingerprint(intent)];
+    if (previous != null &&
+        _clock().difference(previous) < const Duration(seconds: 30)) {
+      return false;
+    }
+    _markDelivered(intent);
+    remember(intent);
+    return true;
+  }
+
+  void complete(PendingInviteIntent intent) {
+    if (_intent != intent) return;
+    _intent = null;
+    _generation++;
+    if (intent.kind == InviteKind.link) _markDelivered(intent);
+    // Keep only short-lived bounded digests, never a consumed raw token.
+    onClear?.call();
     notifyListeners();
   }
 
   void clear() {
-    if (_intent == null) return;
+    final changed = _intent != null;
     _intent = null;
-    notifyListeners();
+    _delivered.clear();
+    _generation++;
+    onClear?.call();
+    if (changed) notifyListeners();
   }
 }
 
@@ -62,6 +110,8 @@ class InviteFlowController extends ChangeNotifier {
   }
 
   Future<InviteJoinResult?> join() async {
+    if (_disposed) return null;
+    if (_result != null) return _result;
     final preview = _preview;
     if (_disposed || preview == null || _loading || _joining) return null;
     _joining = true;

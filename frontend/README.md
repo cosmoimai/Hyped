@@ -103,7 +103,7 @@ flutter build apk --debug
 A production build must include its HTTPS endpoint explicitly:
 
 ```bash
-flutter build appbundle --release \
+INVITE_HOST=YOUR_OWNED_HOST flutter build appbundle --release \
   --dart-define=HYPED_API_BASE_URL=https://api.example.com/api/v1
 ```
 
@@ -126,3 +126,7 @@ See [Profile and Settings setup](docs/profile-settings.md) for profile/device co
 Android onboarding and versioned legal consent: [setup and publication](docs/onboarding-consent.md).
 
 Android Drift room cache: [architecture, cleanup and generation](docs/offline-room-cache.md).
+
+Android invitation App Links: [domain, signing, fallback and adb setup](docs/android-app-links.md).
+Set `INVITE_HOST` for configured builds; default debug builds disable external
+invite links until an owned domain exists. Production builds require this value.

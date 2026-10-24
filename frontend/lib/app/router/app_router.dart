@@ -32,6 +32,7 @@ GoRouter createRouter(
   String? afterConsent;
   return GoRouter(
     initialLocation: '/splash',
+    overridePlatformDefaultLocation: true,
     // Router errors can contain the full URI, including invite credentials.
     errorBuilder: (_, _) =>
         const Scaffold(body: Center(child: Text('This page is unavailable.'))),

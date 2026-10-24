@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:hyped/features/invitations/data/app_links/android_invite_link_platform.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:hyped/app/bootstrap/providers.dart';
@@ -8,7 +10,11 @@ import 'package:hyped/features/invitations/presentation/controllers/invitation_c
 
 final pendingInviteControllerProvider =
     ChangeNotifierProvider<PendingInviteController>(
-      (ref) => PendingInviteController(),
+      (ref) => PendingInviteController(
+        onClear: () => unawaited(
+          ref.read(androidInviteLinkPlatformProvider).clearPending(),
+        ),
+      ),
     );
 
 final invitationApiProvider = Provider<InvitationApi>(
