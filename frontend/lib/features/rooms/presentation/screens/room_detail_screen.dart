@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/widgets/sync_status.dart';
 import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,25 +21,25 @@ class RoomDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Room'),
         actions: [
-          if (room != null)
+          if (room != null && !controller.readOnly)
             IconButton(
               onPressed: () => context.go('/rooms/$roomId/lifecycle'),
               tooltip: 'Room actions',
               icon: const Icon(Icons.more_horiz),
             ),
-          if (room != null)
+          if (room != null && !controller.readOnly)
             IconButton(
               onPressed: () => context.go('/rooms/$roomId/members'),
               tooltip: 'Members',
               icon: const Icon(Icons.group_outlined),
             ),
-          if (room?.status == RoomStatus.active)
+          if (room?.status == RoomStatus.active && !controller.readOnly)
             IconButton(
               onPressed: () => context.go('/rooms/$roomId/reminders'),
               tooltip: 'Reminders',
               icon: const Icon(Icons.notifications_none),
             ),
-          if (room?.canEdit == true)
+          if (room?.canEdit == true && !controller.readOnly)
             IconButton(
               onPressed: () => context.go('/rooms/$roomId/edit'),
               tooltip: 'Edit room',
@@ -53,7 +54,19 @@ class RoomDetailScreen extends ConsumerWidget {
             ? _DetailError(message: controller.error!, onRetry: controller.load)
             : room == null
             ? const Center(child: Text('Room unavailable.'))
-            : _RoomDetail(room: room, onRefresh: controller.load),
+            : Column(
+                children: [
+                  if (room.lastSyncedAt != null || controller.error != null)
+                    SyncStatus(
+                      syncedAt: room.lastSyncedAt,
+                      readOnly: controller.readOnly,
+                      message: controller.error,
+                    ),
+                  Expanded(
+                    child: _RoomDetail(room: room, onRefresh: controller.load),
+                  ),
+                ],
+              ),
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'package:hyped/core/offline/offline_state.dart';
+import 'package:hyped/features/rooms/presentation/widgets/sync_status.dart';
 import 'package:hyped/features/notifications/presentation/push_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,22 +54,45 @@ class HomeScreen extends ConsumerWidget {
             )
           : null,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/rooms/new'),
+        onPressed: () {
+          if (rooms.usingCache) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text(offlineReadOnlyMessage)),
+            );
+          } else {
+            context.go('/rooms/new');
+          }
+        },
         icon: const Icon(Icons.add),
         label: const Text('Create'),
       ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: rooms.load,
-          child: rooms.loading
+          child: rooms.rooms.isEmpty && rooms.lastSync == null && rooms.loading
               ? const Center(child: CircularProgressIndicator())
-              : rooms.error != null
+              : rooms.rooms.isEmpty &&
+                    rooms.lastSync == null &&
+                    rooms.lastSync == null &&
+                    rooms.error != null
               ? _ErrorState(message: rooms.error!, onRetry: rooms.load)
-              : rooms.rooms.isEmpty
+              : rooms.rooms.isEmpty && rooms.lastSync == null
               ? const _EmptyState()
               : ListView(
                   padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
                   children: [
+                    if (rooms.lastSync != null || rooms.error != null)
+                      SyncStatus(
+                        syncedAt: rooms.lastSync,
+                        readOnly: rooms.usingCache,
+                        message: rooms.error,
+                      ),
+                    if (rooms.loading) const LinearProgressIndicator(),
+                    if (rooms.rooms.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('Your countdowns will live here'),
+                      ),
                     if (rooms.nearestRoom case final nearest?)
                       FeaturedRoomCard(
                         room: nearest,

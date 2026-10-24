@@ -17,6 +17,8 @@ class Room {
     this.archivedAt,
     this.deleteAfter,
     this.etag,
+    this.isCached = false,
+    this.lastSyncedAt,
   });
 
   final String id;
@@ -36,6 +38,8 @@ class Room {
   final DateTime updatedAt;
   final DateTime serverNow;
   final String? etag;
+  final bool isCached;
+  final DateTime? lastSyncedAt;
 
   bool get canEdit =>
       status == RoomStatus.active &&
@@ -49,6 +53,8 @@ class Room {
     DateTime? deleteAfter,
     DateTime? serverNow,
     DateTime? updatedAt,
+    bool? isCached,
+    DateTime? lastSyncedAt,
   }) => Room(
     id: id,
     title: title,
@@ -67,6 +73,8 @@ class Room {
     updatedAt: updatedAt ?? this.updatedAt,
     serverNow: serverNow ?? this.serverNow,
     etag: etag ?? this.etag,
+    isCached: isCached ?? this.isCached,
+    lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
   );
 
   factory Room.fromJson(Map<String, dynamic> json, {String? etag}) => Room(

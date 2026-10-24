@@ -1,3 +1,5 @@
+import 'package:hyped/features/rooms/presentation/controllers/room_providers.dart';
+import 'package:hyped/features/rooms/data/cache/cache_providers.dart';
 import 'package:hyped/features/policy/presentation/policy_providers.dart';
 import 'package:hyped/features/settings/data/theme_preference.dart';
 import 'dart:async';
@@ -77,6 +79,8 @@ class _HypedAppState extends ConsumerState<HypedApp>
     if (state == AppLifecycleState.resumed) {
       unawaited(ref.read(pushControllerProvider).sync(force: true));
       unawaited(ref.read(policyControllerProvider).load());
+      ref.invalidate(roomListControllerProvider);
+      ref.invalidate(roomDetailControllerProvider);
     }
   }
 
@@ -96,6 +100,8 @@ class _HypedAppState extends ConsumerState<HypedApp>
       ref.read(authControllerProvider),
       ref.read(pendingInviteControllerProvider),
       ref.read(policyControllerProvider),
+      ref.read(offlineStateProvider),
+      () => ref.read(roomCacheSessionProvider).restoredSession,
     );
     return MaterialApp.router(
       title: 'Hyped!',

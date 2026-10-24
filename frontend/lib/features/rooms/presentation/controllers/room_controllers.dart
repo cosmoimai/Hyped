@@ -1,3 +1,5 @@
+import 'package:hyped/core/offline/offline_state.dart';
+import 'package:hyped/features/rooms/data/cache/cached_room_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
 import 'package:hyped/features/android_widgets/data/widget_refresh_coordinator.dart';
@@ -15,6 +17,8 @@ class RoomListController extends ChangeNotifier {
   bool _loading = false;
   String? _error;
   List<Room> _rooms = const [];
+  DateTime? lastSync;
+  bool usingCache = false;
 
   bool get loading => _loading;
   String? get error => _error;
@@ -26,11 +30,24 @@ class RoomListController extends ChangeNotifier {
       .toList(growable: false);
 
   Future<void> load() async {
+    if (_disposed || _loading) return;
     final epoch = _widgets?.sessionEpoch ?? 0;
     _loading = true;
     _error = null;
     notifyListeners();
     try {
+      if (_repository case final OfflineRoomReads cached) {
+        final snapshot = await cached.cachedList();
+        if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
+          return;
+        }
+        if (snapshot != null) {
+          _rooms = snapshot.rooms;
+          lastSync = snapshot.syncedAt;
+          usingCache = true;
+          notifyListeners();
+        }
+      }
       final rooms = await _repository.listRooms();
       if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
         return;
@@ -38,11 +55,28 @@ class RoomListController extends ChangeNotifier {
       _rooms =
           rooms.where((room) => room.status != RoomStatus.deleting).toList()
             ..sort((a, b) => a.eventAt.compareTo(b.eventAt));
+      usingCache = false;
+      if (_repository case final OfflineRoomReads cached) {
+        lastSync = cached.lastListSync;
+      }
       await WidgetRefreshCoordinator(
         _widgets,
       ).afterList(_rooms, _repository.getRoom, epoch);
-    } catch (_) {
-      _error = 'Could not load your rooms. Pull to retry.';
+    } catch (failure) {
+      if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
+        return;
+      }
+      if (failure is RoomApiException &&
+          ([401, 403].contains(failure.statusCode) ||
+              failure.code == 'CACHE_CHANGED')) {
+        _rooms = const [];
+        lastSync = null;
+      }
+      usingCache = lastSync != null;
+      _error =
+          failure is RoomApiException && failure.code == 'OFFLINE_READ_ONLY'
+          ? offlineReadOnlyMessage
+          : 'Could not refresh your rooms. Pull to retry.';
     } finally {
       _loading = false;
       if (!_disposed) notifyListeners();
@@ -70,6 +104,7 @@ class RoomDetailController extends ChangeNotifier {
 
   bool get loading => _loading;
   bool get saving => _saving;
+  bool get readOnly => _room?.isCached == true || _loading || _error != null;
   String? get error => _error;
   Room? get room => _room;
 
@@ -79,6 +114,16 @@ class RoomDetailController extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
+      if (_repository case final OfflineRoomReads cached) {
+        final snapshot = await cached.cachedDetail(roomId);
+        if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
+          return;
+        }
+        if (snapshot != null) {
+          _room = snapshot;
+          notifyListeners();
+        }
+      }
       final loaded = await _repository.getRoom(roomId);
       if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
         return;
@@ -88,8 +133,12 @@ class RoomDetailController extends ChangeNotifier {
         await WidgetRefreshCoordinator(_widgets).afterDetail(room, epoch);
       }
     } catch (error) {
+      if (_disposed || (_widgets != null && epoch != _widgets.sessionEpoch)) {
+        return;
+      }
       if (error is RoomApiException &&
-          [401, 403, 404, 410].contains(error.statusCode)) {
+          ([401, 403, 404, 410].contains(error.statusCode) ||
+              error.code == 'CACHE_CHANGED')) {
         _room = null;
       }
       await WidgetRefreshCoordinator(
@@ -99,7 +148,9 @@ class RoomDetailController extends ChangeNotifier {
           error is RoomApiException &&
               [403, 404, 410].contains(error.statusCode)
           ? 'This room was removed or is no longer accessible.'
-          : 'Could not load this room.';
+          : error is RoomApiException && error.code == 'OFFLINE_READ_ONLY'
+          ? offlineReadOnlyMessage
+          : 'Could not refresh this room.';
     } finally {
       _loading = false;
       if (!_disposed) notifyListeners();
@@ -108,7 +159,12 @@ class RoomDetailController extends ChangeNotifier {
 
   Future<bool> save(RoomDraft draft) async {
     final current = _room;
-    if (current == null) return false;
+    if (current == null || _disposed) return false;
+    if (current.isCached) {
+      _error = offlineReadOnlyMessage;
+      notifyListeners();
+      return false;
+    }
     final validation = RoomDraftValidation.validate(draft, DateTime.now());
     if (validation != null) {
       _error = validation;
@@ -196,6 +252,7 @@ class RoomCreationController extends ChangeNotifier {
 }
 
 String _roomMutationMessage(RoomApiException error) => switch (error.code) {
+  'OFFLINE_READ_ONLY' => offlineReadOnlyMessage,
   'VALIDATION_FAILED' => 'Check the room details and try again.',
   'EVENT_TIME_NOT_FUTURE' => 'Choose a future event time.',
   'EVENT_TIME_AMBIGUOUS' =>

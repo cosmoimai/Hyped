@@ -1,3 +1,4 @@
+import 'package:hyped/core/offline/offline_state.dart';
 import 'package:hyped/features/policy/presentation/policy_controller.dart';
 import 'package:hyped/features/policy/presentation/policy_screen.dart';
 import 'package:hyped/features/policy/presentation/legal_document_screen.dart';
@@ -25,6 +26,8 @@ GoRouter createRouter(
   AuthController auth, [
   PendingInviteController? pending,
   PolicyController? policy,
+  OfflineState? offline,
+  bool Function()? hasRestoredRoomCache,
 ]) {
   String? afterConsent;
   return GoRouter(
@@ -32,7 +35,7 @@ GoRouter createRouter(
     // Router errors can contain the full URI, including invite credentials.
     errorBuilder: (_, _) =>
         const Scaffold(body: Center(child: Text('This page is unavailable.'))),
-    refreshListenable: Listenable.merge([auth, ?pending, ?policy]),
+    refreshListenable: Listenable.merge([auth, ?pending, ?policy, ?offline]),
     redirect: (context, state) {
       final status = auth.state.status;
       final path = state.matchedLocation;
@@ -44,6 +47,24 @@ GoRouter createRouter(
       if (auth.state.isAuthenticated) {
         if (_isLegalPath(path) || path.startsWith('/settings')) return null;
         if (policy != null && !policy.accepted) {
+          final restoredRead =
+              hasRestoredRoomCache?.call() == true &&
+              {PolicyPhase.loading, PolicyPhase.failure}.contains(policy.phase);
+          if (restoredRead && _isOfflineReadPath(path)) return null;
+          if (restoredRead &&
+              pending?.intent == null &&
+              (_isAuthEntryPath(path) || path == '/policy-acceptance')) {
+            return '/home';
+          }
+          if (offline?.offline == true && policy.phase == PolicyPhase.failure) {
+            if (_isOfflineReadPath(path)) return null;
+            if (path == '/policy-acceptance') {
+              return pending?.intent?.location ??
+                  (_isOfflineReadPath(afterConsent ?? '')
+                      ? afterConsent
+                      : '/home');
+            }
+          }
           if (_isInvitePath(path)) return null;
           if (path != '/policy-acceptance' && !_isAuthEntryPath(path)) {
             afterConsent = state.uri.toString();
@@ -165,3 +186,7 @@ bool _isInvitePath(String path) =>
 
 bool _isAuthEntryPath(String path) =>
     path == '/sign-in' || path == '/onboarding' || path == '/splash';
+
+bool _isOfflineReadPath(String path) =>
+    path == '/home' ||
+    (RegExp(r'^/rooms/[^/]+$').hasMatch(path) && path != '/rooms/new');

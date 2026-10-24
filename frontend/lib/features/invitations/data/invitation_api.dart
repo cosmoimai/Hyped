@@ -1,3 +1,4 @@
+import 'package:hyped/core/offline/offline_state.dart';
 import 'package:dio/dio.dart';
 import 'package:hyped/features/invitations/domain/invitation.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
@@ -78,12 +79,14 @@ class InvitationApiException implements Exception {
       }
     }
     return InvitationApiException(
-      code: code,
+      code: code ?? (isTransportFailure(error) ? 'OFFLINE_READ_ONLY' : null),
       statusCode: error.response?.statusCode,
     );
   }
 
   static const _knownCodes = {
+    'OFFLINE_READ_ONLY',
+    'CURRENT_POLICY_ACCEPTANCE_REQUIRED',
     'INVITATION_INVALID',
     'ROOM_ENDED',
     'ROOM_FULL',

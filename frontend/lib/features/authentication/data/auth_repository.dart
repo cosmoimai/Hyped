@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/data/cache/room_cache_session.dart';
 import 'package:hyped/features/notifications/data/notification_platform.dart';
 import 'package:hyped/core/secure_storage/token_store.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
@@ -14,10 +15,12 @@ class AuthRepository {
     this.widgets,
     this.notifications,
     this.onLocalCleanup,
+    this.roomCache,
   ]) : _identityProvider = identityProvider;
   final RoomWidgetRepository? widgets;
   final NotificationPlatform? notifications;
   final void Function()? onLocalCleanup;
+  final RoomCacheSession? roomCache;
   final AuthApi _api;
   final TokenStore _tokens;
   final DeviceMetadataProvider _metadata;
@@ -25,11 +28,17 @@ class AuthRepository {
   Future<SessionRestoreResult> restoreSession(DateTime now) async {
     final stored = await _tokens.read();
     if (stored == null) {
+      try {
+        await roomCache?.clear();
+      } catch (_) {}
       await widgets?.clearProtectedContent();
       await notifications?.clearSession();
       return SessionRestoreResult.missing;
     }
     if (stored.accessTokenExpiresAt.isAfter(now)) {
+      try {
+        await roomCache?.restore(stored.sessionId);
+      } catch (_) {}
       await widgets?.startSession();
       await notifications?.startSession();
       return SessionRestoreResult.authenticated;
@@ -44,6 +53,9 @@ class AuthRepository {
         await _tokens.installationId(),
       );
       await _tokens.write(refreshed);
+      try {
+        await roomCache?.restore(refreshed.sessionId);
+      } catch (_) {}
       await widgets?.startSession();
       await notifications?.startSession();
       return SessionRestoreResult.authenticated;
@@ -70,6 +82,9 @@ class AuthRepository {
       appVersion: metadata.appVersion,
     );
     await _tokens.write(exchange.tokens);
+    try {
+      await roomCache?.start(exchange.user.id, exchange.tokens.sessionId);
+    } catch (_) {}
     await widgets?.startSession();
     await notifications?.startSession();
     _identityProvider = provider;
@@ -77,6 +92,9 @@ class AuthRepository {
 
   Future<void> logout() async {
     try {
+      try {
+        await roomCache?.clear();
+      } catch (_) {}
       try {
         await widgets?.clearProtectedContent();
       } catch (_) {}

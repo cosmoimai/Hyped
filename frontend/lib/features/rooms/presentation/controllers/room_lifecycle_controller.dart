@@ -1,3 +1,4 @@
+import 'package:hyped/core/offline/offline_state.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
@@ -141,6 +142,7 @@ class RoomLifecycleController extends ChangeNotifier {
 }
 
 String lifecycleError(RoomApiException error) => switch (error.code) {
+  'OFFLINE_READ_ONLY' => offlineReadOnlyMessage,
   'OWNERSHIP_TRANSFER_REQUIRED' =>
     'Transfer ownership from Members before leaving.',
   'ROOM_RECOVERY_EXPIRED' =>
