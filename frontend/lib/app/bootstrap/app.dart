@@ -1,3 +1,5 @@
+import 'package:hyped/features/invitations/domain/invitation.dart';
+import 'package:hyped/features/invitations/data/app_links/android_invite_link_platform.dart';
 import 'package:hyped/features/rooms/presentation/controllers/room_providers.dart';
 import 'package:hyped/features/rooms/data/cache/cache_providers.dart';
 import 'package:hyped/features/policy/presentation/policy_providers.dart';
@@ -37,6 +39,9 @@ class _HypedAppState extends ConsumerState<HypedApp>
         if (call.method == 'widgetTapped') _receiveWidget(call.arguments);
       });
       _loadWidgetLaunch();
+      unawaited(
+        ref.read(androidInviteLinkPlatformProvider).initialize(_receiveInvite),
+      );
     }
   }
 
@@ -44,6 +49,22 @@ class _HypedAppState extends ConsumerState<HypedApp>
     try {
       _receiveWidget(await _widgets.invokeMethod<String>('getLaunchLocation'));
     } catch (_) {}
+  }
+
+  void _receiveInvite(PendingInviteIntent intent) {
+    if (!mounted) return;
+    final pending = ref.read(pendingInviteControllerProvider);
+    if (!pending.acceptExternal(intent)) return;
+    final generation = pending.generation;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted ||
+          pending.generation != generation ||
+          pending.intent != intent) {
+        return;
+      }
+      _router?.go(intent.location);
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   void _receiveWidget(Object? location) {
@@ -115,7 +136,10 @@ class _HypedAppState extends ConsumerState<HypedApp>
 
   @override
   void dispose() {
-    if (!kIsWeb && Platform.isAndroid) _widgets.setMethodCallHandler(null);
+    if (!kIsWeb && Platform.isAndroid) {
+      ref.read(androidInviteLinkPlatformProvider).close();
+      _widgets.setMethodCallHandler(null);
+    }
     WidgetsBinding.instance.removeObserver(this);
     _router?.dispose();
     super.dispose();

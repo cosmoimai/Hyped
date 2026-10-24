@@ -664,3 +664,13 @@ Do not deploy multiple active write regions without an explicit data-consistency
 - [Google Play account deletion requirements](https://support.google.com/googleplay/android-developer/answer/13327111)
 - [Google Play photo and video permissions policy](https://support.google.com/googleplay/android-developer/answer/16935362)
 - [Apple App Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)
+
+## Android invitation domain deployment
+
+No production invitation hostname has been selected. Before enabling App Links,
+follow [Android App Links setup](../frontend/docs/android-app-links.md): align
+`INVITE_HOST` with backend `INVITATION_PUBLIC_BASE_URL`, publish the exact installed
+signing certificate in `/.well-known/assetlinks.json`, configure private URL log
+redaction and a generic web/Play fallback, and verify the domain on a device.
+Default debug builds disable external invitation links; release builds require
+an explicit hostname. No Firebase Dynamic Links or iOS Universal Links are added.
