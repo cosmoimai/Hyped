@@ -1,3 +1,4 @@
+import 'package:hyped/core/api/integrity_interceptor.dart';
 import 'package:hyped/features/rooms/data/cache/cache_providers.dart';
 import 'package:hyped/features/rooms/data/cache/cache_token_store.dart';
 import 'package:hyped/features/rooms/data/cache/cache_invalidation_interceptor.dart';
@@ -31,7 +32,11 @@ final tokenStoreProvider = Provider<TokenStore>(
       WidgetTokenStore(
         SecureTokenStore(
           const FlutterSecureStorage(
-            aOptions: AndroidOptions(),
+            aOptions: AndroidOptions(
+              keyCipherAlgorithm:
+                  KeyCipherAlgorithm.RSA_ECB_OAEPwithSHA_256andMGF1Padding,
+              storageCipherAlgorithm: StorageCipherAlgorithm.AES_GCM_NoPadding,
+            ),
             iOptions: IOSOptions(
               accessibility: KeychainAccessibility.first_unlock_this_device,
             ),
@@ -98,6 +103,13 @@ final authenticatedDioProvider = Provider<Dio>((ref) {
   dio.interceptors.add(OfflineWriteInterceptor(ref.read(offlineStateProvider)));
   dio.interceptors.add(
     CacheInvalidationInterceptor(ref.read(roomCacheSessionProvider)),
+  );
+  dio.interceptors.add(
+    IntegrityInterceptor(
+      AndroidIntegrityPlatform().token,
+      currentSession: () async =>
+          (await ref.read(tokenStoreProvider).read())?.sessionId,
+    ),
   );
   return dio;
 });

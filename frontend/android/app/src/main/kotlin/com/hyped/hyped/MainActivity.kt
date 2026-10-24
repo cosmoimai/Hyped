@@ -6,6 +6,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var integrityBridge: AndroidIntegrityBridge? = null
     private var inviteBridge: AndroidInviteLinkBridge? = null
     private var pushBridge: AndroidPushBridge? = null
     private var widgetChannel: MethodChannel? = null
@@ -25,6 +26,7 @@ class MainActivity : FlutterActivity() {
         inviteBridge = AndroidInviteLinkBridge(flutterEngine.dartExecutor.binaryMessenger)
         inviteBridge?.opened(intent)
         super.configureFlutterEngine(flutterEngine)
+        integrityBridge = AndroidIntegrityBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         pushBridge = AndroidPushBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         widgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "hyped/android_widgets")
         widgetChannel!!.setMethodCallHandler { call, result ->
@@ -74,6 +76,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        integrityBridge?.close()
+        integrityBridge = null
         inviteBridge?.close()
         inviteBridge = null
         pushBridge?.close()

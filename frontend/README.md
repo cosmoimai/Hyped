@@ -130,3 +130,8 @@ Android Drift room cache: [architecture, cleanup and generation](docs/offline-ro
 Android invitation App Links: [domain, signing, fallback and adb setup](docs/android-app-links.md).
 Set `INVITE_HOST` for configured builds; default debug builds disable external
 invite links until an owned domain exists. Production builds require this value.
+
+Android/backend production security: [Play Integrity, transport, signing and local scans](../docs/production-security.md).
+For a development APK without Firebase client configuration use
+`HYPED_DISABLE_FIREBASE=true flutter build apk --debug`. Production requires a
+controlled non-debug signing configuration; see the linked environment variables.

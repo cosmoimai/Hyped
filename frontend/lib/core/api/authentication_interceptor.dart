@@ -41,6 +41,7 @@ class AuthenticationInterceptor extends Interceptor {
       }
       if (tokens != null) {
         options.headers['Authorization'] = 'Bearer ${tokens.accessToken}';
+        options.extra['authenticatedSessionId'] = tokens.sessionId;
       }
     }
     handler.next(options);

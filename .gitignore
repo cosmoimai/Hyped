@@ -37,3 +37,6 @@ frontend/**/*.keystore
 frontend/**/*.p8
 frontend/**/*.pem
 frontend/**/*.key
+frontend/android/google-services.json
+# macOS resource forks can copy metadata from local credential files.
+._*

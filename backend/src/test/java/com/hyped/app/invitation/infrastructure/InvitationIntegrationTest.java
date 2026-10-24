@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -147,8 +148,11 @@ class InvitationIntegrationTest {
     @Autowired
     private MutableClock clock;
 
+    private final Map<UserId, UUID[]> authenticatedSessions = new java.util.HashMap<>();
+
     @BeforeEach
     void resetData() {
+        authenticatedSessions.clear();
         reset(crypto);
         clock.now = NOW;
         jdbc.update("DELETE FROM ops.idempotency_record");
@@ -808,6 +812,7 @@ class InvitationIntegrationTest {
                 VALUES (?, ?, ?, ?)
                 """, id.value(), new byte[] {1}, java.sql.Timestamp.from(NOW), java.sql.Timestamp.from(NOW));
         com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, id.value());
+        provisionSession(id);
         return id;
     }
 
@@ -918,10 +923,31 @@ class InvitationIntegrationTest {
         return "Bearer " + jwt(actor, NOW.plusSeconds(3600));
     }
 
+    private void provisionSession(UserId actor) {
+        UUID sessionId = UUID.randomUUID();
+        UUID deviceId = UUID.randomUUID();
+        UUID installationId = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO app.device_registration(id,user_id,platform,installation_id,device_name,
+                    last_seen_at,created_at,updated_at)
+                VALUES (?,?,'android',?,'Test Android',?,?,?)
+                """, deviceId, actor.value(), installationId, Timestamp.from(NOW),
+                Timestamp.from(NOW), Timestamp.from(NOW));
+        jdbc.update("""
+                INSERT INTO app.auth_session(id,user_id,device_id,token_family_id,issued_at,last_used_at,
+                    expires_at,created_at,updated_at)
+                VALUES (?,?,?,?,?,?,?,?,?)
+                """, sessionId, actor.value(), deviceId, UUID.randomUUID(), Timestamp.from(NOW),
+                Timestamp.from(NOW), Timestamp.from(NOW.plusSeconds(7200)), Timestamp.from(NOW), Timestamp.from(NOW));
+        authenticatedSessions.put(actor, new UUID[] {sessionId, installationId});
+    }
+
     private String jwt(UserId actor, Instant expiresAt) {
+        UUID sessionId = authenticatedSessions.get(actor)[0];
+        UUID installationId = authenticatedSessions.get(actor)[1];
         var claims = JwtClaimsSet.builder().subject(actor.toString()).issuer("https://issuer.example.test")
                 .audience(List.of("hyped-mobile")).id(UUID.randomUUID().toString())
-                .claim("sid", UUID.randomUUID().toString()).claim("did", UUID.randomUUID().toString())
+                .claim("sid", sessionId.toString()).claim("did", installationId.toString())
                 .issuedAt(expiresAt.minusSeconds(3600)).expiresAt(expiresAt).build();
         return encoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(SignatureAlgorithm.RS256).keyId("test-key").build(), claims)).getTokenValue();

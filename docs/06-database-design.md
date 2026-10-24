@@ -872,3 +872,14 @@ The following decisions require later security, API, or implementation work but 
 - Database recovery point and recovery time targets
 
 Each item must be resolved before the related production feature is enabled.
+
+## V14: Android integrity replay and quota guard
+
+`ops.integrity_replay` stores unique SHA-256 base64url token/request digests plus
+expiry; `ops.integrity_rate` stores verified-session digests, minute windows and
+bounded counts. These tables contain no token, request body, raw user or session
+identifier. Claims are atomic across replicas, independently committed before
+business operations. Expired entries are pruned on subsequent use. See
+[production security](production-security.md) for lifetime, observe/fail-closed
+behaviour and deployment/backup considerations. Existing room row-lock and
+transaction ordering are unchanged.

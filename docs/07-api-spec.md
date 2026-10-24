@@ -1292,3 +1292,18 @@ Mobile local caching is governed by authorization and offline requirements, not 
 - [RFC 9457: Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457)
 - [RFC 9110: HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110)
 - [IANA Time Zone Database](https://www.iana.org/time-zones)
+
+## Android request-integrity evidence
+
+Authenticated writes use optional `X-Play-Integrity`, `X-Integrity-Id` (UUID), and
+`X-Integrity-Time` (Unix milliseconds). The backend rollout mode determines when
+evidence is required; default observe preserves existing clients. Protected-route
+scope, exact requestHash canonicalization and Google verification policy are in
+[production security](production-security.md). Public previews/reads, auth
+bootstrap/refresh/revocation/logout and account-deletion cleanup do not require
+integrity evidence. These exemptions do not bypass existing authorization.
+Enforce returns sanitized `403 INTEGRITY_REQUIRED` for missing/invalid/replayed
+evidence and `503 INTEGRITY_UNAVAILABLE` for unavailable verification. Distributed
+authenticated-write limits can return `429 RATE_LIMITED` with `Retry-After: 60`.
+Retry with fresh evidence and preserve the business Idempotency-Key/revision.
+No userId/deviceId ownership field or new public endpoint is introduced.

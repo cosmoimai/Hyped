@@ -9,13 +9,42 @@ class ApiEnvironment {
   );
 
   static String get baseUrl {
-    final uri = Uri.parse(_configuredUrl);
-    if (kReleaseMode &&
-        (_configuredUrl == _developmentUrl || uri.scheme != 'https')) {
-      throw StateError(
-        'A secure production API URL is required for release builds',
-      );
-    }
+    validate(_configuredUrl, release: kReleaseMode);
     return _configuredUrl;
+  }
+
+  static void validate(String value, {required bool release}) {
+    final uri = Uri.tryParse(value);
+    final host = uri?.host.toLowerCase() ?? '';
+    const reserved = [
+      'localhost',
+      'local',
+      'internal',
+      'invalid',
+      'test',
+      'example',
+      'example.com',
+      'example.org',
+      'example.net',
+    ];
+    if (uri == null ||
+        !uri.hasAuthority ||
+        uri.userInfo.isNotEmpty ||
+        uri.hasQuery ||
+        uri.hasFragment ||
+        uri.path != '/api/v1' ||
+        !{'https', 'http'}.contains(uri.scheme) ||
+        (release &&
+            (uri.scheme != 'https' ||
+                value != 'https://$host/api/v1' ||
+                uri.hasPort ||
+                !host.contains('.') ||
+                !RegExp(r'^[a-z0-9.-]+$').hasMatch(host) ||
+                RegExp(r'^[0-9.]+$').hasMatch(host) ||
+                reserved.any(
+                  (suffix) => host == suffix || host.endsWith('.$suffix'),
+                )))) {
+      throw StateError('A valid secure API configuration is required');
+    }
   }
 }
