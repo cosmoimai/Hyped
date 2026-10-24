@@ -169,9 +169,9 @@ def main():
         configured = all(os.environ.get(key) for key in SIGNING_KEYS)
         if configured and not signing_is_excluded(os.environ['HYPED_KEYSTORE_PATH']):
             raise RuntimeError('Release signing file must exist outside Git or be untracked and explicitly ignored')
-        release_ready = configured and bool(os.environ.get('INVITE_HOST')) and bool(os.environ.get('HYPED_API_BASE_URL'))
+        release_ready = bool(os.environ.get('HYPED_FIREBASE_PROJECT_ID')) and configured and bool(os.environ.get('INVITE_HOST')) and bool(os.environ.get('HYPED_API_BASE_URL'))
         if not release_ready:
-            report['aab'] = 'BLOCKED: real signing, owned INVITE_HOST and HTTPS HYPED_API_BASE_URL required'
+            report['aab'] = 'BLOCKED: approved HYPED_FIREBASE_PROJECT_ID, real signing, owned INVITE_HOST and HTTPS HYPED_API_BASE_URL required'
             if args.require_aab:
                 raise RuntimeError('Required AAB configuration is unavailable')
         else:

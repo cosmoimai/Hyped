@@ -4,6 +4,7 @@ No release artifact is built and no production credentials are needed or printed
 """
 import base64
 import os
+import json
 from pathlib import Path
 import secrets
 import subprocess
@@ -12,7 +13,7 @@ import tempfile
 android = Path(__file__).resolve().parents[1] / 'frontend/android'
 base = os.environ.copy()
 for key in ['INVITE_HOST', 'HYPED_KEYSTORE_PATH', 'HYPED_KEYSTORE_PASSWORD',
-            'HYPED_KEY_ALIAS', 'HYPED_KEY_PASSWORD', 'HYPED_DISABLE_FIREBASE']:
+            'HYPED_KEY_ALIAS', 'HYPED_KEY_PASSWORD', 'HYPED_DISABLE_FIREBASE', 'HYPED_FIREBASE_PROJECT_ID']:
     base.pop(key, None)
 
 
@@ -61,8 +62,13 @@ with tempfile.TemporaryDirectory(prefix='hyped-signing-check-') as directory:
     check('https://api.hyped.app/api/v1', 'links.hyped.app',
           'local Firebase Android client configuration', env | {'HYPED_DISABLE_FIREBASE': 'true'})
     if (android / 'app/google-services.json').is_file():
+        check('https://api.hyped.app/api/v1', 'links.hyped.app', 'approved HYPED_FIREBASE_PROJECT_ID', env)
+        check('https://api.hyped.app/api/v1', 'links.hyped.app', 'match approved project and Android package',
+              env | {'HYPED_FIREBASE_PROJECT_ID': 'not-the-configured-project'})
+        config = json.loads((android / 'app/google-services.json').read_text())
+        env['HYPED_FIREBASE_PROJECT_ID'] = config['project_info']['project_id']
         check('https://api.hyped.app/api/v1', 'links.hyped.app', None, env)
         check('https://api.hyped.app/api/v1', 'links.hyped.app', None, env, task=':app:bundleRelease')
-        print('12 negative + 2 valid Gradle release/AAB configuration checks passed (no release artifact built)')
+        print('14 negative + 2 valid Gradle release/AAB configuration checks passed (no release artifact built)')
     else:
         print('12 negative Gradle release/AAB configuration checks passed; valid checks need local Firebase client config')

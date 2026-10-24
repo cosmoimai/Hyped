@@ -5,7 +5,7 @@ class ApiEnvironment {
   static const _developmentUrl = 'http://10.0.2.2:8080/api/v1';
   static const _configuredUrl = String.fromEnvironment(
     'HYPED_API_BASE_URL',
-    defaultValue: _developmentUrl,
+    defaultValue: kReleaseMode ? '' : _developmentUrl,
   );
 
   static String get baseUrl {

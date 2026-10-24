@@ -12,11 +12,20 @@ r = ET.parse(path).getroot()
 a = '{http://schemas.android.com/apk/res/android}'
 app = r.find('application')
 assert app.get(a + 'allowBackup') == 'false'
+if variant == 'release':
+    assert app.get(a + 'debuggable', 'false') == 'false'
+assert app.get(a + 'label') == '@string/app_name'
 assert app.get(a + 'usesCleartextTraffic') == ('true' if variant == 'debug' else 'false')
 assert app.get(a + 'networkSecurityConfig') == '@xml/network_security_config'
 permissions = {p.get(a+'name') for p in r.findall('uses-permission')}
 assert not any('AD_ID' in p or 'AD_SERVICES' in p or 'AD_SERVICE' in p or
                'ADServices' in p or 'ADSERVICES' in p for p in permissions)
+assert not permissions.intersection({
+    'android.permission.READ_MEDIA_IMAGES', 'android.permission.READ_MEDIA_VIDEO',
+    'android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE',
+    'android.permission.CAMERA', 'android.permission.READ_CONTACTS',
+    'android.permission.ACCESS_FINE_LOCATION', 'android.permission.ACCESS_COARSE_LOCATION',
+}), 'Unreviewed sensitive permission'
 expected_exports = {
     'com.hyped.hyped.MainActivity': None,
     'com.google.firebase.iid.FirebaseInstanceIdReceiver': 'com.google.android.c2dm.permission.SEND',
