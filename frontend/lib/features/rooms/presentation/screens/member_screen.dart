@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -32,8 +33,9 @@ class MemberScreen extends ConsumerWidget {
     final controller = ref.watch(memberControllerProvider(roomId));
     final snapshot = controller.snapshot;
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Members · ${snapshot?.items.length ?? '—'}/25'),
+      appBar: RoomAppBar(
+        title: 'Members · ${snapshot?.items.length ?? '—'}/25',
+        backLocation: '/rooms/$roomId',
       ),
       body: Column(
         children: [

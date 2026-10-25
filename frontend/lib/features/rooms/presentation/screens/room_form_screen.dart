@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -75,17 +76,29 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
     final controller = ref.watch(roomDetailControllerProvider(widget.roomId));
     final room = controller.room;
     if (controller.loading && room == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: RoomAppBar(
+          title: 'Edit room',
+          backLocation: '/rooms/${widget.roomId}',
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     if (room == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Edit room')),
+        appBar: RoomAppBar(
+          title: 'Edit room',
+          backLocation: '/rooms/${widget.roomId}',
+        ),
         body: Center(child: Text(controller.error ?? 'Room unavailable.')),
       );
     }
     if (controller.readOnly) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Edit room')),
+        appBar: RoomAppBar(
+          title: 'Edit room',
+          backLocation: '/rooms/${widget.roomId}',
+        ),
         body: const Center(
           child: Text(
             'Cached rooms are read-only. Refresh the room when connected before editing.',
@@ -95,7 +108,10 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
     }
     if (!room.canEdit) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Edit room')),
+        appBar: RoomAppBar(
+          title: 'Edit room',
+          backLocation: '/rooms/${widget.roomId}',
+        ),
         body: Center(
           child: Text(
             room.status == RoomStatus.archived
@@ -108,6 +124,7 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
     model ??= RoomFormModel.fromRoom(room);
     return RoomFormScaffold(
       title: 'Edit room',
+      backLocation: '/rooms/${widget.roomId}',
       step: step,
       model: model!,
       error: controller.error,
@@ -127,6 +144,7 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
 class RoomFormScaffold extends StatefulWidget {
   const RoomFormScaffold({
     required this.title,
+    this.backLocation = '/home',
     required this.step,
     required this.model,
     required this.error,
@@ -137,6 +155,7 @@ class RoomFormScaffold extends StatefulWidget {
   });
 
   final String title;
+  final String backLocation;
   final int step;
   final RoomFormModel model;
   final String? error;
@@ -154,7 +173,10 @@ class _RoomFormScaffoldState extends State<RoomFormScaffold> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.title)),
+      appBar: RoomAppBar(
+        title: widget.title,
+        backLocation: widget.backLocation,
+      ),
       body: SafeArea(
         child: Form(
           key: formKey,

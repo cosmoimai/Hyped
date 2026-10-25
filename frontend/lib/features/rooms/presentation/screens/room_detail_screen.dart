@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:hyped/features/rooms/presentation/widgets/sync_status.dart';
 import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
 import 'package:flutter/material.dart';
@@ -18,8 +19,8 @@ class RoomDetailScreen extends ConsumerWidget {
     final controller = ref.watch(roomDetailControllerProvider(roomId));
     final room = controller.room;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Room'),
+      appBar: RoomAppBar(
+        title: 'Room',
         actions: [
           if (room != null && !controller.readOnly)
             IconButton(

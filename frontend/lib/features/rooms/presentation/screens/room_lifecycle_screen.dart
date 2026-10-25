@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -31,7 +32,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
     final controller = ref.watch(roomLifecycleControllerProvider(roomId));
     final room = controller.room;
     return Scaffold(
-      appBar: AppBar(title: const Text('Room actions')),
+      appBar: RoomAppBar(title: 'Room actions', backLocation: '/rooms/$roomId'),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
