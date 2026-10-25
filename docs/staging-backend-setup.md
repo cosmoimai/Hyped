@@ -133,7 +133,7 @@ is an applicability decision, not a patched-library claim. Reassess before the
 
 ## Remaining setup gates
 
-- Complete the real-phone Google sign-in, consent, create/join, and logout smoke test.
+- Complete the real-phone edit/relaunch, invite/join, and logout/sign-in smoke tests.
 - Configure notification/deletion permissions, protected scheduling, and deletion cleanup.
 - Configure media/moderation providers separately; keep unavailable features disabled.
 - Import infrastructure into Terraform and complete backup/restore and monitoring setup.
@@ -221,9 +221,11 @@ Do not log private request/response bodies while testing authentication.
   The image scan has no unreviewed high/critical findings under the documented,
   expiring applicability exceptions. The staged source secret scan passed.
 - The HTTPS staging debug APK was installed with an in-place, data-preserving
-  update on the Samsung SM-M336BU and cold-launched. Real Google sign-in and
-  account-level consent require the phone user's interaction and remain a separate
-  manual acceptance check. Existing local rooms were not migrated into staging.
+  update on the Samsung SM-M336BU and cold-launched. The operator completed real
+  Google sign-in, required consent and test-room creation on the phone. A read-only
+  staging check independently confirmed one active account, one unrevoked/unexpired
+  session, one current-version acceptance and one active room without reading room
+  content or credentials. Existing local rooms were not migrated into staging.
 
 The compiled APK remains ignored at `frontend/build/app/outputs/flutter-apk/app-debug.apk`.
 Verification evidence is ignored under `build/verification/staging-api/`.
