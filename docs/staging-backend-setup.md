@@ -144,6 +144,36 @@ is an applicability decision, not a patched-library claim. Reassess before the
 
 Never include credentials in screenshots, logs, deployment evidence, or support reports.
 
+## Staging API configuration
+
+Use `hyped-staging-api` with the dedicated API service identity, pooled runtime
+database credentials, numeric secret versions, and Flyway disabled. Set minimum
+instances to zero, maximum instances to three, concurrency to 20 and the Hikari
+maximum pool size to five. Use the same immutable image digest validated by the
+separate migration process; never deploy using the migration database credentials.
+
+The project-level custom role `hypedStagingAuthLookup` contains only
+`firebaseauth.users.get`. It lets Firebase Admin check a cryptographically verified
+user's disabled/revoked state without granting Firebase configuration or user-write
+permissions. Account deletion and notification delivery need additional, separately
+reviewed permissions and scheduled cleanup setup before those features are enabled.
+The API uses attached service identity, not a downloaded Firebase Admin key.
+
+The operator approved legal version `2026-10-26` **for staging only**. Set Terms,
+Privacy and content-rules versions to that same value. Operator/contact details
+remain in excluded configuration and render into the bundled templates. This
+approval does not establish production legal approval or authorize Play publication.
+
+Keep Play Integrity in `observe` mode. Keep media, notification delivery, account
+deletion and dedicated moderation review disabled until their provider/operational
+setup is verified. An invite domain is still unavailable: Android verified App Links
+remain disabled, and sharing uses room codes. The Cloud Run HTTPS URL serves the
+API; it is not an owned invitation web-fallback site.
+
+Check readiness, missing/malformed bearer-token rejection, public legal documents,
+and invalid public-preview responses before directing an Android build to staging.
+Do not log private request/response bodies while testing authentication.
+
 ## Staging checkpoint: 2026-10-26
 
 - All 11 initial secret versions were uploaded and verified without printing payloads.
