@@ -152,7 +152,9 @@ def start(settings):
     print('Keep this terminal open. Stop with Ctrl+C. No public network listener is created.', flush=True)
     with (HOME_DIR / 'backend.log').open('a') as log:
         os.fchmod(log.fileno(), 0o600)
-        result = subprocess.run(['./mvnw', '-B', '--no-transfer-progress', 'clean', 'spring-boot:run'],
+        result = subprocess.run(['./mvnw', '-B', '--no-transfer-progress',
+                                 '-Dhyped.build.directory=' + str(HOME_DIR / 'maven-target'),
+                                 'clean', 'spring-boot:run'],
                                 cwd=ROOT / 'backend', env=env, stdout=log, stderr=subprocess.STDOUT)
     if result.returncode:
         print('Backend exited with an error; inspect ~/.config/hyped/local-backend/backend.log privately.',

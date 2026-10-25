@@ -83,6 +83,7 @@ class LocalBackendSetupTest(unittest.TestCase):
                 run.return_value.returncode = 0
                 self.assertEqual(local.start(settings), 0)
                 environment = run.call_args.kwargs['env']
+                self.assertIn('-Dhyped.build.directory=' + str(self.home / 'maven-target'), run.call_args.args[0])
         self.assertEqual(environment['SERVER_ADDRESS'], '127.0.0.1')
         self.assertEqual(environment['SPRING_PROFILES_ACTIVE'], 'local')
         self.assertEqual(environment['DATABASE_URL'], 'jdbc:postgresql://127.0.0.1:5432/hyped')
