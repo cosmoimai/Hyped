@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyped/features/notifications/presentation/push_providers.dart';
 
@@ -8,7 +9,7 @@ class NotificationSettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final push = ref.watch(pushControllerProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Notifications')),
+      appBar: const RoomAppBar(title: 'Notifications'),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [

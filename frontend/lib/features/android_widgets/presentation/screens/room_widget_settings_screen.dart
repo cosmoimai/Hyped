@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyped/features/android_widgets/presentation/controllers/room_widget_providers.dart';
 import 'package:hyped/features/rooms/presentation/controllers/room_providers.dart';
@@ -14,7 +15,7 @@ class RoomWidgetSettingsScreen extends ConsumerWidget {
     final provider = roomWidgetControllerProvider(appWidgetId);
     final widget = ref.watch(provider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Countdown widgets')),
+      appBar: const RoomAppBar(title: 'Countdown widgets'),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {

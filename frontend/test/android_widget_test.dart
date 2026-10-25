@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:hyped/core/api/authentication_interceptor.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
@@ -137,6 +138,57 @@ void main() {
         expect(refresher.calls, 0);
       },
     );
+  }
+
+  for (final widgetId in [null, 42]) {
+    testWidgets('widget settings opened directly ($widgetId) can return Home', (
+      tester,
+    ) async {
+      final repository = _MockRoomRepository();
+      when(repository.listRooms).thenAnswer((_) async => []);
+      final router = GoRouter(
+        initialLocation: widgetId == null
+            ? '/widgets/room'
+            : '/widgets/room?widgetId=$widgetId',
+        routes: [
+          GoRoute(
+            path: '/widgets/room',
+            builder: (_, state) => RoomWidgetSettingsScreen(
+              appWidgetId: int.tryParse(
+                state.uri.queryParameters['widgetId'] ?? '',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/home',
+            builder: (_, _) => const Scaffold(body: Text('Home destination')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            roomWidgetRepositoryProvider.overrideWithValue(widgets),
+            roomRepositoryProvider.overrideWithValue(repository),
+            roomListControllerProvider.overrideWith(
+              (ref) => RoomListController(repository)..load(),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(router.canPop(), isFalse);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Home destination'), findsOneWidget);
+      expect(
+        bridge.calls.where((call) => call.method == 'selectRoom'),
+        isEmpty,
+      );
+      expect(tester.takeException(), isNull);
+    });
   }
 
   testWidgets(
