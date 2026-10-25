@@ -30,6 +30,7 @@ spring:
       enabled: true
 
 server:
+  port: ${PORT:8080}
   shutdown: graceful
   forward-headers-strategy: none
 

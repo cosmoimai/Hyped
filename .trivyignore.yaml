@@ -1,14 +1,14 @@
 # Scoped applicability review; do not suppress other artifacts or new findings.
 vulnerabilities:
   - id: CVE-2026-47884
-    paths: [backend/pom.xml]
+    paths: [backend/pom.xml, opt/hyped/lib/spring-webmvc-6.2.19.jar]
     statement: >-
       REST-only JSON controllers; no XsltView, template engine, view-name resolution,
       or wildcard view-rendering mappings. Required exploitation features absent.
       See Spring advisory and docs/production-security.md. Recheck before adding views.
     expired_at: 2026-11-24
   - id: CVE-2026-47890
-    paths: [backend/pom.xml]
+    paths: [backend/pom.xml, opt/hyped/lib/spring-webmvc-6.2.19.jar]
     statement: >-
       No Server-Sent Events or view fragments; required exploitation features absent.
       See Spring advisory and docs/production-security.md. Recheck before adding SSE.

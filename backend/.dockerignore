@@ -1,0 +1,6 @@
+# Allowlist prevents local configuration, source, logs, and credentials entering the context.
+**
+!Dockerfile
+!.dockerignore
+!target/
+!target/hyped-backend-*.jar
