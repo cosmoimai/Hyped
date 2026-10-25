@@ -32,6 +32,49 @@ have deny-all Firestore Security Rules for this registry. Database-scoped IAM do
 not replace these rules. Migration and scheduler identities do not need key access.
 No downloadable service account keys are required: Cloud Run uses service identity.
 
+## Private staging credentials
+
+The staging bootstrap generates fresh RSA-3072 signing keys, independent 256-bit
+identity/invitation keys, and independent database passwords. Local preparation
+files live under `~/.config/hyped/staging` with directory mode 0700 and file mode
+0600. They are never part of the Docker context or Git. The original local backend
+credentials and Firebase Admin configuration are not copied to staging.
+
+Secret Manager uses the `hyped-staging-` prefix and replication in Singapore:
+
+| Secret suffixes | Reader |
+|---|---|
+| `db-migration-url`, `db-migration-username`, `db-migration-password` | Migration identity only |
+| `db-api-url`, `db-api-username`, `db-api-password` | API identity only |
+| `token-private-pem`, `token-public-pem`, `identity-hmac` | API identity only |
+| `invite-encryption`, `invite-hmac` | API identity only |
+
+Deployments reference numeric versions. Identity HMAC is stored as raw bytes;
+invitation keys are base64 values; signing keys are PEM resources. Secret values
+are passed to Secret Manager through stdin, never CLI arguments or deployment logs.
+Initial versions are checked against their private sources without printing values.
+Rotate through new versions and an explicit deployment change; never regenerate
+keys merely to restart a deployment.
+
+Database roles are created with SQL, not the Neon role-creation console, which
+grants elevated Neon role membership. `hyped_staging_migrator` can connect and
+create application schemas in the staging database. `hyped_staging_api` can connect;
+after migration it receives only schema usage, table CRUD, and sequence permissions
+for `app` and `ops`. Neither role has superuser, database-creation, role-creation,
+replication, or RLS-bypass privileges. Runtime must not receive membership in the
+migration role or access to the Flyway schema. Revoke public schema creation.
+
+JDBC connections use `sslmode=verify-full` and
+`org.postgresql.ssl.DefaultJavaSSLFactory` so both the certificate chain and host
+are verified against the Java trust store. Migration uses the direct Neon endpoint;
+the API uses its pooled endpoint. Test those connections using the actual image
+and service identities before directing an Android build to staging.
+
+Container upload uses a private Docker configuration. If an older Docker credential
+helper fails, a short-lived OAuth login can be used in a temporary, restricted
+directory that is removed after upload. Never download a service account JSON key
+or copy a long-lived credential into a build context as a workaround.
+
 ## Backend image and migration process
 
 Build and verify from the repository root:
@@ -90,12 +133,31 @@ is an applicability decision, not a patched-library claim. Reassess before the
 
 ## Remaining setup gates
 
-- Create independent staging secrets and the restricted runtime database role.
-- Verify deny-all Firestore client rules and runtime IAM using real service identity.
-- Validate migrations against the empty staging database before API deployment.
+- Verify Firestore and KMS access using the running API service identity. Deny-all
+  Firestore client rules were confirmed manually by the operator on 2026-10-26;
+  the local CLI could not independently read the Firebase Rules configuration.
+- Deploy the API with its restricted database role and independent secret references.
 - Configure Firebase permissions, protected scheduling, and deletion cleanup.
 - Configure media/moderation providers separately; keep unavailable features disabled.
 - Import infrastructure into Terraform and complete backup/restore and monitoring setup.
 - Publish reviewed legal documents and configure an invite domain before public release.
 
 Never include credentials in screenshots, logs, deployment evidence, or support reports.
+
+## Staging checkpoint: 2026-10-26
+
+- All 11 initial secret versions were uploaded and verified without printing payloads.
+- Separate migration/runtime database roles were created and their administrative
+  privilege flags checked. Runtime cannot create objects in `app`/`ops`, access the
+  Flyway schema, or inherit the migration role. Its application CRUD permissions
+  and future-object default grants were verified.
+- The three staging service accounts have no user-managed keys or broad project roles.
+- The private image from source commit `a55e6a6` was uploaded with its full commit
+  tag and selected by digest for job `hyped-staging-migrate`.
+- Execution `hyped-staging-migrate-qvxfb` completed successfully. All 16 migrations
+  are applied, and the staging application user table is empty.
+- The actual Java 21 container connected through the pooled Neon endpoint with
+  runtime credentials and verified certificate/hostname configuration.
+- These infrastructure checks do not establish end-to-end authentication,
+  reminders, media, deletion, backups, or production readiness. No Cloud Run API
+  service or Android staging build was deployed at this checkpoint.
