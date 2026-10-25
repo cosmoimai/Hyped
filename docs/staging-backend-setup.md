@@ -133,11 +133,8 @@ is an applicability decision, not a patched-library claim. Reassess before the
 
 ## Remaining setup gates
 
-- Verify Firestore and KMS access using the running API service identity. Deny-all
-  Firestore client rules were confirmed manually by the operator on 2026-10-26;
-  the local CLI could not independently read the Firebase Rules configuration.
-- Deploy the API with its restricted database role and independent secret references.
-- Configure Firebase permissions, protected scheduling, and deletion cleanup.
+- Complete the real-phone Google sign-in, consent, create/join, and logout smoke test.
+- Configure notification/deletion permissions, protected scheduling, and deletion cleanup.
 - Configure media/moderation providers separately; keep unavailable features disabled.
 - Import infrastructure into Terraform and complete backup/restore and monitoring setup.
 - Publish reviewed legal documents and configure an invite domain before public release.
@@ -191,3 +188,43 @@ Do not log private request/response bodies while testing authentication.
 - These infrastructure checks do not establish end-to-end authentication,
   reminders, media, deletion, backups, or production readiness. No Cloud Run API
   service or Android staging build was deployed at this checkpoint.
+
+## API and Android checkpoint: 2026-10-26
+
+- Cloud Run service `hyped-staging-api` is healthy, using source commit `604c533`
+  and the dedicated runtime identity, secret version 1 references, min 0/max 3
+  instances, concurrency 20, 1 CPU/1 GiB, and no API-startup migration.
+- Android API base URL:
+  `https://hyped-staging-api-jmi2i42hbq-as.a.run.app/api/v1`.
+  Cloud Run also provides
+  `https://hyped-staging-api-661950448866.asia-southeast1.run.app`.
+- The same release image passed the separate migration job before deployment.
+- Thirteen HTTP checks passed while Cloud Run access was private: readiness,
+  approved policy/version publication, missing/invalid application JWT rejection,
+  invalid Firebase proof/refresh rejection, invalid invite/code sanitization, and
+  denial of internal/configuration endpoints. Invalid invitation credentials
+  correctly return `410 INVITATION_INVALID` under the existing contract.
+- A temporary Cloud Run job using the actual API service identity verified Firebase
+  user-state lookup, a KMS authenticated encryption/decryption round-trip, and a
+  Firestore transaction plus deletion of its synthetic probe document. It needed no
+  new impersonation grants, service-account keys, database credentials, or real users.
+  The temporary job was deleted after success.
+- Deny-all Firestore mobile-client rules were confirmed manually by the operator.
+  Runtime server access was independently verified through IAM by the probe above.
+- Cloud Run permits public invocation so native Android clients and signed-out
+  previews can reach the application. Spring Security still enforces authentication
+  and authorization. Public readiness/policies return 200; unauthenticated room
+  access and actuator configuration return 401. This is staging API access, not
+  app-store publication or production approval.
+- Backend clean verification: 642 tests; Flutter: 416 tests; Android JVM: 41 tests;
+  no failures/skips. Flutter formatting/analyze and the debug APK build passed.
+  The image scan has no unreviewed high/critical findings under the documented,
+  expiring applicability exceptions. The staged source secret scan passed.
+- The HTTPS staging debug APK was installed with an in-place, data-preserving
+  update on the Samsung SM-M336BU and cold-launched. Real Google sign-in and
+  account-level consent require the phone user's interaction and remain a separate
+  manual acceptance check. Existing local rooms were not migrated into staging.
+
+The compiled APK remains ignored at `frontend/build/app/outputs/flutter-apk/app-debug.apk`.
+Verification evidence is ignored under `build/verification/staging-api/`.
+No Git push, Play Console change, tester contact, or app-store upload was performed.
