@@ -1,3 +1,4 @@
+import 'package:hyped/features/invitations/domain/share_invitation.dart';
 import 'package:hyped/core/offline/offline_state.dart';
 import 'package:dio/dio.dart';
 import 'package:hyped/features/invitations/domain/invitation.dart';
@@ -9,6 +10,23 @@ class InvitationApi {
 
   final Dio _publicDio;
   final Dio _authenticatedDio;
+
+  Future<ShareInvitation> currentInvitation(
+    String roomId,
+    String sessionId,
+  ) async {
+    try {
+      final response = await _authenticatedDio.get<Map<String, dynamic>>(
+        '/rooms/${Uri.encodeComponent(roomId)}/invitation',
+        options: Options(extra: {'expectedSessionId': sessionId}),
+      );
+      return ShareInvitation.fromJson(response.data!);
+    } on DioException catch (error) {
+      throw InvitationApiException.from(error);
+    } catch (_) {
+      throw const InvitationApiException();
+    }
+  }
 
   Future<InvitePreview> previewInvitation(String token) async {
     try {

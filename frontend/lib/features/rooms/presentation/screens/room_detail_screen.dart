@@ -1,3 +1,4 @@
+import 'package:hyped/features/invitations/presentation/screens/share_invite_sheet.dart';
 import 'package:hyped/core/presentation/countdown_mark.dart';
 import 'package:hyped/features/rooms/presentation/widgets/countdown_readout.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
@@ -38,6 +39,20 @@ class RoomDetailScreen extends ConsumerWidget {
             ),
         ],
       ),
+      bottomNavigationBar:
+          room?.status == RoomStatus.active && !controller.readOnly
+          ? SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: FilledButton.icon(
+                  onPressed: () => showShareInvite(context, roomId),
+                  icon: const Icon(Icons.ios_share),
+                  label: const Text('Share invite'),
+                ),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: controller.loading && room == null
             ? const Center(child: CircularProgressIndicator())

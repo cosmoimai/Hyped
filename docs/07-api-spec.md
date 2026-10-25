@@ -835,6 +835,11 @@ Ordering is owner, co-hosts, then members, with case-insensitive display name an
 
 The response is `Cache-Control: no-store`. Raw credentials are decrypted only for an authorized current member and never logged.
 
+The Android room page and Room actions expose **Share invite** for active, online room views, including MEMBER and CO_HOST views. The sheet fetches current credentials with authenticated Dio and the current-session fence. An explicit share fetches them again before opening Android's text share chooser, so stale/rotated credentials or access-loss failures do not fall back to a cached invite. Credentials stay only in the transient sheet/controller and are cleared on close or authentication/session change; they are never written to Drift or ordinary preferences. Sharing does not rotate an invitation.
+
+The shared text always contains the room code and in-app Join instructions. An HTTPS link is added only if the native App Link validator accepts it against the build's exact `INVITE_HOST`. Unconfigured, localhost, malformed and foreign links are omitted. A local build without an owned invite domain therefore supports code sharing without sending an unusable link. The OS/user-selected receiving app controls the payload after an explicit share; Hyped does not send messages automatically.
+
+
 ### 12.3 Rotate invitation
 
 `POST /rooms/{roomId}/invitation/rotate`

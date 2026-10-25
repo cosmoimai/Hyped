@@ -10,6 +10,7 @@ The Flutter Android UI follows `stitch_hyped_ui_ux_specifications/anticipation_s
 - Room detail uses the room's actual supported theme with a navy scrim, live device-clock countdown, device-local event date/time, membership and personal-reminder navigation. Owner/co-host edit visibility and offline read-only rules remain enforced.
 - Create/edit uses Details / Style / Review progress, labeled accessible theme options and a persistent Continue/Save action. Backend field limits and theme keys are unchanged.
 - Notifications explain only the existing 24-hour, 1-hour and event-time reminders. Widget setup explains Android placement and independent room selection per widget.
+- Active online rooms have a persistent **Share invite** button and a matching Room actions entry. A transient sheet shows the current room code and opens Android’s share chooser only after an explicit tap. Unconfigured invite domains use code-only sharing.
 - Back/Home navigation stays available on supporting screens, including load failures and direct launches.
 
 ## Deliberate adaptations

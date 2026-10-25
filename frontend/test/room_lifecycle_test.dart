@@ -405,8 +405,13 @@ void main() {
         ),
       );
       expect(find.text('Leave room'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.textContaining('Transfer ownership'),
+        150,
+      );
       expect(find.textContaining('Transfer ownership'), findsOneWidget);
       await tester.scrollUntilVisible(find.text('Archive room'), 200);
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Archive room'));
       await tester.pumpAndSettle();
       expect(
@@ -472,6 +477,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Leave room'), 150);
       expect(find.text('Leave room'), findsOneWidget);
       signal.invalidate();
       await tester.pumpAndSettle();

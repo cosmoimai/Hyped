@@ -96,6 +96,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Goa trip'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('2 members'), 150);
     expect(find.text('2 members'), findsOneWidget);
     expect(find.byTooltip('Edit room'), findsOneWidget);
   });

@@ -1,3 +1,4 @@
+import 'package:hyped/features/invitations/presentation/screens/share_invite_sheet.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -63,6 +64,16 @@ class RoomLifecycleScreen extends ConsumerWidget {
             Card(
               child: Column(
                 children: [
+                  if (room.status == RoomStatus.active)
+                    ListTile(
+                      leading: const Icon(Icons.ios_share),
+                      title: const Text('Share invite'),
+                      subtitle: const Text('Invite people with your room code'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: controller.saving
+                          ? null
+                          : () => showShareInvite(context, roomId),
+                    ),
                   ListTile(
                     leading: const Icon(Icons.people_outline),
                     title: const Text('View members'),
