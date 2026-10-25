@@ -137,3 +137,5 @@ Android/backend production security: [Play Integrity, transport, signing and loc
 For a development APK without Firebase client configuration use
 `HYPED_DISABLE_FIREBASE=true flutter build apk --debug`. Production requires a
 controlled non-debug signing configuration; see the linked environment variables.
+
+Local Android testing without KMS/Firestore billing: [setup steps](../docs/local-android-testing.md).

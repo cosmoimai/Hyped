@@ -11,3 +11,5 @@ Android private shared countdown MVP with a Spring Boot backend.
 
 These documents prepare a local candidate. They do not authorize publication or
 claim that production cloud, legal, signing or Play Console gates are complete.
+
+Local Android testing without KMS/Firestore billing: [setup steps](docs/local-android-testing.md).
