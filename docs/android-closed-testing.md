@@ -43,6 +43,15 @@ prerequisite for starting the test. An unavailable
 AAB is explicitly BLOCKED; default local checks can pass without production
 credentials. `--require-aab` makes that blocker fail the run.
 
+## Play submission handoff
+
+Production submission gates, listing assets and release configuration are tracked in
+[Play Store submission](play-store-submission.md), the
+[Data Safety worksheet](play-data-safety.md), and the
+[rollout/rollback runbook](android-rollout.md). Release builds also require the
+public `HYPED_FIREBASE_PROJECT_ID` environment value to match the local Android
+Firebase client file; presence of a Firebase file alone is insufficient.
+
 ## Candidate version and signing
 
 `frontend/pubspec.yaml` is the version source; current initial candidate is

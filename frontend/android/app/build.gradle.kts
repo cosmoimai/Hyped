@@ -1,3 +1,4 @@
+import groovy.json.JsonSlurper
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.util.Base64
@@ -60,6 +61,22 @@ fun validateRelease() {
     require(!firebaseDisabled && file("google-services.json").isFile) {
         "Release requires local Firebase Android client configuration"
     }
+    val expectedProject = System.getenv("HYPED_FIREBASE_PROJECT_ID")
+    require(!expectedProject.isNullOrBlank()) { "Release requires approved HYPED_FIREBASE_PROJECT_ID" }
+    val firebaseMatches = runCatching {
+        val config = JsonSlurper().parse(file("google-services.json")) as Map<*, *>
+        val project = config["project_info"] as Map<*, *>
+        val clients = config["client"] as List<*>
+        project["project_id"] == expectedProject && clients.any { value ->
+            val client = value as Map<*, *>
+            val info = client["client_info"] as Map<*, *>
+            val android = info["android_client_info"] as Map<*, *>
+            android["package_name"] == "com.hyped.hyped" &&
+                (info["mobilesdk_app_id"] as String).startsWith("1:${project["project_number"]}:android:") &&
+                (client["api_key"] as List<*>).isNotEmpty()
+        }
+    }.getOrDefault(false)
+    require(firebaseMatches) { "Release Firebase configuration must match approved project and Android package" }
 }
 if (releaseRequested) validateRelease()
 val validateReleaseConfiguration = tasks.register("validateReleaseConfiguration") { doLast { validateRelease() } }
@@ -89,7 +106,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        // Stable Android identity; changing this creates a different Play application.
         applicationId = "com.hyped.hyped"
         manifestPlaceholders["inviteHost"] = inviteHost.ifEmpty { "unconfigured.invalid" }
         buildConfigField("String", "INVITE_HOST", "\"$inviteHost\"")
