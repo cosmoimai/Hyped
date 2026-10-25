@@ -6,9 +6,11 @@ class RoomThemeView extends StatelessWidget {
     required this.theme,
     required this.child,
     this.padding = const EdgeInsets.all(20),
+    this.scrim = false,
     super.key,
   });
 
+  final bool scrim;
   final RoomTheme theme;
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -18,14 +20,27 @@ class RoomThemeView extends StatelessWidget {
     final colors = colorsForTheme(theme);
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: colors,
         ),
       ),
-      child: Padding(padding: padding, child: child),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: scrim
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xAA182033), Color(0xEE182033)],
+                )
+              : null,
+        ),
+        padding: padding,
+        child: child,
+      ),
     );
   }
 }
@@ -64,3 +79,13 @@ const roomThemeChoices = <RoomTheme>[
     overlayKey: 'dark-soft',
   ),
 ];
+
+String roomThemeName(RoomTheme theme) => switch (theme.presetKey) {
+  'soft-blue-01' => 'Soft blue',
+  'mint-sky-01' => 'Mint sky',
+  'blue-lilac-02' => 'Blue lilac',
+  'peach-gold-01' => 'Peach gold',
+  'sunset-coral-01' => 'Sunset coral',
+  'aurora-green-01' => 'Aurora green',
+  _ => 'Room theme',
+};

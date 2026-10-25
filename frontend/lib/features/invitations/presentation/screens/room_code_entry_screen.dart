@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -29,7 +30,7 @@ class _RoomCodeEntryScreenState extends State<RoomCodeEntryScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Join a room')),
+    appBar: const RoomAppBar(title: 'Join a room'),
     body: SafeArea(
       child: ListView(
         padding: const EdgeInsets.all(24),

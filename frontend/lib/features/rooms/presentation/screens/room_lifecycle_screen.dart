@@ -39,7 +39,66 @@ class RoomLifecycleScreen extends ConsumerWidget {
           if (controller.loading || controller.saving)
             const LinearProgressIndicator(),
           if (room != null) ...[
-            Text(room.title, style: Theme.of(context).textTheme.headlineSmall),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      room.title,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${room.memberCount} members · ${compactDate(room.eventAt)}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('YOUR ROOM', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.people_outline),
+                    title: const Text('View members'),
+                    subtitle: const Text('People and room permissions'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: controller.saving
+                        ? null
+                        : () => context.go('/rooms/$roomId/members'),
+                  ),
+                  if (room.status == RoomStatus.active)
+                    ListTile(
+                      leading: const Icon(Icons.notifications_outlined),
+                      title: const Text('Personal reminders'),
+                      subtitle: const Text('Your three fixed event reminders'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: controller.saving
+                          ? null
+                          : () => context.go('/rooms/$roomId/reminders'),
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.widgets_outlined),
+                    title: const Text('Home-screen widgets'),
+                    subtitle: const Text('Choose a room for each widget'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: controller.saving
+                        ? null
+                        : () => context.go('/widgets/room'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'ROOM LIFECYCLE',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
             const SizedBox(height: 12),
             Text(lifecycleLabel(room, controller.now)),
             if (room.deleteAfter case final deadline?)

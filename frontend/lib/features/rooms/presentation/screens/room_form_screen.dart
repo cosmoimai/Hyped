@@ -178,71 +178,131 @@ class _RoomFormScaffoldState extends State<RoomFormScaffold> {
         backLocation: widget.backLocation,
       ),
       body: SafeArea(
-        child: Form(
-          key: formKey,
-          child: Stepper(
-            currentStep: widget.step,
-            onStepTapped: widget.onStepChanged,
-            controlsBuilder: (context, details) {
-              final last = widget.step == 2;
-              return Padding(
-                padding: const EdgeInsets.only(top: 20),
-                child: Row(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+          child: Form(
+            key: formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'STEP ${widget.step + 1} OF 3',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  const [
+                    'Event details',
+                    'Make it yours',
+                    'Ready to count down?',
+                  ][widget.step],
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 20),
+                Row(
                   children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: widget.saving
-                            ? null
-                            : () async {
-                                if (widget.step == 0 &&
-                                    !(formKey.currentState?.validate() ??
-                                        false)) {
-                                  return;
-                                }
-                                if (last) {
-                                  await widget.onSubmit();
-                                } else {
-                                  widget.onStepChanged(widget.step + 1);
-                                }
-                              },
-                        child: widget.saving
-                            ? const SizedBox.square(
-                                dimension: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                    for (var index = 0; index < 3; index++)
+                      Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(right: index == 2 ? 0 : 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Container(
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: index <= widget.step
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Theme.of(context).colorScheme.primary
+                                            .withValues(alpha: .15),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                              )
-                            : Text(last ? 'Save room' : 'Continue'),
+                              ),
+                              TextButton(
+                                onPressed: widget.saving
+                                    ? null
+                                    : () {
+                                        if (index > widget.step &&
+                                            widget.step == 0 &&
+                                            !(formKey.currentState
+                                                    ?.validate() ??
+                                                false)) {
+                                          return;
+                                        }
+                                        widget.onStepChanged(index);
+                                      },
+                                child: Text(
+                                  const ['Details', 'Style', 'Review'][index],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    if (widget.step > 0) ...[
-                      const SizedBox(width: 12),
-                      TextButton(
-                        onPressed: widget.saving
-                            ? null
-                            : () => widget.onStepChanged(widget.step - 1),
-                        child: const Text('Back'),
-                      ),
-                    ],
                   ],
                 ),
-              );
-            },
-            steps: [
-              Step(
-                title: const Text('Details'),
-                isActive: widget.step >= 0,
-                content: _DetailsStep(model: widget.model),
-              ),
-              Step(
-                title: const Text('Style'),
-                isActive: widget.step >= 1,
-                content: _StyleStep(model: widget.model),
-              ),
-              Step(
-                title: const Text('Review'),
-                isActive: widget.step >= 2,
-                content: _ReviewStep(model: widget.model, error: widget.error),
+                const SizedBox(height: 16),
+                if (widget.step == 0) _DetailsStep(model: widget.model),
+                if (widget.step == 1) ...[
+                  const Text('Choose a color mood for your countdown.'),
+                  const SizedBox(height: 20),
+                  _StyleStep(model: widget.model),
+                ],
+                if (widget.step == 2)
+                  _ReviewStep(model: widget.model, error: widget.error),
+                const SizedBox(height: 24),
+                Text(
+                  'Your countdown stays private to your room.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+          child: Row(
+            children: [
+              if (widget.step > 0) ...[
+                TextButton(
+                  onPressed: widget.saving
+                      ? null
+                      : () => widget.onStepChanged(widget.step - 1),
+                  child: const Text('Back'),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: FilledButton(
+                  onPressed: widget.saving
+                      ? null
+                      : () async {
+                          if (widget.step == 0 &&
+                              !(formKey.currentState?.validate() ?? false)) {
+                            return;
+                          }
+                          if (widget.step == 2) {
+                            await widget.onSubmit();
+                          } else {
+                            widget.onStepChanged(widget.step + 1);
+                          }
+                        },
+                  child: widget.saving
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(widget.step == 2 ? 'Save room' : 'Continue'),
+                ),
               ),
             ],
           ),
@@ -265,91 +325,110 @@ class _DetailsStepState extends State<_DetailsStep> {
   @override
   Widget build(BuildContext context) {
     final model = widget.model;
-    return Column(
-      children: [
-        TextFormField(
-          controller: model.title,
-          decoration: const InputDecoration(labelText: 'Title'),
-          maxLength: 80,
-          validator: (value) {
-            final trimmed = value?.trim() ?? '';
-            if (trimmed.isEmpty) return 'Add a title.';
-            if (trimmed.length > 80) return 'Keep it under 80 characters.';
-            return null;
-          },
-        ),
-        const SizedBox(height: 8),
-        Row(
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
           children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime.now().add(const Duration(days: 3650)),
-                    initialDate: model.date,
-                  );
-                  if (picked != null) setState(() => model.date = picked);
-                },
-                icon: const Icon(Icons.event),
-                label: Text(compactDate(model.date)),
+            TextFormField(
+              controller: model.title,
+              decoration: const InputDecoration(
+                labelText: 'Title',
+                hintText: 'Something worth looking forward to',
+                prefixIcon: Icon(Icons.edit_outlined),
               ),
+              maxLength: 80,
+              validator: (value) {
+                final trimmed = value?.trim() ?? '';
+                if (trimmed.isEmpty) return 'Add a title.';
+                if (trimmed.length > 80) return 'Keep it under 80 characters.';
+                return null;
+              },
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () async {
-                  final picked = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay(
-                      hour: model.time.hour,
-                      minute: model.time.minute,
-                    ),
-                  );
-                  if (picked != null) {
-                    setState(
-                      () => model.time = (
-                        hour: picked.hour,
-                        minute: picked.minute,
-                      ),
-                    );
-                  }
-                },
-                icon: const Icon(Icons.schedule),
-                label: Text(
-                  TimeOfDay(
-                    hour: model.time.hour,
-                    minute: model.time.minute,
-                  ).format(context),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(
+                          const Duration(days: 3650),
+                        ),
+                        initialDate: model.date,
+                      );
+                      if (picked != null) setState(() => model.date = picked);
+                    },
+                    icon: const Icon(Icons.event),
+                    label: Text(compactDate(model.date)),
+                  ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final picked = await showTimePicker(
+                        context: context,
+                        initialTime: TimeOfDay(
+                          hour: model.time.hour,
+                          minute: model.time.minute,
+                        ),
+                      );
+                      if (picked != null) {
+                        setState(
+                          () => model.time = (
+                            hour: picked.hour,
+                            minute: picked.minute,
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.schedule),
+                    label: Text(
+                      TimeOfDay(
+                        hour: model.time.hour,
+                        minute: model.time.minute,
+                      ).format(context),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: model.timeZone,
+              isExpanded: true,
+              decoration: const InputDecoration(labelText: 'Timezone'),
+              items: supportedTimeZones
+                  .map(
+                    (zone) => DropdownMenuItem(value: zone, child: Text(zone)),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) =>
+                  setState(() => model.timeZone = value ?? 'UTC'),
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              controller: model.location,
+              decoration: const InputDecoration(
+                labelText: 'Location (optional)',
               ),
+              maxLength: 120,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: model.description,
+              decoration: const InputDecoration(
+                labelText: 'Description (optional)',
+              ),
+              maxLength: 500,
+              maxLines: 3,
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        DropdownButtonFormField<String>(
-          initialValue: model.timeZone,
-          decoration: const InputDecoration(labelText: 'Timezone'),
-          items: supportedTimeZones
-              .map((zone) => DropdownMenuItem(value: zone, child: Text(zone)))
-              .toList(growable: false),
-          onChanged: (value) => setState(() => model.timeZone = value ?? 'UTC'),
-        ),
-        TextFormField(
-          controller: model.location,
-          decoration: const InputDecoration(labelText: 'Location (optional)'),
-          maxLength: 120,
-        ),
-        TextFormField(
-          controller: model.description,
-          decoration: const InputDecoration(
-            labelText: 'Description (optional)',
-          ),
-          maxLength: 500,
-          maxLines: 3,
-        ),
-      ],
+      ),
     );
   }
 }
@@ -374,24 +453,52 @@ class _StyleStepState extends State<_StyleStep> {
       crossAxisSpacing: 12,
       children: [
         for (final theme in roomThemeChoices)
-          InkWell(
-            onTap: () => setState(() => widget.model.theme = theme),
-            borderRadius: BorderRadius.circular(24),
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: RoomThemeView(
-                    theme: theme,
-                    child: const SizedBox.expand(),
+          Semantics(
+            label: roomThemeName(theme),
+            selected: theme.presetKey == widget.model.theme.presetKey,
+            button: true,
+            child: InkWell(
+              onTap: () => setState(() => widget.model.theme = theme),
+              borderRadius: BorderRadius.circular(24),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: RoomThemeView(
+                      theme: theme,
+                      child: const SizedBox.expand(),
+                    ),
                   ),
-                ),
-                if (theme.presetKey == widget.model.theme.presetKey)
-                  const Positioned(
+                  Positioned(
+                    left: 12,
                     right: 12,
-                    top: 12,
-                    child: Icon(Icons.check_circle, color: Colors.white),
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF182033),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        roomThemeName(theme),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
                   ),
-              ],
+                  if (theme.presetKey == widget.model.theme.presetKey)
+                    const Positioned(
+                      right: 12,
+                      top: 12,
+                      child: Icon(Icons.check_circle, color: Colors.white),
+                    ),
+                ],
+              ),
             ),
           ),
       ],
@@ -412,6 +519,7 @@ class _ReviewStep extends StatelessWidget {
       children: [
         RoomThemeView(
           theme: model.theme,
+          scrim: true,
           child: DefaultTextStyle(
             style: Theme.of(
               context,

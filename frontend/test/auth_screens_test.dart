@@ -56,7 +56,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Your countdowns will live here'), findsOneWidget);
-    expect(find.byTooltip('Sign out'), findsOneWidget);
+    await tester.tap(find.byTooltip('More options'));
+    await tester.pumpAndSettle();
+    expect(find.text('Sign out'), findsOneWidget);
   });
 }
 

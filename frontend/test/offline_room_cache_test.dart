@@ -615,6 +615,15 @@ void main() {
       );
       expect(find.byTooltip('Edit room'), findsNothing);
       expect(find.byTooltip('Members'), findsNothing);
+      expect(find.text('Personal reminders'), findsNothing);
+      await tester.scrollUntilVisible(find.text('2 members'), 150);
+      final membershipTile = tester.widget<ListTile>(
+        find.ancestor(
+          of: find.text('2 members'),
+          matching: find.byType(ListTile),
+        ),
+      );
+      expect(membershipTile.onTap, isNull);
     },
   );
   testWidgets(

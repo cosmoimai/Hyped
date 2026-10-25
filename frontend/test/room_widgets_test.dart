@@ -41,6 +41,7 @@ void main() {
 
     expect(find.text('Next up'), findsOneWidget);
     expect(find.text('Soon'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Later'), 200);
     expect(find.text('Later'), findsOneWidget);
   });
 

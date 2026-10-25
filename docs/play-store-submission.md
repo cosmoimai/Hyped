@@ -129,7 +129,7 @@ Console work. This preparation grants no authority to upload or edit Console.
   audited list below). No photo/media,
   storage, camera, contacts or location permission. No exact-alarm/full-screen
   intent requirement. Verify Console's generated declarations against final AAB.
-- [ ] Privacy/license notices and runtime downloaded fonts reviewed; resolve
+- [ ] Privacy/license notices and bundled font licenses reviewed; resolve
   dependency-license inventory gaps before approval.
 - [ ] Closed-testing eligibility and physical matrix completed; see
   `android-closed-testing.md` and `android-device-smoke-test.md`. No testers
@@ -190,9 +190,9 @@ later, use the system picker without broad library access and update disclosures
   Backend service dependencies are not automatically Android-distributed code.
   Owner must review selected licenses, modifications, attribution/NOTICE and
   source/relinking obligations as applicable; no legal clearance is claimed.
-  Runtime-downloaded Manrope requires its font license review separately from
-  the `google_fonts` package code. Verify actual Flutter/native bundled notices
-  in the signed release and include required distribution notices before release.
+  Manrope and Outfit are bundled under SIL OFL 1.1, with full notices registered
+  in Flutter's license registry. There is no runtime Google Fonts fetching.
+  Verify actual Flutter/native bundled notices in the signed release before release.
 - Vulnerability scan has two existing scoped Spring applicability exceptions,
   CVE-2026-47884 and CVE-2026-47890, expiring 2026-11-24: no XSLT views or SSE/view
   fragments in this REST backend. Reassess before expiry/framework changes.

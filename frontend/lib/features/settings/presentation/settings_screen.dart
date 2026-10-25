@@ -159,6 +159,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               leading: const Icon(Icons.privacy_tip_outlined),
               onTap: () => context.push('/legal/privacy'),
             ),
+            ListTile(
+              title: const Text('Open-source licenses'),
+              leading: const Icon(Icons.info_outline),
+              onTap: () =>
+                  showLicensePage(context: context, applicationName: 'Hyped!'),
+            ),
             const Divider(),
             Text(
               'Active devices',

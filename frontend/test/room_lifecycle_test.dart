@@ -406,6 +406,7 @@ void main() {
       );
       expect(find.text('Leave room'), findsNothing);
       expect(find.textContaining('Transfer ownership'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Archive room'), 200);
       await tester.tap(find.text('Archive room'));
       await tester.pumpAndSettle();
       expect(
@@ -435,6 +436,7 @@ void main() {
         child: const MaterialApp(home: RoomLifecycleScreen(roomId: 'r')),
       ),
     );
+    await tester.scrollUntilVisible(find.text('Permanently delete room'), 200);
     expect(find.text('Permanently delete room'), findsOneWidget);
     expect(find.text('Restore room'), findsNothing);
   });

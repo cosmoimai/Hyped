@@ -1,3 +1,5 @@
+import 'package:hyped/core/presentation/countdown_mark.dart';
+import 'package:hyped/features/rooms/presentation/widgets/countdown_readout.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:hyped/features/rooms/presentation/widgets/sync_status.dart';
 import 'package:hyped/features/rooms/domain/room_lifecycle.dart';
@@ -28,18 +30,6 @@ class RoomDetailScreen extends ConsumerWidget {
               tooltip: 'Room actions',
               icon: const Icon(Icons.more_horiz),
             ),
-          if (room != null && !controller.readOnly)
-            IconButton(
-              onPressed: () => context.go('/rooms/$roomId/members'),
-              tooltip: 'Members',
-              icon: const Icon(Icons.group_outlined),
-            ),
-          if (room?.status == RoomStatus.active && !controller.readOnly)
-            IconButton(
-              onPressed: () => context.go('/rooms/$roomId/reminders'),
-              tooltip: 'Reminders',
-              icon: const Icon(Icons.notifications_none),
-            ),
           if (room?.canEdit == true && !controller.readOnly)
             IconButton(
               onPressed: () => context.go('/rooms/$roomId/edit'),
@@ -64,7 +54,11 @@ class RoomDetailScreen extends ConsumerWidget {
                       message: controller.error,
                     ),
                   Expanded(
-                    child: _RoomDetail(room: room, onRefresh: controller.load),
+                    child: _RoomDetail(
+                      room: room,
+                      onRefresh: controller.load,
+                      readOnly: controller.readOnly,
+                    ),
                   ),
                 ],
               ),
@@ -74,9 +68,14 @@ class RoomDetailScreen extends ConsumerWidget {
 }
 
 class _RoomDetail extends StatelessWidget {
-  const _RoomDetail({required this.room, required this.onRefresh});
+  const _RoomDetail({
+    required this.room,
+    required this.onRefresh,
+    required this.readOnly,
+  });
 
   final Room room;
+  final bool readOnly;
   final Future<void> Function() onRefresh;
 
   @override
@@ -93,6 +92,7 @@ class _RoomDetail extends StatelessWidget {
             ),
           RoomThemeView(
             theme: room.theme,
+            scrim: true,
             padding: const EdgeInsets.all(24),
             child: DefaultTextStyle(
               style: Theme.of(context).textTheme.bodyLarge!.copyWith(
@@ -100,25 +100,39 @@ class _RoomDetail extends StatelessWidget {
                 shadows: const [Shadow(color: Colors.black26, blurRadius: 8)],
               ),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const SizedBox(height: 24),
+                  const Center(
+                    child: CountdownMark(size: 84, color: Color(0xFFB8C7FF)),
+                  ),
+                  const SizedBox(height: 24),
+                  if (room.location case final location?) ...[
+                    Text(location, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                  ],
                   Text(
                     room.title,
+                    textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 28),
+                  CountdownReadout(eventAt: room.eventAt, onDark: true),
+                  const SizedBox(height: 24),
                   Text(
-                    countdown(room.eventAt, DateTime.now()),
-                    style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    compactDateTime(room.eventAt),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
-                  Text(compactDateTime(room.eventAt)),
+                  const Text(
+                    'In your device’s local time',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: Color(0xFFD5DFFF)),
+                  ),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -129,7 +143,17 @@ class _RoomDetail extends StatelessWidget {
             title:
                 '${room.memberCount} member${room.memberCount == 1 ? '' : 's'}',
             subtitle: _roleLabel(room.role),
+            onTap: readOnly
+                ? null
+                : () => context.go('/rooms/${room.id}/members'),
           ),
+          if (!readOnly && room.status == RoomStatus.active)
+            _InfoTile(
+              icon: Icons.notifications_outlined,
+              title: 'Personal reminders',
+              subtitle: '24 hours before, 1 hour before, and event time',
+              onTap: () => context.go('/rooms/${room.id}/reminders'),
+            ),
           _InfoTile(
             icon: Icons.public,
             title: room.eventTimeZone,
@@ -158,18 +182,29 @@ class _InfoTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Card(
     child: ListTile(
-      leading: Icon(icon),
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon),
+      ),
       title: Text(title),
       subtitle: Text(subtitle),
+      onTap: onTap,
+      trailing: onTap == null ? null : const Icon(Icons.chevron_right),
     ),
   );
 }

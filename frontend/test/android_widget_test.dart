@@ -216,11 +216,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Medium widget 42'), 200);
       expect(find.text('Medium widget 42'), findsOneWidget);
       expect(
         find.textContaining('not continuously network-synchronized'),
         findsOneWidget,
       );
+      await tester.scrollUntilVisible(find.text('Goa trip').first, 150);
       await tester.tap(find.text('Goa trip').first);
       await tester.pumpAndSettle();
       expect(
