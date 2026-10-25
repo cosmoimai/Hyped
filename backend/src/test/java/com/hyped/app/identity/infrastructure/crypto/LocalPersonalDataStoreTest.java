@@ -22,6 +22,17 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.aop.support.AopUtils;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class LocalPersonalDataStoreTest {
     @TempDir
@@ -157,7 +168,7 @@ class LocalPersonalDataStoreTest {
     private ApplicationContextRunner context() {
         return new ApplicationContextRunner()
                 .withUserConfiguration(LocalPersonalDataProtectionConfiguration.class,
-                        PersonalDataProtectionConfiguration.class)
+                        PersonalDataProtectionConfiguration.class, TransactionConfiguration.class)
                 .withBean(Clock.class, Clock::systemUTC)
                 .withPropertyValues("hyped.personal-data.provider=local", "hyped.personal-data.enabled=true",
                         "hyped.personal-data.local-directory=" + directory,
@@ -169,9 +180,56 @@ class LocalPersonalDataStoreTest {
         context().run(ctx -> {
             assertThat(ctx).hasNotFailed().hasSingleBean(LocalPersonalDataStore.class);
             assertThat(ctx).hasSingleBean(KmsFirestorePersonalDataProtectionAdapter.class);
+            assertThat(AopUtils.isCglibProxy(ctx.getBean(KmsFirestorePersonalDataProtectionAdapter.class))).isTrue();
             assertThat(ctx).doesNotHaveBean(com.google.cloud.firestore.Firestore.class);
             assertThat(ctx).doesNotHaveBean(com.google.cloud.kms.v1.KeyManagementServiceClient.class);
         });
+    }
+
+    @Test
+    void realTransactionProxyAllowsExternalKeyWorkOnlyOutsideDatabaseTransactions() {
+        context().run(ctx -> {
+            assertThat(ctx).hasNotFailed();
+            var adapter = ctx.getBean(KmsFirestorePersonalDataProtectionAdapter.class);
+            var manager = ctx.getBean(PlatformTransactionManager.class);
+            UserId user = new UserId(UUID.randomUUID());
+            assertThatThrownBy(() -> new TransactionTemplate(manager).execute(status -> adapter.createKey(user)))
+                    .isInstanceOf(IllegalTransactionStateException.class);
+            assertThat(ctx.getBean(LocalPersonalDataStore.class).find(user)).isEmpty();
+            assertThat(adapter.createKey(user)).startsWith("pdk1_");
+        });
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @EnableTransactionManagement(proxyTargetClass = true)
+    static class TransactionConfiguration {
+        @Bean
+        PlatformTransactionManager transactionManager() {
+            return new AbstractPlatformTransactionManager() {
+                @Override
+                protected Object doGetTransaction() {
+                    return TransactionSynchronizationManager.isActualTransactionActive();
+                }
+
+                @Override
+                protected boolean isExistingTransaction(Object transaction) {
+                    return Boolean.TRUE.equals(transaction);
+                }
+
+                @Override
+                protected void doBegin(Object transaction, TransactionDefinition definition) {
+                    // No resource is needed to exercise Spring's real propagation/proxy machinery.
+                }
+
+                @Override
+                protected void doCommit(DefaultTransactionStatus status) {
+                }
+
+                @Override
+                protected void doRollback(DefaultTransactionStatus status) {
+                }
+            };
+        }
     }
 
     @ParameterizedTest

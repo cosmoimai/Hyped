@@ -139,8 +139,12 @@ def start(settings):
     print('Keep this terminal open. Stop with Ctrl+C. No public network listener is created.', flush=True)
     with (HOME_DIR / 'backend.log').open('a') as log:
         os.fchmod(log.fileno(), 0o600)
-        return subprocess.run(['./mvnw', '-B', '--no-transfer-progress', 'spring-boot:run'],
-                              cwd=ROOT / 'backend', env=env, stdout=log, stderr=subprocess.STDOUT).returncode
+        result = subprocess.run(['./mvnw', '-B', '--no-transfer-progress', 'clean', 'spring-boot:run'],
+                                cwd=ROOT / 'backend', env=env, stdout=log, stderr=subprocess.STDOUT)
+    if result.returncode:
+        print('Backend exited with an error; inspect ~/.config/hyped/local-backend/backend.log privately.',
+              file=sys.stderr)
+    return result.returncode
 
 
 def main():

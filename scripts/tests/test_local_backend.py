@@ -94,6 +94,17 @@ class LocalBackendSetupTest(unittest.TestCase):
                 local.consent(self.settings())
         self.assertEqual((self.home / 'environment.json').read_bytes(), before)
 
+    def test_failed_start_is_reported_without_dumping_private_logs(self):
+        (self.home / 'firebase-admin.json').write_text(json.dumps({
+            'type': 'service_account', 'project_id': 'local-test-project'}))
+        errors = io.StringIO()
+        with patch.object(local.subprocess, 'run') as run:
+            run.return_value.returncode = 1
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(errors):
+                self.assertEqual(local.start(self.settings()), 1)
+        self.assertIn('Backend exited with an error', errors.getvalue())
+        self.assertNotIn('service_account', errors.getvalue())
+
 
 if __name__ == '__main__':
     unittest.main()
