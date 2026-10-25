@@ -104,6 +104,17 @@ class $CachedRoomsTable extends CachedRooms
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _mediaAssetIdMeta = const VerificationMeta(
+    'mediaAssetId',
+  );
+  @override
+  late final GeneratedColumn<String> mediaAssetId = GeneratedColumn<String>(
+    'media_asset_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _overlayKeyMeta = const VerificationMeta(
     'overlayKey',
   );
@@ -201,6 +212,7 @@ class $CachedRoomsTable extends CachedRooms
     description,
     themeKind,
     presetKey,
+    mediaAssetId,
     overlayKey,
     role,
     memberCount,
@@ -295,6 +307,15 @@ class $CachedRoomsTable extends CachedRooms
       );
     } else if (isInserting) {
       context.missing(_presetKeyMeta);
+    }
+    if (data.containsKey('media_asset_id')) {
+      context.handle(
+        _mediaAssetIdMeta,
+        mediaAssetId.isAcceptableOrUnknown(
+          data['media_asset_id']!,
+          _mediaAssetIdMeta,
+        ),
+      );
     }
     if (data.containsKey('overlay_key')) {
       context.handle(
@@ -408,6 +429,10 @@ class $CachedRoomsTable extends CachedRooms
         DriftSqlType.string,
         data['${effectivePrefix}preset_key'],
       )!,
+      mediaAssetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}media_asset_id'],
+      ),
       overlayKey: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}overlay_key'],
@@ -459,6 +484,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
   final String? description;
   final String themeKind;
   final String presetKey;
+  final String? mediaAssetId;
   final String overlayKey;
   final String role;
   final int memberCount;
@@ -477,6 +503,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
     this.description,
     required this.themeKind,
     required this.presetKey,
+    this.mediaAssetId,
     required this.overlayKey,
     required this.role,
     required this.memberCount,
@@ -502,6 +529,9 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
     }
     map['theme_kind'] = Variable<String>(themeKind);
     map['preset_key'] = Variable<String>(presetKey);
+    if (!nullToAbsent || mediaAssetId != null) {
+      map['media_asset_id'] = Variable<String>(mediaAssetId);
+    }
     map['overlay_key'] = Variable<String>(overlayKey);
     map['role'] = Variable<String>(role);
     map['member_count'] = Variable<int>(memberCount);
@@ -528,6 +558,9 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
           : Value(description),
       themeKind: Value(themeKind),
       presetKey: Value(presetKey),
+      mediaAssetId: mediaAssetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaAssetId),
       overlayKey: Value(overlayKey),
       role: Value(role),
       memberCount: Value(memberCount),
@@ -554,6 +587,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
       description: serializer.fromJson<String?>(json['description']),
       themeKind: serializer.fromJson<String>(json['themeKind']),
       presetKey: serializer.fromJson<String>(json['presetKey']),
+      mediaAssetId: serializer.fromJson<String?>(json['mediaAssetId']),
       overlayKey: serializer.fromJson<String>(json['overlayKey']),
       role: serializer.fromJson<String>(json['role']),
       memberCount: serializer.fromJson<int>(json['memberCount']),
@@ -577,6 +611,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
       'description': serializer.toJson<String?>(description),
       'themeKind': serializer.toJson<String>(themeKind),
       'presetKey': serializer.toJson<String>(presetKey),
+      'mediaAssetId': serializer.toJson<String?>(mediaAssetId),
       'overlayKey': serializer.toJson<String>(overlayKey),
       'role': serializer.toJson<String>(role),
       'memberCount': serializer.toJson<int>(memberCount),
@@ -598,6 +633,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
     Value<String?> description = const Value.absent(),
     String? themeKind,
     String? presetKey,
+    Value<String?> mediaAssetId = const Value.absent(),
     String? overlayKey,
     String? role,
     int? memberCount,
@@ -616,6 +652,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
     description: description.present ? description.value : this.description,
     themeKind: themeKind ?? this.themeKind,
     presetKey: presetKey ?? this.presetKey,
+    mediaAssetId: mediaAssetId.present ? mediaAssetId.value : this.mediaAssetId,
     overlayKey: overlayKey ?? this.overlayKey,
     role: role ?? this.role,
     memberCount: memberCount ?? this.memberCount,
@@ -640,6 +677,9 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
           : this.description,
       themeKind: data.themeKind.present ? data.themeKind.value : this.themeKind,
       presetKey: data.presetKey.present ? data.presetKey.value : this.presetKey,
+      mediaAssetId: data.mediaAssetId.present
+          ? data.mediaAssetId.value
+          : this.mediaAssetId,
       overlayKey: data.overlayKey.present
           ? data.overlayKey.value
           : this.overlayKey,
@@ -667,6 +707,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
           ..write('description: $description, ')
           ..write('themeKind: $themeKind, ')
           ..write('presetKey: $presetKey, ')
+          ..write('mediaAssetId: $mediaAssetId, ')
           ..write('overlayKey: $overlayKey, ')
           ..write('role: $role, ')
           ..write('memberCount: $memberCount, ')
@@ -690,6 +731,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
     description,
     themeKind,
     presetKey,
+    mediaAssetId,
     overlayKey,
     role,
     memberCount,
@@ -712,6 +754,7 @@ class CachedRoom extends DataClass implements Insertable<CachedRoom> {
           other.description == this.description &&
           other.themeKind == this.themeKind &&
           other.presetKey == this.presetKey &&
+          other.mediaAssetId == this.mediaAssetId &&
           other.overlayKey == this.overlayKey &&
           other.role == this.role &&
           other.memberCount == this.memberCount &&
@@ -732,6 +775,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
   final Value<String?> description;
   final Value<String> themeKind;
   final Value<String> presetKey;
+  final Value<String?> mediaAssetId;
   final Value<String> overlayKey;
   final Value<String> role;
   final Value<int> memberCount;
@@ -751,6 +795,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
     this.description = const Value.absent(),
     this.themeKind = const Value.absent(),
     this.presetKey = const Value.absent(),
+    this.mediaAssetId = const Value.absent(),
     this.overlayKey = const Value.absent(),
     this.role = const Value.absent(),
     this.memberCount = const Value.absent(),
@@ -771,6 +816,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
     this.description = const Value.absent(),
     required String themeKind,
     required String presetKey,
+    this.mediaAssetId = const Value.absent(),
     required String overlayKey,
     required String role,
     required int memberCount,
@@ -805,6 +851,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
     Expression<String>? description,
     Expression<String>? themeKind,
     Expression<String>? presetKey,
+    Expression<String>? mediaAssetId,
     Expression<String>? overlayKey,
     Expression<String>? role,
     Expression<int>? memberCount,
@@ -825,6 +872,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
       if (description != null) 'description': description,
       if (themeKind != null) 'theme_kind': themeKind,
       if (presetKey != null) 'preset_key': presetKey,
+      if (mediaAssetId != null) 'media_asset_id': mediaAssetId,
       if (overlayKey != null) 'overlay_key': overlayKey,
       if (role != null) 'role': role,
       if (memberCount != null) 'member_count': memberCount,
@@ -847,6 +895,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
     Value<String?>? description,
     Value<String>? themeKind,
     Value<String>? presetKey,
+    Value<String?>? mediaAssetId,
     Value<String>? overlayKey,
     Value<String>? role,
     Value<int>? memberCount,
@@ -867,6 +916,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
       description: description ?? this.description,
       themeKind: themeKind ?? this.themeKind,
       presetKey: presetKey ?? this.presetKey,
+      mediaAssetId: mediaAssetId ?? this.mediaAssetId,
       overlayKey: overlayKey ?? this.overlayKey,
       role: role ?? this.role,
       memberCount: memberCount ?? this.memberCount,
@@ -908,6 +958,9 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
     }
     if (presetKey.present) {
       map['preset_key'] = Variable<String>(presetKey.value);
+    }
+    if (mediaAssetId.present) {
+      map['media_asset_id'] = Variable<String>(mediaAssetId.value);
     }
     if (overlayKey.present) {
       map['overlay_key'] = Variable<String>(overlayKey.value);
@@ -951,6 +1004,7 @@ class CachedRoomsCompanion extends UpdateCompanion<CachedRoom> {
           ..write('description: $description, ')
           ..write('themeKind: $themeKind, ')
           ..write('presetKey: $presetKey, ')
+          ..write('mediaAssetId: $mediaAssetId, ')
           ..write('overlayKey: $overlayKey, ')
           ..write('role: $role, ')
           ..write('memberCount: $memberCount, ')
@@ -1205,6 +1259,7 @@ typedef $$CachedRoomsTableCreateCompanionBuilder =
       Value<String?> description,
       required String themeKind,
       required String presetKey,
+      Value<String?> mediaAssetId,
       required String overlayKey,
       required String role,
       required int memberCount,
@@ -1226,6 +1281,7 @@ typedef $$CachedRoomsTableUpdateCompanionBuilder =
       Value<String?> description,
       Value<String> themeKind,
       Value<String> presetKey,
+      Value<String?> mediaAssetId,
       Value<String> overlayKey,
       Value<String> role,
       Value<int> memberCount,
@@ -1288,6 +1344,11 @@ class $$CachedRoomsTableFilterComposer
 
   ColumnFilters<String> get presetKey => $composableBuilder(
     column: $table.presetKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mediaAssetId => $composableBuilder(
+    column: $table.mediaAssetId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1386,6 +1447,11 @@ class $$CachedRoomsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mediaAssetId => $composableBuilder(
+    column: $table.mediaAssetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get overlayKey => $composableBuilder(
     column: $table.overlayKey,
     builder: (column) => ColumnOrderings(column),
@@ -1467,6 +1533,11 @@ class $$CachedRoomsTableAnnotationComposer
   GeneratedColumn<String> get presetKey =>
       $composableBuilder(column: $table.presetKey, builder: (column) => column);
 
+  GeneratedColumn<String> get mediaAssetId => $composableBuilder(
+    column: $table.mediaAssetId,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get overlayKey => $composableBuilder(
     column: $table.overlayKey,
     builder: (column) => column,
@@ -1538,6 +1609,7 @@ class $$CachedRoomsTableTableManager
                 Value<String?> description = const Value.absent(),
                 Value<String> themeKind = const Value.absent(),
                 Value<String> presetKey = const Value.absent(),
+                Value<String?> mediaAssetId = const Value.absent(),
                 Value<String> overlayKey = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<int> memberCount = const Value.absent(),
@@ -1557,6 +1629,7 @@ class $$CachedRoomsTableTableManager
                 description: description,
                 themeKind: themeKind,
                 presetKey: presetKey,
+                mediaAssetId: mediaAssetId,
                 overlayKey: overlayKey,
                 role: role,
                 memberCount: memberCount,
@@ -1578,6 +1651,7 @@ class $$CachedRoomsTableTableManager
                 Value<String?> description = const Value.absent(),
                 required String themeKind,
                 required String presetKey,
+                Value<String?> mediaAssetId = const Value.absent(),
                 required String overlayKey,
                 required String role,
                 required int memberCount,
@@ -1597,6 +1671,7 @@ class $$CachedRoomsTableTableManager
                 description: description,
                 themeKind: themeKind,
                 presetKey: presetKey,
+                mediaAssetId: mediaAssetId,
                 overlayKey: overlayKey,
                 role: role,
                 memberCount: memberCount,

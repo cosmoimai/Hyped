@@ -648,7 +648,7 @@ Only archived rooms with `now >= delete_after` may be permanently deleted. Owner
 - The row enters `deleting` and is physically removed within the same database transaction, so there is no externally visible half-deleted state.
 - `ops.idempotency_record` rows with matching `resource_id` are explicitly deleted, including encrypted join/rotation snapshots outside the FK tree.
 - Memberships, reminder preferences, invitation credentials, room reminder jobs, device delivery records and themes are removed through existing cascade FKs.
-- There are no remote media objects in the current preset/gradient theme implementation. A future media implementation must durably capture object deletion work before removing its references.
+- V15 adds private uploaded room covers. Permanent deletion marks the final referenced asset DELETING before removing the room; protected cleanup deletes its private objects and subsequently removes the expired cleanup tombstone. Other rooms retaining the same asset preserve their reference.
 - Repeated deletion is a safe no-op and cannot recreate relationships or decrement counts twice. Repeated leave is likewise harmless; no former-membership tombstone is needed.
 - Mobile caches and protected widget fields/selections clear on acknowledged leave/delete or authoritative access-loss synchronization. Other devices cannot be remotely rewritten while offline; no new background network jobs are introduced.
 
@@ -883,3 +883,7 @@ business operations. Expired entries are pruned on subsequent use. See
 [production security](production-security.md) for lifetime, observe/fail-closed
 behaviour and deployment/backup considerations. Existing room row-lock and
 transaction ordering are unchanged.
+
+## Implemented private photo projection (V15)
+
+`app.media_asset` stores authenticated uploader UUID, server-generated asset UUID, bounded prepared-upload MIME/size/dimensions/SHA-256, status, bounded completion attempts/claim token, grant expiry and timestamps. It stores no source filename, provider response, public URL, JWT or raw image bytes. `app.room_theme.media_asset_id` is a nullable FK; exactly one preset key or media reference is present by kind. READY assets are locked for attachment within the existing room transaction; unused deletion locks the asset before a fresh reference check. DB/external storage calls are separated. Account deletion falls back remaining cover references and retries object cleanup before destroying keys. See [photo setup and cleanup](android-room-photos-setup.md).

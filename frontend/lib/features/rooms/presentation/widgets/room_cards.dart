@@ -35,12 +35,18 @@ class FeaturedRoomCard extends StatelessWidget {
                   Row(
                     children: [
                       const Icon(
-                        Icons.auto_awesome_outlined,
+                        Icons.place_outlined,
                         color: Colors.white,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
-                      const Expanded(child: Text('Next up')),
+                      Expanded(
+                        child: Text(
+                          room.location ?? 'Next up',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                       const Icon(
                         Icons.north_east,
                         color: Colors.white,
@@ -49,8 +55,37 @@ class FeaturedRoomCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  const Center(
-                    child: CountdownMark(size: 64, color: Color(0xFFB8C7FF)),
+                  Center(
+                    child: SizedBox.square(
+                      dimension: 88,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox.expand(
+                            child: CircularProgressIndicator(
+                              value: room.eventAt.isAfter(room.createdAt)
+                                  ? (DateTime.now()
+                                                .difference(room.createdAt)
+                                                .inSeconds /
+                                            room.eventAt
+                                                .difference(room.createdAt)
+                                                .inSeconds)
+                                        .clamp(0.0, 1.0)
+                                  : 1,
+                              strokeWidth: 4,
+                              backgroundColor: Colors.white24,
+                              color: const Color(0xFF6C8CFF),
+                              semanticsLabel: 'Time since room creation',
+                            ),
+                          ),
+                          const Icon(
+                            Icons.auto_awesome_outlined,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -132,11 +167,43 @@ class CompactRoomCard extends StatelessWidget {
         padding: const EdgeInsets.only(top: 4),
         child: Text(
           room.status == RoomStatus.active
-              ? '${compactDate(room.eventAt)} • ${countdown(room.eventAt, DateTime.now())}'
+              ? compactDate(room.eventAt)
               : lifecycleLabel(room, room.serverNow),
         ),
       ),
-      trailing: const Icon(Icons.chevron_right, size: 20),
+      trailing: room.status == RoomStatus.active
+          ? SizedBox(
+              width: 72,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        room.eventAt.isAfter(DateTime.now())
+                            ? '${room.eventAt.difference(DateTime.now()).inDays > 0 ? room.eventAt.difference(DateTime.now()).inDays : room.eventAt.difference(DateTime.now()).inHours}'
+                            : '0',
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                      ),
+                    ),
+                    Text(
+                      room.eventAt.difference(DateTime.now()).inDays > 0
+                          ? 'DAYS LEFT'
+                          : 'HOURS LEFT',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : const Icon(Icons.chevron_right, size: 20),
     ),
   );
 }

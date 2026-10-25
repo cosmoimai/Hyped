@@ -2,12 +2,12 @@ package com.hyped.app.common.api;
 
 import com.hyped.app.identity.application.exception.IdentityTokenVerificationException;
 import com.hyped.app.identity.application.exception.PersonalDataProtectionException;
-import com.hyped.app.room.application.RoomOperationException;
 import com.hyped.app.invitation.application.InvitationException;
+import com.hyped.app.room.application.RoomOperationException;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
-import java.util.Comparator;
-import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.Ordered;
@@ -18,6 +18,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.Comparator;
+import java.util.List;
 
 @RestControllerAdvice
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -32,8 +35,29 @@ public class GlobalProblemHandler {
     @ExceptionHandler(com.hyped.app.account.application.AccountException.class)
     ResponseEntity<ApiProblem> account(com.hyped.app.account.application.AccountException exception,
             HttpServletRequest request) {
-        return response(request, HttpStatus.valueOf(exception.status()), exception.code(), "Account action unavailable",
-                exception.getMessage(), false, List.of(), List.of());
+        return response(
+                request,
+                HttpStatus.valueOf(exception.status()),
+                exception.code(),
+                "Account action unavailable",
+                exception.getMessage(),
+                false,
+                List.of(),
+                List.of());
+    }
+
+    @ExceptionHandler(com.hyped.app.media.application.MediaException.class)
+    ResponseEntity<ApiProblem> media(
+            com.hyped.app.media.application.MediaException exception, HttpServletRequest request) {
+        return response(
+                request,
+                HttpStatus.valueOf(exception.status()),
+                exception.code(),
+                "Photo unavailable",
+                exception.getMessage(),
+                exception.status() >= 500,
+                List.of(),
+                List.of());
     }
 
     @ExceptionHandler(ApiProblemException.class)
@@ -46,13 +70,32 @@ public class GlobalProblemHandler {
     ResponseEntity<ApiProblem> invalidIdentityToken(
             IdentityTokenVerificationException exception, HttpServletRequest request) {
         if (exception.reason() == IdentityTokenVerificationException.Reason.VERIFIER_UNAVAILABLE) {
-            return response(request, HttpStatus.SERVICE_UNAVAILABLE, "IDENTITY_VERIFIER_UNAVAILABLE",
-                    "Identity provider unavailable", "Identity verification is temporarily unavailable.",
-                    true, List.of(), List.of());
+            return response(
+                    request,
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "IDENTITY_VERIFIER_UNAVAILABLE",
+                    "Identity provider unavailable",
+                    "Identity verification is temporarily unavailable.",
+                    true,
+                    List.of(),
+                    List.of());
         }
         return response(request, HttpStatus.UNAUTHORIZED, "IDENTITY_TOKEN_INVALID",
                 "Identity token invalid", "The identity token is invalid or expired.",
                 false, List.of(), List.of());
+    }
+
+    @ExceptionHandler(org.springframework.web.method.annotation.HandlerMethodValidationException.class)
+    ResponseEntity<ApiProblem> methodValidation(HttpServletRequest request) {
+        return response(
+                request,
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "VALIDATION_FAILED",
+                "Validation failed",
+                "Check the requested values.",
+                false,
+                List.of(),
+                List.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -62,14 +105,28 @@ public class GlobalProblemHandler {
                         safeValidationMessage(error.getCode())))
                 .sorted(Comparator.comparing(ApiFieldError::field))
                 .toList();
-        return response(request, HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed",
-                "One or more fields are invalid.", false, fields, List.of());
+        return response(
+                request,
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "VALIDATION_FAILED",
+                "Validation failed",
+                "One or more fields are invalid.",
+                false,
+                fields,
+                List.of());
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     ResponseEntity<ApiProblem> constraintViolation(HttpServletRequest request) {
-        return response(request, HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed",
-                "One or more fields are invalid.", false, List.of(), List.of());
+        return response(
+                request,
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "VALIDATION_FAILED",
+                "Validation failed",
+                "One or more fields are invalid.",
+                false,
+                List.of(),
+                List.of());
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
@@ -100,8 +157,16 @@ public class GlobalProblemHandler {
 
     @ExceptionHandler(InvitationException.class)
     ResponseEntity<ApiProblem> invitation(InvitationException exception, HttpServletRequest request) {
-        ResponseEntity<ApiProblem> result = response(request, HttpStatus.valueOf(exception.status()), exception.code(),
-                "Invitation unavailable", exception.getMessage(), exception.status() == 503, List.of(), List.of());
+        ResponseEntity<ApiProblem> result =
+                response(
+                        request,
+                        HttpStatus.valueOf(exception.status()),
+                        exception.code(),
+                        "Invitation unavailable",
+                        exception.getMessage(),
+                        exception.status() == 503,
+                        List.of(),
+                        List.of());
         if (exception.code().equals("REQUEST_IN_PROGRESS")) {
             return ResponseEntity.status(result.getStatusCode()).headers(result.getHeaders())
                     .header("Retry-After", "1").body(result.getBody());
@@ -111,9 +176,17 @@ public class GlobalProblemHandler {
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiProblem> unexpected(Exception exception, HttpServletRequest request) {
-        LOGGER.error("Unexpected request failure requestId={} code=INTERNAL_ERROR", requestId(request));
-        return response(request, HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal error",
-                "The request could not be completed.", false, List.of(), List.of());
+        LOGGER.error(
+                "Unexpected request failure requestId={} code=INTERNAL_ERROR", requestId(request));
+        return response(
+                request,
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                "Internal error",
+                "The request could not be completed.",
+                false,
+                List.of(),
+                List.of());
     }
 
     private ResponseEntity<ApiProblem> response(

@@ -1,10 +1,10 @@
 package com.hyped.app.room.application;
 
-import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.identity.application.service.AuthenticationProfileReader;
+import com.hyped.app.identity.domain.UserId;
 import com.hyped.app.invitation.application.InvitationService;
-import com.hyped.app.reminder.application.RoomReminderService;
 import com.hyped.app.reminder.application.ReminderPreferencesService;
+import com.hyped.app.reminder.application.RoomReminderService;
 import com.hyped.app.room.application.port.out.RoomRepository;
 import com.hyped.app.room.application.port.out.RoomRepository.AuthorizedRoom;
 import com.hyped.app.room.domain.MembershipRole;
@@ -13,6 +13,12 @@ import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomMembership;
 import com.hyped.app.room.domain.RoomStatus;
 import com.hyped.app.room.domain.RoomTheme;
+
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Duration;
@@ -25,10 +31,6 @@ import java.time.ZoneOffset;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class RoomService {
@@ -43,12 +45,19 @@ public class RoomService {
     private final ObjectProvider<InvitationService> invitations;
     private final ObjectProvider<RoomReminderService> reminders;
     private final ObjectProvider<ReminderPreferencesService> reminderPreferences;
+    private final ObjectProvider<com.hyped.app.media.application.MediaService> media;
 
-    public RoomService(RoomRepository rooms, Clock clock, ObjectProvider<InvitationService> invitations,
+    public RoomService(
+            RoomRepository rooms,
+            Clock clock,
+            ObjectProvider<InvitationService> invitations,
             ObjectProvider<RoomReminderService> reminders,
             ObjectProvider<ReminderPreferencesService> reminderPreferences,
             ObjectProvider<AuthenticationProfileReader> profiles,
-            com.hyped.app.policy.application.PolicyService policies, RoomMemberSnapshotService memberSnapshots) {
+            com.hyped.app.policy.application.PolicyService policies,
+            RoomMemberSnapshotService memberSnapshots,
+            ObjectProvider<com.hyped.app.media.application.MediaService> media) {
+        this.media = media;
         this.policies = policies;
         this.rooms = rooms;
         this.memberSnapshots = memberSnapshots;
@@ -64,7 +73,10 @@ public class RoomService {
         rooms.lockUser(actor);
         policies.requireCurrent(actor);
         if (rooms.countActiveOwned(actor) >= MAX_OWNED_ROOMS) {
-            throw problem(RoomOperationException.Kind.CONFLICT, "OWNED_ROOM_LIMIT_REACHED", "Owned room limit reached",
+            throw problem(
+                    RoomOperationException.Kind.CONFLICT,
+                    "OWNED_ROOM_LIMIT_REACHED",
+                    "Owned room limit reached",
                     "This account already owns ten active rooms.");
         }
         Instant now = clock.instant();
@@ -116,11 +128,24 @@ public class RoomService {
         if (!eventAt.isAfter(now)) {
             throw validation("EVENT_TIME_NOT_FUTURE", "The event time must be in the future.");
         }
-        RoomTheme theme = command.themePresent()
-                ? theme(existing.id(), actor, command.theme(), existing.theme().createdAt(), now)
-                : new RoomTheme(existing.id(), existing.theme().kind(), existing.theme().presetKey(),
-                        existing.theme().overlayKey(), existing.theme().updatedByUserId(),
-                        existing.theme().createdAt(), existing.theme().updatedAt());
+        RoomTheme theme =
+                command.themePresent()
+                        ? theme(
+                                existing.id(),
+                                actor,
+                                command.theme(),
+                                existing.theme().createdAt(),
+                                now,
+                                existing.theme().mediaAssetId())
+                        : new RoomTheme(
+                                existing.id(),
+                                existing.theme().kind(),
+                                existing.theme().presetKey(),
+                                existing.theme().mediaAssetId(),
+                                existing.theme().overlayKey(),
+                                existing.theme().updatedByUserId(),
+                                existing.theme().createdAt(),
+                                existing.theme().updatedAt());
         Room changed = room(existing.id(), existing.ownerUserId(),
                 command.title() == null ? existing.title() : command.title(), eventAt,
                 command.eventTimeZone() == null ? existing.eventTimeZone() : command.eventTimeZone(),
@@ -220,12 +245,18 @@ public class RoomService {
                     "Room changed", "Reload the room before restoring it.");
         }
         if (rooms.countActiveOwned(actor) >= MAX_OWNED_ROOMS) {
-            throw problem(RoomOperationException.Kind.CONFLICT, "OWNED_ROOM_LIMIT_REACHED", "Room limit reached",
+            throw problem(
+                    RoomOperationException.Kind.CONFLICT,
+                    "OWNED_ROOM_LIMIT_REACHED",
+                    "Room limit reached",
                     "This account already owns ten active rooms.");
         }
         for (var member : members) {
             if (member.role() != MembershipRole.OWNER && rooms.countActiveJoined(member.userId()) >= MAX_JOINED_ROOMS) {
-                throw problem(RoomOperationException.Kind.CONFLICT, "JOINED_ROOM_LIMIT_REACHED", "Room limit reached",
+                throw problem(
+                        RoomOperationException.Kind.CONFLICT,
+                        "JOINED_ROOM_LIMIT_REACHED",
+                        "Room limit reached",
                         "A participant has reached the active joined-room limit.");
             }
         }
@@ -248,7 +279,10 @@ public class RoomService {
             throw forbidden();
         }
         if (room.get().status() != RoomStatus.ARCHIVED || clock.instant().isBefore(room.get().deleteAfter())) {
-            throw problem(RoomOperationException.Kind.CONFLICT, "ROOM_DELETE_NOT_ELIGIBLE", "Deletion unavailable",
+            throw problem(
+                    RoomOperationException.Kind.CONFLICT,
+                    "ROOM_DELETE_NOT_ELIGIBLE",
+                    "Deletion unavailable",
                     "Archive the room and wait until its deletion eligibility time.");
         }
         checkRevision(new AuthorizedRoom(room.get(), member.get().role()), expectedRevision);
@@ -341,7 +375,10 @@ public class RoomService {
             throw validation("INVALID_OWNER", "The target is already the room owner.");
         }
         if (rooms.countActiveOwned(newOwner) >= MAX_OWNED_ROOMS) {
-            throw problem(RoomOperationException.Kind.CONFLICT, "OWNED_ROOM_LIMIT_REACHED", "Owned room limit reached",
+            throw problem(
+                    RoomOperationException.Kind.CONFLICT,
+                    "OWNED_ROOM_LIMIT_REACHED",
+                    "Owned room limit reached",
                     "The selected member cannot own another active room.");
         }
         if (rooms.countActiveJoined(actor) >= MAX_JOINED_ROOMS) {
@@ -366,12 +403,27 @@ public class RoomService {
         var snapshot = memberSnapshots.capture(actor, roomId);
         var reader = profiles.getIfAvailable();
         // Resolve external keys without retaining room locks or a database transaction.
-        List<MemberView> items = snapshot.members().stream().map(member -> new MemberView(
-                member.userId().value(), reader == null ? "Member" : reader.read(member.userId()).displayName(),
-                null, member.role(), member.joinedAt(), member.userId().equals(actor)))
-                .sorted(Comparator.comparing(MemberView::role)
-                        .thenComparing(MemberView::displayName, String.CASE_INSENSITIVE_ORDER)
-                        .thenComparing(MemberView::userId)).toList();
+        List<MemberView> items =
+                snapshot.members().stream()
+                        .map(
+                                member ->
+                                        new MemberView(
+                                                member.userId().value(),
+                                                reader == null
+                                                        ? "Member"
+                                                        : reader.read(member.userId())
+                                                                .displayName(),
+                                                null,
+                                                member.role(),
+                                                member.joinedAt(),
+                                                member.userId().equals(actor)))
+                        .sorted(
+                                Comparator.comparing(MemberView::role)
+                                        .thenComparing(
+                                                MemberView::displayName,
+                                                String.CASE_INSENSITIVE_ORDER)
+                                        .thenComparing(MemberView::userId))
+                        .toList();
         return memberSnapshots.finish(actor, roomId, snapshot, items);
     }
 
@@ -435,7 +487,8 @@ public class RoomService {
             LocalDateTime local = LocalDateTime.of(date, time);
             List<ZoneOffset> offsets = zone.getRules().getValidOffsets(local);
             if (offsets.isEmpty()) {
-                throw validation("EVENT_TIME_NONEXISTENT", "The selected local time does not exist.");
+                throw validation(
+                        "EVENT_TIME_NONEXISTENT", "The selected local time does not exist.");
             }
             if (offsets.size() > 1) {
                 throw validation("EVENT_TIME_AMBIGUOUS", "The selected local time is ambiguous.");
@@ -477,12 +530,33 @@ public class RoomService {
         }
     }
 
-    private static RoomTheme theme(RoomId roomId, UserId actor, ThemeCommand command, Instant createdAt, Instant now) {
+    private RoomTheme theme(RoomId roomId, UserId actor, ThemeCommand command, Instant createdAt, Instant now) {
+        return theme(roomId, actor, command, createdAt, now, null);
+    }
+
+    private RoomTheme theme(
+            RoomId roomId,
+            UserId actor,
+            ThemeCommand command,
+            Instant createdAt,
+            Instant now,
+            UUID retained) {
         if (command == null) {
             throw validation("VALIDATION_FAILED", "The room theme is invalid.");
         }
         try {
-            return new RoomTheme(roomId, command.kind(), command.presetKey(), command.overlayKey(), actor, createdAt,
+            if (command.kind() == RoomTheme.Kind.UPLOADED_IMAGE
+                    && (retained == null || !retained.equals(command.mediaAssetId()))) {
+                media.getObject().requireReady(actor, command.mediaAssetId());
+            }
+            return new RoomTheme(
+                    roomId,
+                    command.kind(),
+                    command.presetKey(),
+                    command.mediaAssetId(),
+                    command.overlayKey(),
+                    actor,
+                    createdAt,
                     now);
         } catch (IllegalArgumentException exception) {
             throw validation("VALIDATION_FAILED", "The room theme is invalid.");
@@ -490,17 +564,26 @@ public class RoomService {
     }
 
     private static RoomOperationException unavailable() {
-        return problem(RoomOperationException.Kind.NOT_FOUND, "ROOM_UNAVAILABLE", "Room unavailable",
+        return problem(
+                RoomOperationException.Kind.NOT_FOUND,
+                "ROOM_UNAVAILABLE",
+                "Room unavailable",
                 "The room is unavailable.");
     }
 
     private static RoomOperationException forbidden() {
-        return problem(RoomOperationException.Kind.FORBIDDEN, "ROOM_ACTION_FORBIDDEN", "Action unavailable",
+        return problem(
+                RoomOperationException.Kind.FORBIDDEN,
+                "ROOM_ACTION_FORBIDDEN",
+                "Action unavailable",
                 "This action is not available for the current membership.");
     }
 
     private static RoomOperationException revisionMismatch() {
-        return problem(RoomOperationException.Kind.PRECONDITION_FAILED, "ROOM_REVISION_MISMATCH", "Room changed",
+        return problem(
+                RoomOperationException.Kind.PRECONDITION_FAILED,
+                "ROOM_REVISION_MISMATCH",
+                "Room changed",
                 "The room changed. Reload it before trying again.");
     }
 
@@ -546,7 +629,10 @@ public class RoomService {
         }
     }
 
-    public record ThemeCommand(RoomTheme.Kind kind, String presetKey, String overlayKey) {
+    public record ThemeCommand(RoomTheme.Kind kind, String presetKey, String overlayKey, UUID mediaAssetId) {
+        public ThemeCommand(RoomTheme.Kind kind, String presetKey, String overlayKey) {
+            this(kind, presetKey, overlayKey, null);
+        }
     }
 
     public record OwnershipTransfer(

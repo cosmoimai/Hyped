@@ -609,10 +609,9 @@ placeholder or unprotected invitation material when those modules are unavailabl
 - Recurrence fields: rejected as unknown/unsupported.
 - User at ten active owned rooms: `409 OWNED_ROOM_LIMIT_REACHED`.
 
-### 10.6 Theme input variants (deferred)
+### 10.6 Theme input variants
 
-Theme persistence is outside the room-and-membership foundation. Until the theme module is implemented, room create and
-update requests reject theme fields as unsupported rather than silently discarding them.
+PRESET and GRADIENT themes are implemented. UPLOADED_IMAGE uses a validated, READY user-owned media reference and the `image-dark-40` overlay. Existing room covers can be retained by authorized co-hosts when editing other fields. GIPHY remains deferred and rejected; no inert GIF controls are exposed. Uploaded photos require the private media configuration described in [Android room photos setup](android-room-photos-setup.md).
 
 Preset:
 
@@ -733,7 +732,7 @@ All identity/authorization comes from the verified JWT subject. These actions ha
 - Restoration rechecks the 10 active owned-room and 25 active joined-room limits for every affected participant. Sorted account locks precede the room lock. A membership-set race returns `409 ROOM_MEMBERS_CHANGED` for a reload; quota failures use the existing distinct room-limit codes and roll back the whole restore.
 - Permanent deletion is allowed only for ARCHIVED rooms with `now >= deleteAfter`; active or early requests return `409 ROOM_DELETE_NOT_ELIGIBLE`. There is no immediate-delete bypass. Current nonowner participants receive `403 ROOM_ACTION_FORBIDDEN`.
 - Repeated permanent deletion and nonmember requests return the same `204` no-op to avoid disclosing whether a foreign room exists. They never modify a room without current owner authorization. No tombstone containing room content or former membership is retained.
-- The deletion transaction briefly marks the row `deleting`, clears encrypted room-linked join/rotation replays and physically deletes the room. Existing FKs cascade memberships, invitation credentials, reminder preferences/jobs/device deliveries and themes. The current implementation has preset/gradient themes and no room media objects requiring external deletion.
+- The deletion transaction briefly marks the row `deleting`, clears encrypted room-linked join/rotation replays and physically deletes the room. Existing FKs cascade memberships, invitation credentials, reminder preferences/jobs/device deliveries and themes. Any last-referenced uploaded cover is marked for durable private-object cleanup by the protected job tick; external storage deletion occurs outside the room transaction.
 - The existing OIDC-protected `POST /internal/jobs/tick` also purges up to 100 eligible archives after processing reminder deliveries, using `FOR UPDATE SKIP LOCKED`. Repeated/concurrent owner and worker deletion is safe. The response's existing reminder counters are unchanged. Deployments must keep the documented protected scheduler enabled for automatic cleanup; eligibility and restore limits are enforced independently of worker timing.
 - Successful Flutter leave/delete clears room/member caches and revokes every associated widget selection. Other devices clear protected fields after their next authoritative synchronization; offline widgets retain the last successful snapshot until then. Known removed selections are cleared and cannot be resurrected by a late response. Logout/account change continues to clear all protected widget data.
 
@@ -1019,7 +1018,11 @@ Failure codes include:
 - `UPLOAD_NOT_FOUND`
 - `UPLOAD_EXPIRED`
 
-A rejected upload cannot replace the current profile photo or room theme.
+A rejected upload cannot replace the current room theme. Profile-photo editing remains outside this implementation.
+
+`GET /media/configuration` is authenticated and reports only `{ "available": boolean }`. Media defaults disabled (`MEDIA_ENABLED=false`), returning a safe `503 MEDIA_UNAVAILABLE` for cloud operations. Enabling media requires private R2 credentials, Google ADC/Vision and the updated required Terms/Privacy versions. Upload creation is limited to 40 grants per authenticated account per 24 hours. Only ROOM_COVER is supported; client user IDs and object keys cannot select ownership. Filename is not persisted. Completion verifies the exact uploaded checksum and metadata; final delivery is a newly re-encoded static JPEG under a separate private ready key. Pending completions use bounded claims/retries; READY completion replays do not repeat publication/moderation. Uncertain results remain hidden; there is no manual approval endpoint or bypass in this change.
+
+The existing protected internal tick now cleans at most 20 unreferenced/orphan assets per call. Room deletion records cleanup before removing references. Account deletion removes uploaded objects before final personal-data purge; failed storage calls retain the deletion job for retry. A minimal DELETING metadata marker is retained until an hour after the original upload grant expires, enabling repeated cleanup of late/replayed writes. Configure quarantine bucket expiry after one day as a safeguard. No network operation runs inside room/media database transactions. Signed URLs/credentials and image bytes are never logged or cached in Drift/widget snapshots.
 
 `GET /media/{mediaAssetId}` authorizes the caller and returns a private R2 signed GET URL valid for **15 minutes**. The URL is scoped to one object and is never logged or included in analytics.
 

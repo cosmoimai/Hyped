@@ -27,6 +27,12 @@ class HomeScreen extends ConsumerWidget {
         ),
         actions: [
           TextButton.icon(
+            style: TextButton.styleFrom(
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerLow,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
             onPressed: () => context.go('/join'),
             icon: const Icon(Icons.key_outlined, size: 18),
             label: const Text('Join'),
@@ -154,6 +160,15 @@ class HomeScreen extends ConsumerWidget {
                         ),
                       ),
                     if (rooms.nearestRoom != null) ...[
+                      Text(
+                        'UP NEXT',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              letterSpacing: 1.2,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
                         'Your next milestone',
                         style: Theme.of(context).textTheme.headlineSmall,

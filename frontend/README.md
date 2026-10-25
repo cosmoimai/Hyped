@@ -141,3 +141,5 @@ controlled non-debug signing configuration; see the linked environment variables
 Local Android testing without KMS/Firestore billing: [setup steps](../docs/local-android-testing.md).
 
 The visual design and adaptations from the supplied Stitch screens are documented in [Stitch UI implementation](../docs/stitch-ui-implementation.md). Manrope and Outfit are bundled locally with their OFL notices; no font download is needed at runtime.
+
+Private Android room photos and required cloud configuration: [R2 / Vision setup](../docs/android-room-photos-setup.md).

@@ -60,6 +60,9 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency><groupId>software.amazon.awssdk</groupId><artifactId>s3</artifactId><version>2.57.3</version></dependency>
+    <dependency><groupId>software.amazon.awssdk</groupId><artifactId>url-connection-client</artifactId><version>2.57.3</version></dependency>
+    <dependency><groupId>com.twelvemonkeys.imageio</groupId><artifactId>imageio-webp</artifactId><version>3.15.3</version></dependency>
     <dependency>
       <groupId>com.google.firebase</groupId>
       <artifactId>firebase-admin</artifactId>

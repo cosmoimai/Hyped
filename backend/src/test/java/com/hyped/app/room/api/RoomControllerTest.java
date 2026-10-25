@@ -122,7 +122,7 @@ class RoomControllerTest {
                                  "theme":{"kind":"PRESET","presetKey":"soft-blue-01",
                                  "overlayKey":"dark-soft","mediaAssetId":"019b1f2b-d5e2-7d46-9165-a37ed59d6080"}}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test

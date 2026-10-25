@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class HypedTheme {
   const HypedTheme._();
@@ -50,6 +51,9 @@ class HypedTheme {
         titleLarge: heading(base.titleLarge),
       ),
       appBarTheme: AppBarTheme(
+        systemOverlayStyle: dark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,

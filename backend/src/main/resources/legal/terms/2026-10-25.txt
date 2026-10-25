@@ -1,0 +1,34 @@
+Hyped — Terms of Service and Content Rules
+Version: 2026-10-25
+
+1. Who provides Hyped
+Hyped is operated by {{operator}}. Questions, complaints and support requests can be sent to {{contact}}. These Terms govern the Android private shared-countdown service. The Privacy Policy explains how personal information is used. Applicable non-waivable rights remain unaffected.
+
+2. Adults only and your choices
+You must be at least 18 years old to create an account or participate in rooms. We ask for an explicit age affirmation, not your date of birth. Do not use Hyped if you are under 18. Signing in alone is not acceptance: before creating or joining a room, you must actively accept the current Terms and Privacy Policy and affirm that you are 18 or older. You may read public invitation previews and legal documents without signing in. If you do not agree, you may sign out and use account-deletion controls without accepting new terms.
+
+3. Accounts and security
+Use your own Google account and accurate information. Protect your devices and credentials. You are responsible for activity you authorize; tell support about suspected unauthorized access. Settings shows active devices and lets you revoke sessions. Do not share credentials, impersonate another person, bypass access controls or use another person's account.
+
+4. Private rooms and invitations
+Room owners control membership, co-host roles, ownership transfer and room lifecycle. Members and co-hosts can leave; an owner must transfer ownership before leaving. An invitation or room code grants its holder a limited public preview of the event title, date, theme, inviter display name and member count. Treat these credentials as private and share only with intended recipients. A person who receives a shared link can forward it. Joining requires sign-in, current consent and available capacity. Active rooms have at most 25 members. Owners can remove members and rotate invitations. Private does not mean that recipients cannot copy information they can see.
+
+5. Content rules
+You retain rights in content you provide and grant only the permission reasonably needed to store, display, synchronize and deliver it to authorized room participants and requested device features. Only share content you have the right to share. Do not post illegal material, child sexual exploitation material, non-consensual intimate material, credible threats, harassment, hate, fraud, personal information without permission or material that infringes others' rights. Do not exploit, scrape, disrupt or attack the service. Report prohibited content or misuse to {{contact}}, including only information necessary to investigate. We may restrict access, remove unlawful content or suspend accounts where reasonably necessary for safety, legal duties or these Terms. Contact support to dispute an action.
+
+6. Reminders and Android widgets
+Reminders support exactly 24 hours before, one hour before and event time. Delivery depends on permission, device settings, network connectivity and provider availability. Countdown widgets show the last successfully synchronized data; their text changes when widget updates occur. They are not continuously network-synchronized. Hyped is not an alarm, emergency, medical, financial or other time-critical service; independently verify important dates and times.
+
+7. Leaving, archiving and deletion
+Archived rooms reject new joins and stop active reminders. Owners may restore them only during the 24-hour recovery period; permanent deletion is available after the documented eligibility time. Removing or deleting a room revokes service access and clears synchronized device content after synchronization. Offline devices can retain their last synchronized data until they reconnect. Account deletion requires leaving joined rooms and transferring ownership or permanently deleting owned rooms, including archived rooms. Accepted account deletion is immediate and irreversible: sessions are revoked, and personal data is scheduled for purge within 24 hours. Encrypted backups expire within seven days; a minimal non-identifying deletion tombstone may remain for restore safety and shared references. See the Privacy Policy for details. Deleting your Hyped account does not delete your Google account.
+
+8. Service availability and changes
+We aim to operate Hyped reliably but cannot guarantee uninterrupted availability or delivery. We may change or discontinue features, subject to applicable law. We will not use these Terms to exclude liability or remedies that cannot legally be excluded. Nothing here prevents you from contacting a competent authority or exercising consumer or privacy rights.
+
+9. Changes to these documents
+A new required Terms, content-rules or Privacy Policy version requires a fresh explicit acceptance before further room creation or joining. Existing acceptance is not inferred for a new version. The version and server acceptance time are recorded. Material revisions are published under a new version; historical copies remain identifiable.
+
+10. Contact and applicable rights
+For support, complaints, privacy requests or disputes, contact {{operator}} at {{contact}}. We will consider requests under applicable law and verify identity when needed to protect accounts. Mandatory local consumer and data-protection rights and access to competent courts or regulators remain available. These Terms do not impose mandatory arbitration or waive those rights.
+
+Room photos: upload only static images you own or have permission to share. By selecting an image you authorize Hyped and its configured storage/safety providers to process it and show an approved cover to authorized room participants. Uploading does not guarantee publication: rejected, uncertain or unprocessed images remain hidden. Do not upload unlawful, abusive, sexually explicit, exploitative or privacy-invasive material. Safety screening is not a guarantee that all harmful content will be detected. Existing content rules and reporting rights continue to apply.

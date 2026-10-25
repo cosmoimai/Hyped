@@ -16,18 +16,14 @@ import com.hyped.app.room.domain.RoomId;
 import com.hyped.app.room.domain.RoomMembership;
 import com.hyped.app.room.domain.RoomStatus;
 import com.hyped.app.room.domain.RoomTheme;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.time.Clock;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.UUID;
+
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -44,6 +40,13 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/rooms")
@@ -135,7 +138,9 @@ public class RoomController {
     public ResponseEntity<Void> leave(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId,
             @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
         service.leave(actor(jwt), new RoomId(roomId), optionalRevision(ifMatch));
-        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "private, no-store").build();
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .build();
     }
 
     @PostMapping("/{roomId}/restore")
@@ -151,7 +156,9 @@ public class RoomController {
     public ResponseEntity<Void> deletePermanently(@AuthenticationPrincipal Jwt jwt, @PathVariable UUID roomId,
             @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
         service.deletePermanently(actor(jwt), new RoomId(roomId), optionalRevision(ifMatch));
-        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "private, no-store").build();
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .build();
     }
 
     @PatchMapping("/{roomId}/members/{userId}")
@@ -189,7 +196,9 @@ public class RoomController {
             @PathVariable UUID userId,
             @RequestHeader(value = HttpHeaders.IF_MATCH, required = false) String ifMatch) {
         service.removeMember(actor(jwt), new RoomId(roomId), new UserId(userId), optionalRevision(ifMatch));
-        return ResponseEntity.noContent().header(HttpHeaders.CACHE_CONTROL, "private, no-store").build();
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.CACHE_CONTROL, "private, no-store")
+                .build();
     }
 
     private static Long optionalRevision(String value) {
@@ -202,14 +211,20 @@ public class RoomController {
 
     private static long revision(String value) {
         if (value == null || !value.matches("\"room-[1-9][0-9]*\"")) {
-            throw new ApiProblemException(HttpStatus.PRECONDITION_REQUIRED, "ROOM_REVISION_REQUIRED",
-                    "Room revision required", "Provide the current room ETag in If-Match.");
+            throw new ApiProblemException(
+                    HttpStatus.PRECONDITION_REQUIRED,
+                    "ROOM_REVISION_REQUIRED",
+                    "Room revision required",
+                    "Provide the current room ETag in If-Match.");
         }
         try {
             return Long.parseLong(value.substring(6, value.length() - 1));
         } catch (NumberFormatException exception) {
-            throw new ApiProblemException(HttpStatus.PRECONDITION_REQUIRED, "ROOM_REVISION_REQUIRED",
-                    "Room revision required", "Provide the current room ETag in If-Match.");
+            throw new ApiProblemException(
+                    HttpStatus.PRECONDITION_REQUIRED,
+                    "ROOM_REVISION_REQUIRED",
+                    "Room revision required",
+                    "Provide the current room ETag in If-Match.");
         }
     }
 
@@ -262,12 +277,20 @@ public class RoomController {
     private static UpdateRoomCommand updateCommand(JsonNode patch) {
         rejectUnknown(patch, List.of("title", "eventLocalDate", "eventLocalTime", "eventTimeZone",
                 "location", "description", "theme"));
-        rejectClearedRequired(patch, List.of("title", "eventLocalDate", "eventLocalTime", "eventTimeZone",
-                "theme"));
-        return new UpdateRoomCommand(text(patch, "title"), date(patch, "eventLocalDate"),
-                time(patch, "eventLocalTime"), text(patch, "eventTimeZone"), text(patch, "location"),
-                patch.has("location"), text(patch, "description"), patch.has("description"),
-                theme(patch.get("theme")), patch.has("theme"));
+        rejectClearedRequired(
+                patch,
+                List.of("title", "eventLocalDate", "eventLocalTime", "eventTimeZone", "theme"));
+        return new UpdateRoomCommand(
+                text(patch, "title"),
+                date(patch, "eventLocalDate"),
+                time(patch, "eventLocalTime"),
+                text(patch, "eventTimeZone"),
+                text(patch, "location"),
+                patch.has("location"),
+                text(patch, "description"),
+                patch.has("description"),
+                theme(patch.get("theme")),
+                patch.has("theme"));
     }
 
     private static ThemeCommand theme(JsonNode value) {
@@ -277,11 +300,16 @@ public class RoomController {
         if (!value.isObject() || value.isEmpty()) {
             throw malformedPatch();
         }
-        rejectUnknown(value, List.of("kind", "presetKey", "overlayKey"));
-        rejectClearedRequired(value, List.of("kind", "presetKey", "overlayKey"));
+        rejectUnknown(value, List.of("kind", "presetKey", "overlayKey", "mediaAssetId"));
+        rejectClearedRequired(value, List.of("kind", "overlayKey"));
         try {
-            return new ThemeCommand(RoomTheme.Kind.valueOf(text(value, "kind")), text(value, "presetKey"),
-                    text(value, "overlayKey"));
+            return new ThemeCommand(
+                    RoomTheme.Kind.valueOf(text(value, "kind")),
+                    text(value, "presetKey"),
+                    text(value, "overlayKey"),
+                    value.hasNonNull("mediaAssetId")
+                            ? UUID.fromString(text(value, "mediaAssetId"))
+                            : null);
         } catch (RuntimeException exception) {
             throw malformedPatch();
         }
@@ -291,11 +319,14 @@ public class RoomController {
         if (request == null) {
             return null;
         }
-        return new ThemeCommand(request.kind(), request.presetKey(), request.overlayKey());
+        return new ThemeCommand(request.kind(), request.presetKey(), request.overlayKey(), request.mediaAssetId());
     }
 
     private static ApiProblemException malformedPatch() {
-        return new ApiProblemException(HttpStatus.UNPROCESSABLE_ENTITY, "VALIDATION_FAILED", "Validation failed",
+        return new ApiProblemException(
+                HttpStatus.UNPROCESSABLE_ENTITY,
+                "VALIDATION_FAILED",
+                "Validation failed",
                 "The room patch is invalid.");
     }
 
@@ -315,8 +346,14 @@ public class RoomController {
 
     public record ThemeRequest(
             @NotNull RoomTheme.Kind kind,
-            @NotBlank @Size(max = 64) String presetKey,
-            @NotBlank @Size(max = 64) String overlayKey) {
+            @Size(max = 64) String presetKey,
+            @NotBlank @Size(max = 64) String overlayKey,
+            UUID mediaAssetId) {
+        @jakarta.validation.constraints.AssertTrue
+        public boolean isValidSource() {
+            return kind == RoomTheme.Kind.UPLOADED_IMAGE ? mediaAssetId != null && presetKey == null
+                    : mediaAssetId == null && presetKey != null && !presetKey.isBlank();
+        }
         @JsonAnySetter
         public void unknown(String name, Object value) {
             throw malformedPatch();
@@ -380,9 +417,9 @@ public class RoomController {
         }
     }
 
-    public record ThemeResponse(RoomTheme.Kind kind, String presetKey, String overlayKey) {
+    public record ThemeResponse(RoomTheme.Kind kind, String presetKey, String overlayKey, UUID mediaAssetId) {
         static ThemeResponse from(RoomTheme theme) {
-            return new ThemeResponse(theme.kind(), theme.presetKey(), theme.overlayKey());
+            return new ThemeResponse(theme.kind(), theme.presetKey(), theme.overlayKey(), theme.mediaAssetId());
         }
     }
 

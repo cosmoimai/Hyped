@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hyped/app/theme/hyped_theme.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_cards.dart';
 import 'package:hyped/features/home/presentation/screens/home_screen.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
@@ -13,6 +15,31 @@ import 'package:mocktail/mocktail.dart';
 class MockRoomRepository extends Mock implements RoomRepository {}
 
 void main() {
+  testWidgets('compact countdown fits device text scaling without overflow', (
+    tester,
+  ) async {
+    for (final scale in [1.0, 1.3, 2.0]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: HypedTheme.light,
+          home: Scaffold(
+            body: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+              child: CompactRoomCard(
+                room: room(
+                  eventAt: DateTime.now().add(const Duration(hours: 22)),
+                ),
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('HOURS LEFT'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('home shows nearest room as featured card and others compact', (
     tester,
   ) async {
@@ -39,7 +66,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Next up'), findsOneWidget);
+    expect(find.text('UP NEXT'), findsOneWidget);
     expect(find.text('Soon'), findsOneWidget);
     await tester.scrollUntilVisible(find.text('Later'), 200);
     expect(find.text('Later'), findsOneWidget);

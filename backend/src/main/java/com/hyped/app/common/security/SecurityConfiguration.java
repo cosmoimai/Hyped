@@ -86,6 +86,7 @@ public class SecurityConfiguration {
                         .authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/devices/*").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/devices/*").authenticated()
+                        .requestMatchers("/api/v1/media/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/me/policy-status").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/me/policy-acceptances").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/me", "/api/v1/me/deletion-readiness").authenticated()

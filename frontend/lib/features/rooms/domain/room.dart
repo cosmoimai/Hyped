@@ -46,6 +46,7 @@ class Room {
       (role == RoomRole.owner || role == RoomRole.coHost);
 
   Room copyWith({
+    RoomTheme? theme,
     String? etag,
     RoomStatus? status,
     int? revision,
@@ -62,7 +63,7 @@ class Room {
     eventTimeZone: eventTimeZone,
     location: location,
     description: description,
-    theme: theme,
+    theme: theme ?? this.theme,
     status: status ?? this.status,
     role: role,
     memberCount: memberCount,
@@ -146,21 +147,25 @@ class RoomTheme {
     required this.kind,
     required this.presetKey,
     required this.overlayKey,
+    this.mediaAssetId,
   });
 
   final RoomThemeKind kind;
   final String presetKey;
   final String overlayKey;
+  final String? mediaAssetId;
 
   Map<String, dynamic> toJson() => {
     'kind': kind.wire,
-    'presetKey': presetKey,
+    if (kind != RoomThemeKind.uploadedImage) 'presetKey': presetKey,
+    if (kind == RoomThemeKind.uploadedImage) 'mediaAssetId': mediaAssetId,
     'overlayKey': overlayKey,
   };
 
   factory RoomTheme.fromJson(Map<String, dynamic> json) => RoomTheme(
     kind: RoomThemeKindX.fromWire(json['kind'] as String),
-    presetKey: json['presetKey'] as String,
+    presetKey: json['presetKey'] as String? ?? 'soft-blue-01',
+    mediaAssetId: json['mediaAssetId'] as String?,
     overlayKey: json['overlayKey'] as String,
   );
 }
@@ -169,7 +174,7 @@ enum RoomStatus { active, archived, deleting }
 
 enum RoomRole { owner, coHost, member }
 
-enum RoomThemeKind { preset, gradient }
+enum RoomThemeKind { preset, gradient, uploadedImage }
 
 extension RoomStatusX on RoomStatus {
   String get wire => switch (this) {
@@ -205,11 +210,13 @@ extension RoomThemeKindX on RoomThemeKind {
   String get wire => switch (this) {
     RoomThemeKind.preset => 'PRESET',
     RoomThemeKind.gradient => 'GRADIENT',
+    RoomThemeKind.uploadedImage => 'UPLOADED_IMAGE',
   };
 
   static RoomThemeKind fromWire(String value) => switch (value) {
     'PRESET' => RoomThemeKind.preset,
     'GRADIENT' => RoomThemeKind.gradient,
+    'UPLOADED_IMAGE' => RoomThemeKind.uploadedImage,
     _ => throw FormatException('Unknown room theme kind: $value'),
   };
 }

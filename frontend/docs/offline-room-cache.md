@@ -46,7 +46,7 @@ Android cloud backup and device-transfer rules explicitly exclude the cache file
 
 ## Schema and generated-code validation
 
-The initial schema snapshot is `frontend/drift_schemas/drift_schema_v1.json`; generated `room_cache_database.g.dart` is committed. This database is derived data with no unsynchronized writes. A schema-version mismatch rebuilds the two known cache tables instead of migrating arbitrary private data or making lossy guesses. Schema changes must bump `schemaVersion`, regenerate/export the snapshot and test the rebuild/migration path. Never silently reuse incompatible rows. Corruption/read failures fall back to online reads and do not log SQL row values or raw exceptions.
+The initial schema snapshot is `frontend/drift_schemas/drift_schema_v1.json`; v2 adds a nullable, account-partitioned `media_asset_id` reference and its snapshot is `drift_schema_v2.json`; generated `room_cache_database.g.dart` is committed. This database is derived data with no unsynchronized writes. A schema-version mismatch rebuilds the two known cache tables instead of migrating arbitrary private data or making lossy guesses. Schema changes must bump `schemaVersion`, regenerate/export the snapshot and test the rebuild/migration path. Never silently reuse incompatible rows. Corruption/read failures fall back to online reads and do not log SQL row values or raw exceptions.
 
 From `frontend/`:
 
@@ -61,3 +61,5 @@ flutter build apk --debug
 ```
 
 JIT builder compilation is used for reliable generation with this checkout/SDK; code generation must leave the committed generated file and snapshot unchanged. No backend migration, API contract or deployment change is required. Tests exercise actual SQLite partitioning/reopen/schema rebuild, cold cache display, authoritative refresh/eviction, last-sync preservation, widgets, account/session cleanup and races, offline mutation errors and cold offline routing.
+
+Room photo bytes and signed delivery URLs remain memory-only and are never written into SQLite. An offline photo room uses the safe color fallback. The v1→v2 derived-cache rebuild intentionally discards old projections and reloads them from the server.

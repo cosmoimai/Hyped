@@ -173,6 +173,21 @@ class AccountDeletionIntegrationTest {
         service.tick();
     }
     @Test
+    void mediaCleanupFailureKeepsDeletionPendingBeforeKeyDestruction() {
+        var photos = mock(com.hyped.app.media.application.MediaService.class);
+        var beans = new StaticListableBeanFactory();
+        beans.addBean("photos", photos);
+        service.media(beans.getBeanProvider(com.hyped.app.media.application.MediaService.class));
+        doThrow(new IllegalStateException("private storage failure")).when(photos).purgeUser(user);
+        service.request(user, "proof");
+        assertThat(status()).isEqualTo("deletion_pending");
+        verify(keys, never()).destroyKey(any(), anyString());
+        doNothing().when(photos).purgeUser(user);
+        clock.now = NOW.plusSeconds(61);
+        service.tick();
+        assertThat(status()).isEqualTo("deleted");
+    }
+    @Test
     void keyFailureResumesAfterFirebaseCheckpointWithoutNeedingTheOldToken() {
         doThrow(new IllegalStateException("key unavailable")).when(keys).destroyKey(any(), anyString());
         service.request(user, "proof");

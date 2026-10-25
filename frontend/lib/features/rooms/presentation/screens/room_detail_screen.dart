@@ -1,5 +1,5 @@
+import 'package:hyped/features/rooms/presentation/screens/room_lifecycle_screen.dart';
 import 'package:hyped/features/invitations/presentation/screens/share_invite_sheet.dart';
-import 'package:hyped/core/presentation/countdown_mark.dart';
 import 'package:hyped/features/rooms/presentation/widgets/countdown_readout.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:hyped/features/rooms/presentation/widgets/sync_status.dart';
@@ -23,11 +23,19 @@ class RoomDetailScreen extends ConsumerWidget {
     final room = controller.room;
     return Scaffold(
       appBar: RoomAppBar(
-        title: 'Room',
+        title: 'Event detail',
         actions: [
           if (room != null && !controller.readOnly)
             IconButton(
-              onPressed: () => context.go('/rooms/$roomId/lifecycle'),
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                showDragHandle: true,
+                builder: (_) => SizedBox(
+                  height: MediaQuery.sizeOf(context).height * .82,
+                  child: RoomLifecycleScreen(roomId: roomId, asSheet: true),
+                ),
+              ),
               tooltip: 'Room actions',
               icon: const Icon(Icons.more_horiz),
             ),
@@ -45,10 +53,22 @@ class RoomDetailScreen extends ConsumerWidget {
               top: false,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                child: FilledButton.icon(
-                  onPressed: () => showShareInvite(context, roomId),
-                  icon: const Icon(Icons.ios_share),
-                  label: const Text('Share invite'),
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () => showShareInvite(context, roomId),
+                      icon: const Icon(Icons.ios_share),
+                      label: const Text('Share invite'),
+                    ),
+                    FilledButton.tonalIcon(
+                      onPressed: () => context.go('/rooms/$roomId/reminders'),
+                      icon: const Icon(Icons.notifications_active_outlined),
+                      label: const Text('Set reminder'),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -95,98 +115,128 @@ class _RoomDetail extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
-          if (room.status != RoomStatus.active)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(lifecycleLabel(room, room.serverNow)),
-            ),
-          RoomThemeView(
+    return LayoutBuilder(
+      builder: (context, constraints) => RefreshIndicator(
+        onRefresh: onRefresh,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: RoomThemeView(
             theme: room.theme,
             scrim: true,
-            padding: const EdgeInsets.all(24),
-            child: DefaultTextStyle(
-              style: Theme.of(context).textTheme.bodyLarge!.copyWith(
-                color: Colors.white,
-                shadows: const [Shadow(color: Colors.black26, blurRadius: 8)],
+            borderRadius: 0,
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (constraints.maxHeight - 64).clamp(
+                  0,
+                  double.infinity,
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: 24),
-                  const Center(
-                    child: CountdownMark(size: 84, color: Color(0xFFB8C7FF)),
-                  ),
-                  const SizedBox(height: 24),
-                  if (room.location case final location?) ...[
-                    Text(location, textAlign: TextAlign.center),
-                    const SizedBox(height: 12),
-                  ],
-                  Text(
-                    room.title,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
+              child: DefaultTextStyle(
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge!.copyWith(color: Colors.white),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (room.status != RoomStatus.active)
+                      Text(
+                        lifecycleLabel(room, room.serverNow),
+                        textAlign: TextAlign.center,
+                      ),
+                    SizedBox(height: constraints.maxHeight > 600 ? 64 : 24),
+                    if (room.location case final location?)
+                      Align(
+                        alignment: Alignment.center,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .16),
+                            borderRadius: BorderRadius.circular(40),
+                          ),
+                          child: Text(location, textAlign: TextAlign.center),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    Text(
+                      room.title,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 28),
-                  CountdownReadout(eventAt: room.eventAt, onDark: true),
-                  const SizedBox(height: 24),
-                  Text(
-                    compactDateTime(room.eventAt),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'In your device’s local time',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: Color(0xFFD5DFFF)),
-                  ),
-                  const SizedBox(height: 24),
-                ],
+                    const SizedBox(height: 32),
+                    CountdownReadout(eventAt: room.eventAt, onDark: true),
+                    const SizedBox(height: 28),
+                    Text(
+                      compactDateTime(room.eventAt),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'In your device’s local time',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 13, color: Color(0xFFD5DFFF)),
+                    ),
+                    const SizedBox(height: 24),
+                    Material(
+                      color: Colors.white.withValues(alpha: .16),
+                      borderRadius: BorderRadius.circular(40),
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.people_outline,
+                          color: Color(0xFFB8C7FF),
+                        ),
+                        title: Text(
+                          '${room.memberCount} member${room.memberCount == 1 ? '' : 's'}',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        subtitle: Text(
+                          '${_roleLabel(room.role)} · Counting down together',
+                          style: const TextStyle(color: Color(0xFFD5DFFF)),
+                        ),
+                        trailing: readOnly
+                            ? null
+                            : const Icon(
+                                Icons.chevron_right,
+                                color: Colors.white,
+                              ),
+                        onTap: readOnly
+                            ? null
+                            : () => context.go('/rooms/${room.id}/members'),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Card(
+                      child: ExpansionTile(
+                        title: const Text('About this room'),
+                        leading: const Icon(Icons.info_outline),
+                        children: [
+                          _InfoTile(
+                            icon: Icons.public,
+                            title: room.eventTimeZone,
+                            subtitle: 'Event timezone',
+                          ),
+                          if (room.description case final description?)
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Text(description),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 20),
-          _InfoTile(
-            icon: Icons.groups_outlined,
-            title:
-                '${room.memberCount} member${room.memberCount == 1 ? '' : 's'}',
-            subtitle: _roleLabel(room.role),
-            onTap: readOnly
-                ? null
-                : () => context.go('/rooms/${room.id}/members'),
-          ),
-          if (!readOnly && room.status == RoomStatus.active)
-            _InfoTile(
-              icon: Icons.notifications_outlined,
-              title: 'Personal reminders',
-              subtitle: '24 hours before, 1 hour before, and event time',
-              onTap: () => context.go('/rooms/${room.id}/reminders'),
-            ),
-          _InfoTile(
-            icon: Icons.public,
-            title: room.eventTimeZone,
-            subtitle: 'Event timezone',
-          ),
-          if (room.location case final location?)
-            _InfoTile(
-              icon: Icons.place_outlined,
-              title: location,
-              subtitle: 'Location',
-            ),
-          if (room.description case final description?) ...[
-            const SizedBox(height: 12),
-            Text('Description', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(description),
-          ],
-        ],
+        ),
       ),
     );
   }
@@ -197,13 +247,11 @@ class _InfoTile extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
-    this.onTap,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
-  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -218,8 +266,6 @@ class _InfoTile extends StatelessWidget {
       ),
       title: Text(title),
       subtitle: Text(subtitle),
-      onTap: onTap,
-      trailing: onTap == null ? null : const Icon(Icons.chevron_right),
     ),
   );
 }

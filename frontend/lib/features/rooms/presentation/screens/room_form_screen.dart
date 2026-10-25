@@ -1,3 +1,7 @@
+import 'package:timezone/data/latest.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:hyped/features/media/presentation/room_photo_providers.dart';
+import 'package:hyped/features/rooms/presentation/widgets/countdown_readout.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -141,7 +145,7 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
   }
 }
 
-class RoomFormScaffold extends StatefulWidget {
+class RoomFormScaffold extends ConsumerStatefulWidget {
   const RoomFormScaffold({
     required this.title,
     this.backLocation = '/home',
@@ -164,14 +168,15 @@ class RoomFormScaffold extends StatefulWidget {
   final Future<void> Function() onSubmit;
 
   @override
-  State<RoomFormScaffold> createState() => _RoomFormScaffoldState();
+  ConsumerState<RoomFormScaffold> createState() => _RoomFormScaffoldState();
 }
 
-class _RoomFormScaffoldState extends State<RoomFormScaffold> {
+class _RoomFormScaffoldState extends ConsumerState<RoomFormScaffold> {
   final formKey = GlobalKey<FormState>();
 
   @override
   Widget build(BuildContext context) {
+    final photo = ref.watch(roomPhotoSelectionProvider(widget.model));
     return Scaffold(
       appBar: RoomAppBar(
         title: widget.title,
@@ -224,7 +229,7 @@ class _RoomFormScaffoldState extends State<RoomFormScaffold> {
                                 ),
                               ),
                               TextButton(
-                                onPressed: widget.saving
+                                onPressed: widget.saving || photo.blocked
                                     ? null
                                     : () {
                                         if (index > widget.step &&
@@ -274,7 +279,7 @@ class _RoomFormScaffoldState extends State<RoomFormScaffold> {
             children: [
               if (widget.step > 0) ...[
                 TextButton(
-                  onPressed: widget.saving
+                  onPressed: widget.saving || photo.blocked
                       ? null
                       : () => widget.onStepChanged(widget.step - 1),
                   child: const Text('Back'),
@@ -283,7 +288,7 @@ class _RoomFormScaffoldState extends State<RoomFormScaffold> {
               ],
               Expanded(
                 child: FilledButton(
-                  onPressed: widget.saving
+                  onPressed: widget.saving || photo.blocked
                       ? null
                       : () async {
                           if (widget.step == 0 &&
@@ -433,73 +438,213 @@ class _DetailsStepState extends State<_DetailsStep> {
   }
 }
 
-class _StyleStep extends StatefulWidget {
+class _StyleStep extends ConsumerStatefulWidget {
   const _StyleStep({required this.model});
 
   final RoomFormModel model;
 
   @override
-  State<_StyleStep> createState() => _StyleStepState();
+  ConsumerState<_StyleStep> createState() => _StyleStepState();
 }
 
-class _StyleStepState extends State<_StyleStep> {
+class _StyleStepState extends ConsumerState<_StyleStep> {
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: MediaQuery.sizeOf(context).width > 520 ? 4 : 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
+    final model = widget.model;
+    final photo = ref.watch(roomPhotoSelectionProvider(model));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        for (final theme in roomThemeChoices)
+        Text(
+          'LIVE CARD PREVIEW',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        const SizedBox(height: 12),
+        RoomThemeView(
+          theme: model.theme,
+          previewBytes: photo.selected?.bytes,
+          scrim: true,
+          child: DefaultTextStyle(
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium!.copyWith(color: Colors.white),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (model.location.text.trim().isNotEmpty)
+                  Text(model.location.text.trim()),
+                const SizedBox(height: 24),
+                CountdownReadout(eventAt: model.previewInstant, onDark: true),
+                const SizedBox(height: 24),
+                const Text('UPCOMING MILESTONE'),
+                const SizedBox(height: 8),
+                Text(
+                  model.title.text.trim().isEmpty
+                      ? 'Your next milestone'
+                      : model.title.text.trim(),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineSmall?.copyWith(color: Colors.white),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text('1. Pastel tones', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            for (final theme in roomThemeChoices.where(
+              (theme) => theme.kind == RoomThemeKind.preset,
+            ))
+              Semantics(
+                label: roomThemeName(theme),
+                selected:
+                    model.theme.kind != RoomThemeKind.uploadedImage &&
+                    theme.presetKey == model.theme.presetKey,
+                button: true,
+                child: InkWell(
+                  onTap: photo.busy
+                      ? null
+                      : () {
+                          photo.clear(restore: false);
+                          setState(() => model.theme = theme);
+                        },
+                  borderRadius: BorderRadius.circular(24),
+                  child: SizedBox(
+                    width: 76,
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: colorsForTheme(theme),
+                            ),
+                            border: Border.all(
+                              width: 3,
+                              color:
+                                  theme.presetKey == model.theme.presetKey &&
+                                      model.theme.kind !=
+                                          RoomThemeKind.uploadedImage
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Colors.transparent,
+                            ),
+                          ),
+                          child:
+                              theme.presetKey == model.theme.presetKey &&
+                                  model.theme.kind !=
+                                      RoomThemeKind.uploadedImage
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Color(0xFF182033),
+                                )
+                              : null,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          roomThemeName(theme),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 28),
+        Text(
+          '2. Luminous gradients',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        for (final theme in roomThemeChoices.where(
+          (theme) => theme.kind == RoomThemeKind.gradient,
+        ))
           Semantics(
             label: roomThemeName(theme),
-            selected: theme.presetKey == widget.model.theme.presetKey,
-            button: true,
-            child: InkWell(
-              onTap: () => setState(() => widget.model.theme = theme),
-              borderRadius: BorderRadius.circular(24),
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: RoomThemeView(
-                      theme: theme,
-                      child: const SizedBox.expand(),
-                    ),
+            selected:
+                model.theme.kind != RoomThemeKind.uploadedImage &&
+                theme.presetKey == model.theme.presetKey,
+            child: Card(
+              child: ListTile(
+                leading: SizedBox.square(
+                  dimension: 44,
+                  child: RoomThemeView(
+                    theme: theme,
+                    padding: EdgeInsets.zero,
+                    child: const SizedBox.expand(),
                   ),
-                  Positioned(
-                    left: 12,
-                    right: 12,
-                    bottom: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF182033),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        roomThemeName(theme),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (theme.presetKey == widget.model.theme.presetKey)
-                    const Positioned(
-                      right: 12,
-                      top: 12,
-                      child: Icon(Icons.check_circle, color: Colors.white),
-                    ),
-                ],
+                ),
+                title: Text(roomThemeName(theme)),
+                trailing:
+                    theme.presetKey == model.theme.presetKey &&
+                        model.theme.kind != RoomThemeKind.uploadedImage
+                    ? const Icon(Icons.check_circle)
+                    : const Icon(Icons.circle_outlined),
+                onTap: photo.busy
+                    ? null
+                    : () {
+                        photo.clear(restore: false);
+                        setState(() => model.theme = theme);
+                      },
               ),
             ),
+          ),
+        const SizedBox(height: 28),
+        Text(
+          '3. Custom memories',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.add_photo_alternate_outlined, size: 32),
+            title: const Text('Choose a room photo'),
+            subtitle: const Text('Your library · Static photo up to 5 MB'),
+            trailing: const Icon(Icons.upload_outlined),
+            onTap: photo.busy ? null : photo.pick,
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: Text(
+            'Selected photos are uploaded privately and checked before they can appear in a room.',
+          ),
+        ),
+        if (photo.busy) ...[
+          const SizedBox(height: 12),
+          const LinearProgressIndicator(),
+          const Text('Preparing your photo securely…'),
+        ],
+        if (photo.error case final error?)
+          Padding(padding: const EdgeInsets.only(top: 12), child: Text(error)),
+        if (photo.ready)
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text('Photo ready. Continue to review your room.'),
+          ),
+        if (photo.selected != null)
+          Wrap(
+            spacing: 12,
+            children: [
+              if (!photo.ready)
+                TextButton(
+                  onPressed: photo.busy ? null : photo.retry,
+                  child: const Text('Retry photo upload'),
+                ),
+              TextButton(
+                onPressed: photo.busy ? null : photo.clear,
+                child: const Text('Discard selected photo'),
+              ),
+            ],
           ),
       ],
     );
@@ -559,6 +704,32 @@ class _ReviewStep extends StatelessWidget {
 }
 
 class RoomFormModel {
+  static final bool _zonesReady = (() {
+    tzdata.initializeTimeZones();
+    return true;
+  })();
+  DateTime get previewInstant {
+    assert(_zonesReady);
+    // Referencing the lazy initializer is required in release too.
+    if (!_zonesReady) {
+      return DateTime.utc(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    }
+    return tz.TZDateTime(
+      timeZone == 'UTC' ? tz.UTC : tz.getLocation(timeZone),
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    ).toUtc();
+  }
+
   RoomFormModel({
     required String title,
     required this.date,

@@ -7,15 +7,15 @@ The Flutter Android UI follows `stitch_hyped_ui_ux_specifications/anticipation_s
 - Pale blue canvas, navy text, white surfaces, 20 dp hero corners, 16 dp compact cards, 12 dp filled inputs and pill buttons. Dark mode uses the existing dark navy palette.
 - Manrope body text and Outfit headings/countdown numerals. Both font families are bundled from the Google Fonts repository under SIL Open Font License 1.1. Their full license texts ship as assets and are registered with Flutter's license registry. Rendering does not request fonts over the network.
 - Home has a Join entry, Home/Create/Profile dock, featured countdown, compact secondary rooms and expandable archived rooms. Notifications, widgets and sign-out remain under the clearly labeled More options menu; Profile retains the existing settings actions.
-- Room detail uses the room's actual supported theme with a navy scrim, live device-clock countdown, device-local event date/time, membership and personal-reminder navigation. Owner/co-host edit visibility and offline read-only rules remain enforced.
-- Create/edit uses Details / Style / Review progress, labeled accessible theme options and a persistent Continue/Save action. Backend field limits and theme keys are unchanged.
+- Room detail uses a full-height room cover, location pill, large countdown, member pill, expandable information and Share/Set reminder actions. It uses the room's actual supported theme with a navy scrim, live device-clock countdown, device-local event date/time, membership and personal-reminder navigation. Owner/co-host edit visibility and offline read-only rules remain enforced.
+- Create/edit uses Details / Style / Review progress, a live cover preview, grouped approved colors/gradients, Custom Memories photo selection and labeled accessible theme options and a persistent Continue/Save action. Backend field limits and theme keys are unchanged.
 - Notifications explain only the existing 24-hour, 1-hour and event-time reminders. Widget setup explains Android placement and independent room selection per widget.
 - Active online rooms have a persistent **Share invite** button and a matching Room actions entry. A transient sheet shows the current room code and opens Android’s share chooser only after an explicit tap. Unconfigured invite domains use code-only sharing.
 - Back/Home navigation stays available on supporting screens, including load failures and direct launches.
 
 ## Deliberate adaptations
 
-Reference images are visual specifications, not runtime assets. No remote stock photos, fictional avatars, member identities, progress percentages or "Live sync" claims are displayed. Decorative countdown rings are brand marks, not measured event progress. No Apple/iOS tab, unsupported reminders, audio, poster editing, or extra backend features were added.
+Reference images are visual specifications, not runtime assets. No remote stock photos, fictional avatars/member identities or "Live sync" claims are displayed. Home’s event ring is derived from the actual room creation/event interval; the small brand mark remains decorative. Uploaded covers use the new private storage/validation/moderation contract; see [photo setup](android-room-photos-setup.md). Unconfigured cloud services preserve the old cover and block saving an unsynchronized selected photo.
 
 The in-app countdown reads the device clock once per second while mounted and refreshes on resume. It stops at event time, cleans up its timer on disposal and makes no network requests. Native home-screen widget countdowns still update only when widgets update; they do not tick continuously.
 

@@ -26,14 +26,29 @@ final roomLifecycleControllerProvider = ChangeNotifierProvider.autoDispose
     });
 
 class RoomLifecycleScreen extends ConsumerWidget {
-  const RoomLifecycleScreen({required this.roomId, super.key});
+  const RoomLifecycleScreen({
+    required this.roomId,
+    this.asSheet = false,
+    super.key,
+  });
   final String roomId;
+  final bool asSheet;
+  void _open(BuildContext context, String location) {
+    if (asSheet) Navigator.pop(context);
+    context.go(location);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(roomLifecycleControllerProvider(roomId));
     final room = controller.room;
     return Scaffold(
-      appBar: RoomAppBar(title: 'Room actions', backLocation: '/rooms/$roomId'),
+      appBar: asSheet
+          ? AppBar(
+              title: const Text('Room actions'),
+              leading: CloseButton(onPressed: () => Navigator.pop(context)),
+            )
+          : RoomAppBar(title: 'Room actions', backLocation: '/rooms/$roomId'),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
@@ -81,7 +96,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: controller.saving
                         ? null
-                        : () => context.go('/rooms/$roomId/members'),
+                        : () => _open(context, '/rooms/$roomId/members'),
                   ),
                   if (room.status == RoomStatus.active)
                     ListTile(
@@ -91,7 +106,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
                       trailing: const Icon(Icons.chevron_right),
                       onTap: controller.saving
                           ? null
-                          : () => context.go('/rooms/$roomId/reminders'),
+                          : () => _open(context, '/rooms/$roomId/reminders'),
                     ),
                   ListTile(
                     leading: const Icon(Icons.widgets_outlined),
@@ -100,7 +115,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
                     trailing: const Icon(Icons.chevron_right),
                     onTap: controller.saving
                         ? null
-                        : () => context.go('/widgets/room'),
+                        : () => _open(context, '/widgets/room'),
                   ),
                 ],
               ),
@@ -129,7 +144,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
               TextButton(
                 onPressed: controller.saving
                     ? null
-                    : () => context.go('/rooms/$roomId/members'),
+                    : () => _open(context, '/rooms/$roomId/members'),
                 child: const Text('Open Members'),
               ),
             ],
@@ -186,7 +201,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
             ),
           if (controller.removed)
             FilledButton(
-              onPressed: () => context.go('/home'),
+              onPressed: () => _open(context, '/home'),
               child: const Text('Back to rooms'),
             ),
         ],

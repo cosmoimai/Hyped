@@ -22,6 +22,9 @@ public class ReminderTickController {
         this.accounts = accounts;
     }
 
+    private ObjectProvider<com.hyped.app.media.application.MediaService> media;
+    @org.springframework.beans.factory.annotation.Autowired
+    public void media(ObjectProvider<com.hyped.app.media.application.MediaService> provider) { media = provider; }
     @PostMapping("/internal/jobs/tick")
     public ReminderDeliveryService.Result tick() {
         try {
@@ -32,6 +35,7 @@ public class ReminderTickController {
         } finally {
             // Irreversible account cleanup must also run when an unrelated reminder/room task fails.
             accounts.ifAvailable(AccountService::tick);
+            if (media != null) { media.ifAvailable(com.hyped.app.media.application.MediaService::cleanup); }
         }
     }
 }

@@ -1,45 +1,76 @@
+import 'dart:typed_data';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hyped/features/media/presentation/room_photo_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 
-class RoomThemeView extends StatelessWidget {
+class RoomThemeView extends ConsumerWidget {
   const RoomThemeView({
     required this.theme,
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.scrim = false,
+    this.previewBytes,
+    this.borderRadius = 20,
     super.key,
   });
 
+  final Uint8List? previewBytes;
+  final double borderRadius;
   final bool scrim;
   final RoomTheme theme;
   final Widget child;
   final EdgeInsetsGeometry padding;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = colorsForTheme(theme);
+    final bytes =
+        previewBytes ??
+        (theme.kind == RoomThemeKind.uploadedImage && theme.mediaAssetId != null
+            ? ref
+                  .watch(roomPhotoBytesProvider(theme.mediaAssetId!))
+                  .asData
+                  ?.value
+            : null);
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(borderRadius),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: colors,
         ),
       ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: scrim
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Color(0xAA182033), Color(0xEE182033)],
-                )
-              : null,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Stack(
+          children: [
+            if (bytes != null)
+              Positioned.fill(
+                child: Image.memory(
+                  bytes,
+                  fit: BoxFit.cover,
+                  excludeFromSemantics: true,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
+              ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(borderRadius),
+                gradient: scrim
+                    ? const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xAA182033), Color(0xEE182033)],
+                      )
+                    : null,
+              ),
+              padding: padding,
+              child: child,
+            ),
+          ],
         ),
-        padding: padding,
-        child: child,
       ),
     );
   }
@@ -76,6 +107,16 @@ const roomThemeChoices = <RoomTheme>[
   RoomTheme(
     kind: RoomThemeKind.gradient,
     presetKey: 'peach-gold-01',
+    overlayKey: 'dark-soft',
+  ),
+  RoomTheme(
+    kind: RoomThemeKind.preset,
+    presetKey: 'sunset-coral-01',
+    overlayKey: 'dark-soft',
+  ),
+  RoomTheme(
+    kind: RoomThemeKind.gradient,
+    presetKey: 'aurora-green-01',
     overlayKey: 'dark-soft',
   ),
 ];
