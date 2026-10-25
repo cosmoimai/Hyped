@@ -23,8 +23,9 @@ class RoomWidgetData {
     'soft-blue-01',
     'mint-sky-01',
     'blue-lilac-02',
-    'sunset-peach-01',
-    'forest-glow-01',
+    'sunset-coral-01',
+    'peach-gold-01',
+    'aurora-green-01',
   };
 
   factory RoomWidgetData.fromRoom(Room room, {DateTime? syncedAt}) =>

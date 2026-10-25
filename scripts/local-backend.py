@@ -128,9 +128,22 @@ def start(settings):
                 'PERSONAL_DATA_', 'IDENTITY_', 'ANDROID_PUSH_', 'PUSH_', 'LEGAL_', 'TERMS_',
                 'PRIVACY_', 'CONTENT_RULES_', 'SPRING_', 'ORG_GRADLE_PROJECT_', 'LOGGING_', 'SERVER_')
     excluded = {'GOOGLE_APPLICATION_CREDENTIALS', 'GOOGLE_CLOUD_PROJECT', 'JAVA_TOOL_OPTIONS',
-                '_JAVA_OPTIONS', 'JDK_JAVA_OPTIONS', 'MAVEN_OPTS', 'ACCOUNT_DELETION_ENABLED'}
+                '_JAVA_OPTIONS', 'JDK_JAVA_OPTIONS', 'MAVEN_OPTS', 'ACCOUNT_DELETION_ENABLED', 'DEBUG', 'TRACE'}
     env = {k: v for k, v in os.environ.items() if not k.startswith(prefixes) and k not in excluded}
     env.update(settings)
+    # Spring Boot interprets bare DEBUG/TRACE variables too. Never inherit HTTP body,
+    # SQL or bind-value logging from the shell or private settings while testing real accounts.
+    for key in list(env):
+        if key.startswith('LOGGING_'):
+            env.pop(key)
+    env.update({'DEBUG': 'false', 'TRACE': 'false', 'LOGGING_LEVEL_ROOT': 'INFO',
+                'LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB': 'INFO',
+                'LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_JDBC': 'INFO',
+                'LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY': 'INFO',
+                'LOGGING_LEVEL_ORG_HIBERNATE_SQL': 'OFF',
+                'LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND': 'OFF',
+                'LOGGING_LEVEL_ORG_HIBERNATE_TYPE_DESCRIPTOR_SQL_BASICBINDER': 'OFF',
+                'SPRING_MVC_LOG_REQUEST_DETAILS': 'false', 'SPRING_JPA_SHOW_SQL': 'false'})
     # Bind the Mac's debug backend to loopback even if private settings were edited.
     env['SERVER_ADDRESS'] = '127.0.0.1'
     env['SERVER_PORT'] = '8080'

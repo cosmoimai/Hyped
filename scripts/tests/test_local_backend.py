@@ -74,9 +74,11 @@ class LocalBackendSetupTest(unittest.TestCase):
     def test_start_fences_production_environment_and_forces_loopback(self):
         (self.home / 'firebase-admin.json').write_text(json.dumps({
             'type': 'service_account', 'project_id': 'local-test-project'}))
-        settings = self.settings() | {'SERVER_ADDRESS': '0.0.0.0', 'SPRING_PROFILES_ACTIVE': 'production'}
+        settings = self.settings() | {'SERVER_ADDRESS': '0.0.0.0', 'SPRING_PROFILES_ACTIVE': 'production',
+                                      'DEBUG': 'true', 'LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_SERVLET': 'TRACE'}
         with patch.dict(os.environ, {'DATABASE_URL': 'deployed-fixture', 'SPRING_PROFILES_ACTIVE': 'production',
-                                    'JAVA_TOOL_OPTIONS': 'fixture', 'PUSH_SCHEDULER_EMAIL': 'fixture'}):
+                                    'JAVA_TOOL_OPTIONS': 'fixture', 'PUSH_SCHEDULER_EMAIL': 'fixture',
+                                    'DEBUG': 'true', 'TRACE': 'true', 'LOGGING_LEVEL_ROOT': 'DEBUG'}):
             with patch.object(local.subprocess, 'run') as run, contextlib.redirect_stdout(io.StringIO()):
                 run.return_value.returncode = 0
                 self.assertEqual(local.start(settings), 0)
@@ -86,6 +88,13 @@ class LocalBackendSetupTest(unittest.TestCase):
         self.assertEqual(environment['DATABASE_URL'], 'jdbc:postgresql://127.0.0.1:5432/hyped')
         self.assertNotIn('JAVA_TOOL_OPTIONS', environment)
         self.assertNotIn('PUSH_SCHEDULER_EMAIL', environment)
+        self.assertEqual(environment['DEBUG'], 'false')
+        self.assertEqual(environment['TRACE'], 'false')
+        self.assertEqual(environment['LOGGING_LEVEL_ROOT'], 'INFO')
+        self.assertEqual(environment['LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB'], 'INFO')
+        self.assertEqual(environment['LOGGING_LEVEL_ORG_HIBERNATE_SQL'], 'OFF')
+        self.assertEqual(environment['LOGGING_LEVEL_ORG_HIBERNATE_ORM_JDBC_BIND'], 'OFF')
+        self.assertNotIn('LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_SERVLET', environment)
 
     def test_local_consent_requires_deliberate_confirmation(self):
         before = (self.home / 'environment.json').read_bytes()

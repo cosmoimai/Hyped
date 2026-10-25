@@ -104,7 +104,9 @@ curl --fail http://127.0.0.1:8080/api/v1/system/health
 Wait for HTTP 200 before using the phone. A healthy skeleton alone does not prove
 Firebase permissions or successful session exchange; verify a real app sign-in.
 If startup fails, share the sanitized error class/message, not the environment,
-credential file, JWTs, FCM tokens, request bodies or full logs.
+credential file, JWTs, FCM tokens, request bodies or full logs. The launcher
+forces INFO-level operational logging and disables HTTP-body/SQL/bind logging;
+shell DEBUG/TRACE values and private logging overrides are discarded.
 
 ## 6. Connect and launch the phone
 

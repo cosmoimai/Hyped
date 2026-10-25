@@ -33,8 +33,9 @@ class RoomThemeView extends StatelessWidget {
 List<Color> colorsForTheme(RoomTheme theme) => switch (theme.presetKey) {
   'mint-sky-01' => const [Color(0xFFB8F4DD), Color(0xFF9EC5FF)],
   'blue-lilac-02' => const [Color(0xFF6C8CFF), Color(0xFFC9A7FF)],
-  'sunset-peach-01' => const [Color(0xFFFFB199), Color(0xFFFF6A88)],
-  'forest-glow-01' => const [Color(0xFF77E2A7), Color(0xFF2F7D68)],
+  'peach-gold-01' ||
+  'sunset-coral-01' => const [Color(0xFFFFB199), Color(0xFFFF6A88)],
+  'aurora-green-01' => const [Color(0xFF77E2A7), Color(0xFF2F7D68)],
   _ =>
     theme.kind == RoomThemeKind.gradient
         ? const [Color(0xFF6C8CFF), Color(0xFFC9A7FF)]
@@ -59,7 +60,7 @@ const roomThemeChoices = <RoomTheme>[
   ),
   RoomTheme(
     kind: RoomThemeKind.gradient,
-    presetKey: 'sunset-peach-01',
+    presetKey: 'peach-gold-01',
     overlayKey: 'dark-soft',
   ),
 ];

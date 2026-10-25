@@ -110,6 +110,12 @@ info:
 logging:
   level:
     org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO
+    org.springframework.web: INFO
+    org.springframework.jdbc: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: "OFF"
+    org.hibernate.orm.jdbc.bind: "OFF"
+    org.hibernate.type.descriptor.sql.BasicBinder: "OFF"
 
 # Never render container exception details or enable request/header logging in production.
 server.error.include-message: never

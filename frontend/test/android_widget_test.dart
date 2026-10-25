@@ -70,6 +70,24 @@ class _Bridge {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'widget sync preserves every server-supported theme instead of falling back to blue',
+    () {
+      for (final preset in [
+        'soft-blue-01',
+        'sunset-coral-01',
+        'mint-sky-01',
+        'blue-lilac-02',
+        'peach-gold-01',
+        'aurora-green-01',
+      ]) {
+        expect(
+          RoomWidgetData.fromRoom(room(preset: preset)).toJson()['presetKey'],
+          preset,
+        );
+      }
+    },
+  );
   late _Bridge bridge;
   late MethodChannelRoomWidgetRepository widgets;
   setUp(() async {

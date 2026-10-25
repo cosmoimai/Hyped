@@ -7,6 +7,13 @@ import java.util.Locale
 import java.util.TimeZone
 
 class WidgetSnapshotTest {
+    @Test fun widgetSnapshotsPreserveAllBackendThemeKeys() {
+        for (key in listOf("soft-blue-01", "sunset-coral-01", "mint-sky-01",
+            "blue-lilac-02", "peach-gold-01", "aurora-green-01")) {
+            assertEquals(key, WidgetRoom.from(room().payload() + ("presetKey" to key))?.presetKey)
+        }
+        assertEquals("soft-blue-01", WidgetRoom.from(room().payload() + ("presetKey" to "untrusted-theme"))?.presetKey)
+    }
     private class Disk : WidgetPersistence {
         val values = mutableMapOf<Int, String>()
         override fun ids() = values.keys.toSet()
