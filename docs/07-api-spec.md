@@ -779,6 +779,14 @@ Rules:
 - Removal transactionally deletes the membership and personal reminder preferences, cancels pending/sending device reminders, and updates member count/revision. Delivery eligibility is also rechecked before sending. A message already accepted by FCM cannot be recalled and uses generic notification text.
 - Removed users lose REST access immediately. On the next successful foreground synchronization, Flutter clears protected widget snapshots on the safe unavailable response. Offline cached widgets remain subject to the existing documented offline behavior; there is no new background synchronization.
 
+Member reads capture an authorized membership snapshot under a short room transaction,
+decrypt approved profile fields outside any database transaction, then reacquire the
+room lock and recheck caller access, membership, roles, status and revision. No room
+locks are retained across local/cloud key resolution. A concurrent change returns
+`412 ROOM_REVISION_MISMATCH` with no member list; reload to obtain the current view.
+A caller removed during decryption receives `404 ROOM_UNAVAILABLE` instead. The
+final authorized snapshot supplies both action visibility and the response ETag.
+
 `GET /rooms/{roomId}/members` returns `Cache-Control: private, no-store` and `ETag: "room-{revision}"`:
 
 ```json

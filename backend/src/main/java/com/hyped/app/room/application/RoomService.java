@@ -28,6 +28,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 @Service
 public class RoomService {
@@ -36,6 +37,7 @@ public class RoomService {
     public static final int MAX_MEMBERS = 25;
     private final com.hyped.app.policy.application.PolicyService policies;
     private final RoomRepository rooms;
+    private final RoomMemberSnapshotService memberSnapshots;
     private final ObjectProvider<AuthenticationProfileReader> profiles;
     private final Clock clock;
     private final ObjectProvider<InvitationService> invitations;
@@ -46,9 +48,10 @@ public class RoomService {
             ObjectProvider<RoomReminderService> reminders,
             ObjectProvider<ReminderPreferencesService> reminderPreferences,
             ObjectProvider<AuthenticationProfileReader> profiles,
-            com.hyped.app.policy.application.PolicyService policies) {
+            com.hyped.app.policy.application.PolicyService policies, RoomMemberSnapshotService memberSnapshots) {
         this.policies = policies;
         this.rooms = rooms;
+        this.memberSnapshots = memberSnapshots;
         this.profiles = profiles;
         this.clock = clock;
         this.invitations = invitations;
@@ -358,21 +361,18 @@ public class RoomService {
                 new RoomMembership(roomId, newOwner, MembershipRole.OWNER, target.joinedAt(), now));
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NEVER)
     public MemberList members(UserId actor, RoomId roomId) {
-        // Serialize the projection with role changes and removals, including caller authorization.
-        AuthorizedRoom current = rooms.findAuthorizedForUpdate(roomId, actor).orElseThrow(RoomService::unavailable);
-        if (current.room().status() == RoomStatus.DELETING) {
-            throw unavailable();
-        }
+        var snapshot = memberSnapshots.capture(actor, roomId);
         var reader = profiles.getIfAvailable();
-        List<MemberView> items = rooms.findMembers(roomId).stream().map(member -> new MemberView(
+        // Resolve external keys without retaining room locks or a database transaction.
+        List<MemberView> items = snapshot.members().stream().map(member -> new MemberView(
                 member.userId().value(), reader == null ? "Member" : reader.read(member.userId()).displayName(),
                 null, member.role(), member.joinedAt(), member.userId().equals(actor)))
                 .sorted(Comparator.comparing(MemberView::role)
                         .thenComparing(MemberView::displayName, String.CASE_INSENSITIVE_ORDER)
                         .thenComparing(MemberView::userId)).toList();
-        return new MemberList(items, current.role(), current.room().status(), current.room().revision());
+        return memberSnapshots.finish(actor, roomId, snapshot, items);
     }
 
     @Transactional

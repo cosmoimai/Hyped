@@ -310,31 +310,44 @@ class RoomRepositoryIntegrationTest {
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void memberListIncludesOnlyRoomParticipantsAndIdentifiesCaller() {
         UserId owner = user();
         UserId member = user();
         RoomId roomId = service.create(owner, command("UTC")).room().id();
         service.addMember(roomId, member);
-        var view = service.members(member, roomId);
-        assertThat(view.items()).hasSize(2);
-        assertThat(view.items().getFirst().role()).isEqualTo(MembershipRole.OWNER);
-        assertThat(view.items().stream().filter(RoomService.MemberView::isCurrentUser).findFirst().orElseThrow()
-                .userId()).isEqualTo(member.value());
-        assertThat(view.items()).allMatch(item -> item.photo() == null);
-        assertThat(view.callerRole()).isEqualTo(MembershipRole.MEMBER);
+        try {
+            var view = service.members(member, roomId);
+            assertThat(view.items()).hasSize(2);
+            assertThat(view.items().getFirst().role()).isEqualTo(MembershipRole.OWNER);
+            assertThat(view.items().stream().filter(RoomService.MemberView::isCurrentUser).findFirst().orElseThrow()
+                    .userId()).isEqualTo(member.value());
+            assertThat(view.items()).allMatch(item -> item.photo() == null);
+            assertThat(view.callerRole()).isEqualTo(MembershipRole.MEMBER);
+        } finally {
+            jdbc.update("DELETE FROM app.room WHERE id = ?", roomId.value());
+            jdbc.update("DELETE FROM app.app_user WHERE id IN (?, ?)", owner.value(), member.value());
+        }
     }
 
     @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     void outsidersCannotListChangeTransferOrRemoveMembers() {
         UserId owner = user();
         UserId outsider = user();
         RoomId roomId = service.create(owner, command("UTC")).room().id();
-        assertThatThrownBy(() -> service.members(outsider, roomId)).isInstanceOf(RoomOperationException.class);
-        assertThatThrownBy(() -> service.changeRole(outsider, roomId, owner, MembershipRole.MEMBER))
-                .isInstanceOf(RoomOperationException.class);
-        assertThatThrownBy(() -> service.transfer(outsider, roomId, owner)).isInstanceOf(RoomOperationException.class);
-        assertThatThrownBy(() -> service.removeMember(outsider, roomId, owner, null))
-                .isInstanceOf(RoomOperationException.class);
+        try {
+            assertThatThrownBy(() -> service.members(outsider, roomId)).isInstanceOf(RoomOperationException.class);
+            assertThatThrownBy(() -> service.changeRole(outsider, roomId, owner, MembershipRole.MEMBER))
+                    .isInstanceOf(RoomOperationException.class);
+            assertThatThrownBy(() -> service.transfer(outsider, roomId, owner))
+                    .isInstanceOf(RoomOperationException.class);
+            assertThatThrownBy(() -> service.removeMember(outsider, roomId, owner, null))
+                    .isInstanceOf(RoomOperationException.class);
+        } finally {
+            jdbc.update("DELETE FROM app.room WHERE id = ?", roomId.value());
+            jdbc.update("DELETE FROM app.app_user WHERE id IN (?, ?)", owner.value(), outsider.value());
+        }
     }
 
     @Test
