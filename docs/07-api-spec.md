@@ -1063,7 +1063,7 @@ Headers: access token and `Idempotency-Key`.
 - Success returns `201 Created` with report ID and status only.
 - Reports are limited separately to five per account per day unless security operations adjust the threshold.
 - Eligible records are pseudonymized after account deletion and deleted after 90 days.
-- `subjectType` supports `ROOM`, `THEME`, and `ACCOUNT`; an account subject must be resolvable from the reporter's current room/member context.
+- `subjectType` supports `ROOM`, `THEME`, and `ACCOUNT`; `ACCOUNT` requires `subjectUserId` from the reporter's current room/member context. The server resolves THEME to the current cover; callers cannot supply an asset key or reporter identity.
 - Reporting and blocking are independent. The client may offer both actions, but neither silently implies the other.
 
 ## 17. Privacy-safe analytics
@@ -1323,3 +1323,13 @@ evidence and `503 INTEGRITY_UNAVAILABLE` for unavailable verification. Distribut
 authenticated-write limits can return `429 RATE_LIMITED` with `Retry-After: 60`.
 Retry with fresh evidence and preserve the business Idempotency-Key/revision.
 No userId/deviceId ownership field or new public endpoint is introduced.
+
+## Reporting/blocking implementation (V16)
+
+[Reporting, blocking and moderation](reporting-blocking-and-moderation.md) defines the applied contracts and reviewer setup. `POST /reports` and `PUT /me/blocks/{userId}` require a canonical UUID `Idempotency-Key`; changing the request under a key returns `409 IDEMPOTENCY_KEY_REUSED`. Block PUT requires `{ "roomId": "<current shared room>" }` and returns only `removedCount` and `leftCount`. Own block GET returns `items` (`userId`, safe `displayName`, `blockedAt`) and nullable `nextCursor`; pass it as `after` for the next 100-item page. DELETE is directional and idempotent.
+
+Controlled report reasons are `INAPPROPRIATE_CONTENT`, `HARASSMENT`, `HATE_OR_VIOLENCE`, `SPAM`, `OTHER`. The receipt is `{ "reportId": "…", "status": "OPEN" }`, 201, without subject/reporter details. Rate limit: five new reports per rolling 24 hours, with idempotent retries exempt. Optional free text is encrypted with the reporter's existing per-user key; no plaintext report content appears in replay/audit data.
+
+`GET /me/room-invalidations` returns up to 100 pending `{roomId,version}` entries in `items`; `DELETE /me/room-invalidations/{version}` acknowledges only the current caller's exact version after local cleanup. No reason, block origin or notification is exposed. These routes use authenticated session-fenced Dio. This bounded durable sync queue does not add room-change push delivery.
+
+Member items add `hiddenProfile`; a blocked pair in third-party rooms receives `Blocked account`, null photo and unavailable direct role actions. Authenticated room responses add `moderationHold`; Flutter hides restore while it applies. Moderation-held rooms reject owner restore with `403 ROOM_RESTRICTED` until a verified reviewer releases the hold; release does not extend recovery. Internal reviewer routes require their separate verified Google OIDC identity and are unavailable to app JWTs.

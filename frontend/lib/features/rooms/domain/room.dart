@@ -18,6 +18,7 @@ class Room {
     this.deleteAfter,
     this.etag,
     this.isCached = false,
+    this.moderationHold = false,
     this.lastSyncedAt,
   });
 
@@ -39,6 +40,7 @@ class Room {
   final DateTime serverNow;
   final String? etag;
   final bool isCached;
+  final bool moderationHold;
   final DateTime? lastSyncedAt;
 
   bool get canEdit =>
@@ -55,6 +57,7 @@ class Room {
     DateTime? serverNow,
     DateTime? updatedAt,
     bool? isCached,
+    bool? moderationHold,
     DateTime? lastSyncedAt,
   }) => Room(
     id: id,
@@ -75,6 +78,7 @@ class Room {
     serverNow: serverNow ?? this.serverNow,
     etag: etag ?? this.etag,
     isCached: isCached ?? this.isCached,
+    moderationHold: moderationHold ?? this.moderationHold,
     lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
   );
 
@@ -96,6 +100,7 @@ class Room {
     updatedAt: DateTime.parse(json['updatedAt'] as String).toUtc(),
     serverNow: DateTime.parse(json['serverNow'] as String).toUtc(),
     etag: etag,
+    moderationHold: json['moderationHold'] == true,
   );
 }
 

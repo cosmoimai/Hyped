@@ -9,7 +9,9 @@ List<RoomLifecycleAction> lifecycleActions(Room room, DateTime now) {
     return const [RoomLifecycleAction.archive];
   }
   final deadline = room.deleteAfter;
-  if (deadline == null) return const [];
+  if (deadline == null || room.moderationHold && now.isBefore(deadline)) {
+    return const [];
+  }
   return [
     now.isBefore(deadline)
         ? RoomLifecycleAction.restore
@@ -20,6 +22,11 @@ List<RoomLifecycleAction> lifecycleActions(Room room, DateTime now) {
 String lifecycleLabel(Room room, DateTime now) => switch (room.status) {
   RoomStatus.active => 'Active',
   RoomStatus.deleting => 'Room removed',
+  RoomStatus.archived
+      when room.moderationHold &&
+          room.deleteAfter != null &&
+          now.isBefore(room.deleteAfter!) =>
+    'Archived · under review',
   RoomStatus.archived =>
     room.deleteAfter != null && !now.isBefore(room.deleteAfter!)
         ? 'Archived · eligible for permanent deletion'

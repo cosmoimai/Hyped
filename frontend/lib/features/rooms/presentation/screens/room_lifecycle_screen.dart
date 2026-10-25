@@ -1,3 +1,4 @@
+import 'package:hyped/features/safety/presentation/safety_sheets.dart';
 import 'package:hyped/features/invitations/presentation/screens/share_invite_sheet.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
@@ -116,6 +117,35 @@ class RoomLifecycleScreen extends ConsumerWidget {
                     onTap: controller.saving
                         ? null
                         : () => _open(context, '/widgets/room'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.flag_outlined),
+                    title: const Text('Report room'),
+                    onTap: controller.saving || room.isCached
+                        ? null
+                        : () => showReport(
+                            context,
+                            roomId: roomId,
+                            subject: 'ROOM',
+                          ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.image_outlined),
+                    title: const Text('Report photo or style'),
+                    onTap: controller.saving || room.isCached
+                        ? null
+                        : () => showReport(
+                            context,
+                            roomId: roomId,
+                            subject: 'THEME',
+                          ),
                   ),
                 ],
               ),

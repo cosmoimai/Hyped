@@ -39,6 +39,7 @@ public class RoomService {
     public static final int MAX_MEMBERS = 25;
     private final com.hyped.app.policy.application.PolicyService policies;
     private final RoomRepository rooms;
+    private final com.hyped.app.moderation.application.port.out.SafetyStore safety;
     private final RoomMemberSnapshotService memberSnapshots;
     private final ObjectProvider<AuthenticationProfileReader> profiles;
     private final Clock clock;
@@ -56,7 +57,9 @@ public class RoomService {
             ObjectProvider<AuthenticationProfileReader> profiles,
             com.hyped.app.policy.application.PolicyService policies,
             RoomMemberSnapshotService memberSnapshots,
-            ObjectProvider<com.hyped.app.media.application.MediaService> media) {
+            ObjectProvider<com.hyped.app.media.application.MediaService> media,
+            com.hyped.app.moderation.application.port.out.SafetyStore safety) {
+        this.safety = safety;
         this.media = media;
         this.policies = policies;
         this.rooms = rooms;
@@ -230,6 +233,10 @@ public class RoomService {
         if (current.room().status() == RoomStatus.ACTIVE) {
             return current; // A retry must not rebuild reminders or change revision again.
         }
+        if (safety.held(roomId.value())) {
+            throw problem(RoomOperationException.Kind.FORBIDDEN,"ROOM_RESTRICTED","Room unavailable",
+                    "This room is unavailable while it is under review.");
+        }
         Instant now = clock.instant();
         if (current.room().status() != RoomStatus.ARCHIVED) {
             throw unavailable();
@@ -309,6 +316,7 @@ public class RoomService {
         if (current.role() != MembershipRole.OWNER || requestedRole == MembershipRole.OWNER) {
             throw forbidden();
         }
+        requireUnblocked(actor, memberId);
         RoomMembership target = rooms.findMembershipForUpdate(roomId, memberId).orElseThrow(RoomService::unavailable);
         if (target.role() == MembershipRole.OWNER) {
             throw forbidden();
@@ -332,6 +340,7 @@ public class RoomService {
             throw problem(RoomOperationException.Kind.CONFLICT, "ROOM_ARCHIVED", "Room archived",
                     "Archived rooms cannot be joined.");
         }
+        if (safety.blocked(userId.value(), room.ownerUserId().value())) { throw unavailable(); }
         if (room.memberCount() >= MAX_MEMBERS) {
             throw problem(RoomOperationException.Kind.CONFLICT, "ROOM_FULL", "Room full",
                     "This countdown already has 25 members.");
@@ -366,6 +375,8 @@ public class RoomService {
         if (current.role() != MembershipRole.OWNER) {
             throw forbidden();
         }
+        requireUnblocked(actor, newOwner);
+        if (safety.ownerConflict(roomId.value(), newOwner.value())) { throw forbidden(); }
         checkRevision(current, expectedRevision);
         RoomMembership previous = rooms.findMembershipForUpdate(roomId, actor)
                 .orElseThrow(RoomService::unavailable);
@@ -409,14 +420,17 @@ public class RoomService {
                                 member ->
                                         new MemberView(
                                                 member.userId().value(),
-                                                reader == null
+                                                snapshot.hidden().contains(member.userId().value())
+                                                        ? "Blocked account"
+                                                        : reader == null
                                                         ? "Member"
                                                         : reader.read(member.userId())
                                                                 .displayName(),
                                                 null,
                                                 member.role(),
                                                 member.joinedAt(),
-                                                member.userId().equals(actor)))
+                                                member.userId().equals(actor),
+                                                snapshot.hidden().contains(member.userId().value())))
                         .sorted(
                                 Comparator.comparing(MemberView::role)
                                         .thenComparing(
@@ -433,6 +447,7 @@ public class RoomService {
         if (current.role() == MembershipRole.MEMBER || actor.equals(memberId)) {
             throw forbidden();
         }
+        requireUnblocked(actor, memberId);
         var target = rooms.findMembershipForUpdate(roomId, memberId);
         // An absent target is deliberately indistinguishable from an already removed member.
         if (target.isEmpty()) {
@@ -453,7 +468,17 @@ public class RoomService {
     }
 
     public record MemberView(UUID userId, String displayName, Object photo, MembershipRole role,
-            Instant joinedAt, boolean isCurrentUser) {
+            Instant joinedAt, boolean isCurrentUser, boolean hiddenProfile) {
+        public MemberView(UUID userId, String displayName, Object photo, MembershipRole role,
+                Instant joinedAt, boolean isCurrentUser) {
+            this(userId, displayName, photo, role, joinedAt, isCurrentUser, false);
+        }
+    }
+    private void requireUnblocked(UserId actor, UserId target) {
+        if (safety.blocked(actor.value(), target.value())) {
+            throw problem(RoomOperationException.Kind.FORBIDDEN, "ACTION_UNAVAILABLE",
+                    "Action unavailable", "This action is unavailable.");
+        }
     }
 
     public record MemberList(List<MemberView> items, MembershipRole callerRole, RoomStatus status, long revision) {

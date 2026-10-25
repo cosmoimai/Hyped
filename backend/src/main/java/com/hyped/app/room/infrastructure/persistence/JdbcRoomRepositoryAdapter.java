@@ -415,7 +415,7 @@ public class JdbcRoomRepositoryAdapter implements RoomRepository {
 
     private AuthorizedRoom mapAuthorized(ResultSet rs, int row) throws SQLException {
         Room room = mapRoom(rs);
-        return new AuthorizedRoom(room, role(rs.getString("caller_role")));
+        return new AuthorizedRoom(room, role(rs.getString("caller_role")),rs.getBoolean("moderation_hold"));
     }
 
     private Room mapRoom(ResultSet rs) throws SQLException {

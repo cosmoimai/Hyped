@@ -258,6 +258,28 @@ public class MediaService {
         }
     }
 
+    /** Only exposed through the separately authenticated internal moderation API. No signed URL escapes. */
+    public byte[] reviewPhoto(UUID id) {
+        var asset=store.find(id);
+        if (asset==null || !Set.of("READY","MANUAL_REVIEW").contains(asset.status())) {
+            throw new MediaException(404,"MEDIA_UNAVAILABLE");
+        }
+        try {
+            boolean ready=asset.status().equals("READY");
+            byte[] raw=ready ? storage().readReady(id) : storage().read(id,asset.type(),asset.size());
+            if (!ready && !MessageDigest.isEqual(MessageDigest.getInstance("SHA-256").digest(raw),hash(asset.sha()))) {
+                throw new MediaException(422,"MEDIA_HASH_MISMATCH");
+            }
+            byte[] safe=processor.sanitize(raw,ready ? "image/jpeg" : asset.type(),asset.width(),asset.height());
+            var current=store.find(id);
+            if (current==null || !current.status().equals(asset.status())) {
+                throw new MediaException(404,"MEDIA_UNAVAILABLE");
+            }
+            return safe;
+        } catch (MediaException failure) { throw failure; }
+        catch (Exception failure) { throw MediaException.unavailable(); }
+    }
+
     public void delete(UserId actor, UUID id) {
         MediaObjects cloud = storage();
         boolean allowed =

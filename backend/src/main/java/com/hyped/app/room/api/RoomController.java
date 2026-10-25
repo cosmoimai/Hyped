@@ -388,13 +388,13 @@ public class RoomController {
             Instant deleteAfter,
             Instant createdAt,
             Instant updatedAt,
-            Instant serverNow) {
+            Instant serverNow, boolean moderationHold) {
         public static RoomResponse from(AuthorizedRoom authorized, Instant serverNow) {
             Room room = authorized.room();
             return new RoomResponse(room.id().value(), room.title(), room.eventAt(), room.eventTimeZone(),
                     room.location(), room.description(), ThemeResponse.from(room.theme()), room.status(),
                     authorized.role(), room.memberCount(), room.revision(), room.archivedAt(), room.deleteAfter(),
-                    room.createdAt(), room.updatedAt(), serverNow);
+                    room.createdAt(), room.updatedAt(), serverNow, authorized.moderationHold());
         }
     }
 

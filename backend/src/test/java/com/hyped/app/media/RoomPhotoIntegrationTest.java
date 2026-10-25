@@ -88,6 +88,12 @@ class RoomPhotoIntegrationTest {
         }
 
         @Override
+        public byte[] readReady(UUID id) {
+            outside();
+            return ready.get(id);
+        }
+
+        @Override
         public void publish(UUID id, byte[] safe) {
             outside();
             ready.put(id, safe);
@@ -172,6 +178,29 @@ class RoomPhotoIntegrationTest {
                 null,
                 new RoomService.ThemeCommand(
                         RoomTheme.Kind.UPLOADED_IMAGE, null, "image-dark-40", asset));
+    }
+
+    @Autowired com.hyped.app.moderation.application.SafetyService safety;
+    @Autowired com.hyped.app.moderation.application.ModerationService moderation;
+
+    @Test
+    void reportedPhotoCanBeReviewedAfterQuarantineExpiryAndRemovedFromEveryRoom() throws Exception {
+        var owner=user();
+        var first=rooms.create(owner,command(upload(owner))).room();
+        UUID photo=first.theme().mediaAssetId();
+        var second=rooms.create(owner,command(photo)).room();
+        objects.raw.remove(photo); // Quarantine lifecycle must not break review of published content.
+        var report=safety.report(owner,UUID.randomUUID().toString(),
+                new com.hyped.app.moderation.application.SafetyService.ReportRequest(first.id().value(),
+                        "THEME",null,"INAPPROPRIATE_CONTENT",null));
+        assertThat(moderation.photo(report.reportId())).isNotEmpty();
+        moderation.decide(report.reportId(),"REMOVE_PHOTO",null,"reviewer");
+        assertThat(rooms.get(owner,first.id()).room().theme().mediaAssetId()).isNull();
+        assertThat(rooms.get(owner,second.id()).room().theme().mediaAssetId()).isNull();
+        assertThatThrownBy(()->media.delivery(owner,photo)).isInstanceOf(MediaException.class);
+        assertThat(safety.invalidations(owner)).hasSize(2);
+        media.cleanup();
+        assertThat(objects.ready).doesNotContainKey(photo);
     }
 
     @Test

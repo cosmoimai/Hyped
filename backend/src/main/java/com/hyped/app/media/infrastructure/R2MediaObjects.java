@@ -73,6 +73,17 @@ public final class R2MediaObjects implements MediaObjects, AutoCloseable {
     }
 
     @Override
+    public byte[] readReady(UUID id) {
+        try (var input=client.getObject(r -> r.bucket(bucket).key(ready(id)))) {
+            byte[] bytes=input.readNBytes(1572865);
+            if (bytes.length<1 || bytes.length>1572864 || !"image/jpeg".equals(input.response().contentType())) {
+                throw new MediaException(422,"MEDIA_TOO_LARGE");
+            }
+            return bytes;
+        } catch (java.io.IOException failure) { throw MediaException.unavailable(); }
+    }
+
+    @Override
     public void publish(UUID id, byte[] sanitized) {
         client.putObject(
                 r ->

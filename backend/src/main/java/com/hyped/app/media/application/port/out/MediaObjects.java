@@ -15,6 +15,8 @@ public interface MediaObjects {
 
     byte[] read(UUID id, String type, int size);
 
+    byte[] readReady(UUID id);
+
     void publish(UUID id, byte[] sanitized);
 
     String delivery(UUID id);

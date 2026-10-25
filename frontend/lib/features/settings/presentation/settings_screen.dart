@@ -150,6 +150,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
               onTap: () => context.push('/settings/rooms'),
             ),
             ListTile(
+              title: const Text('Blocked accounts'),
+              leading: const Icon(Icons.block),
+              onTap: () => context.push('/settings/blocked'),
+            ),
+            ListTile(
               title: const Text('Terms of Service'),
               leading: const Icon(Icons.description_outlined),
               onTap: () => context.push('/legal/terms'),

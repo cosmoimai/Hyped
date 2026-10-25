@@ -1,3 +1,4 @@
+import 'package:hyped/features/safety/data/safety_invalidations.dart';
 import 'package:hyped/features/rooms/data/cache/cache_providers.dart';
 import 'package:hyped/features/rooms/data/cache/cached_room_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,6 +18,12 @@ final roomRepositoryProvider = Provider<RoomRepository>(
     ref.read(roomApiProvider),
     ref.read(roomCacheSessionProvider),
     ref.read(tokenStoreProvider),
+    beforeRead: SafetyInvalidations(
+      ref.read(authenticatedDioProvider),
+      ref.read(roomCacheSessionProvider),
+      ref.read(tokenStoreProvider),
+      ref.read(roomWidgetRepositoryProvider),
+    ).synchronize,
   ),
 );
 

@@ -84,6 +84,12 @@ public class JdbcMediaStore implements MediaStore {
     }
 
     @Override
+    public Asset find(UUID id) {
+        return jdbc.query("SELECT * FROM app.media_asset WHERE id=?",JdbcMediaStore::map,id)
+                .stream().findFirst().orElse(null);
+    }
+
+    @Override
     public Asset owned(UUID id, UUID owner) {
         return jdbc
                 .query(

@@ -19,11 +19,13 @@ class CachedRoomRepository extends RoomRepository implements OfflineRoomReads {
     this.cache,
     this.tokens, {
     DateTime Function()? clock,
+    this.beforeRead,
   }) : clock = clock ?? (() => DateTime.now().toUtc()),
        super(api);
   final RoomApi api;
   final RoomCacheSession cache;
   final TokenStore tokens;
+  final Future<void> Function(CacheIdentity)? beforeRead;
   final DateTime Function() clock;
   @override
   DateTime? lastListSync;
@@ -108,6 +110,7 @@ class CachedRoomRepository extends RoomRepository implements OfflineRoomReads {
   @override
   Future<List<Room>> listRooms() async {
     final identity = await _identity();
+    await beforeRead?.call(identity);
     var generation = cache.readGeneration;
     final List<Room> rooms;
     try {
@@ -147,6 +150,7 @@ class CachedRoomRepository extends RoomRepository implements OfflineRoomReads {
   @override
   Future<Room> getRoom(String roomId) async {
     final identity = await _identity();
+    await beforeRead?.call(identity);
     final generation = cache.readGeneration;
     try {
       final room = await api.getRoom(roomId, identity.sessionId);

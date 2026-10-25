@@ -60,6 +60,13 @@ public class GlobalProblemHandler {
                 List.of());
     }
 
+    @ExceptionHandler(com.hyped.app.moderation.application.SafetyException.class)
+    ResponseEntity<ApiProblem> safety(com.hyped.app.moderation.application.SafetyException exception,
+            HttpServletRequest request) {
+        return response(request,HttpStatus.valueOf(exception.status()),exception.code(),
+                "Safety action unavailable",exception.getMessage(),exception.status()>=500,List.of(),List.of());
+    }
+
     @ExceptionHandler(ApiProblemException.class)
     ResponseEntity<ApiProblem> apiProblem(ApiProblemException exception, HttpServletRequest request) {
         return response(request, exception.status(), exception.code(), exception.title(),

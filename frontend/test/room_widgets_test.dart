@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hyped/app/theme/hyped_theme.dart';
 import 'package:hyped/features/rooms/presentation/widgets/room_cards.dart';
+import 'package:hyped/features/rooms/presentation/controllers/room_controllers.dart';
 import 'package:hyped/features/home/presentation/screens/home_screen.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
@@ -15,6 +16,33 @@ import 'package:mocktail/mocktail.dart';
 class MockRoomRepository extends Mock implements RoomRepository {}
 
 void main() {
+  testWidgets('home shows last sync only as a five-second refresh popup', (
+    tester,
+  ) async {
+    final controller = RoomListController(repositoryWithRooms([room()]));
+    await controller.load();
+    controller.lastSync = DateTime.utc(2030, 1, 1);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [roomListControllerProvider.overrideWith((_) => controller)],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Last synced'), findsNothing);
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+    expect(find.textContaining('Last synced'), findsOneWidget);
+    final popup = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(popup.duration, const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('Last synced'), findsNothing);
+  });
+
   testWidgets('compact countdown fits device text scaling without overflow', (
     tester,
   ) async {

@@ -127,6 +127,65 @@ class AccountDeletionIntegrationTest {
                 beans.getBeanProvider(FirebaseAccountAdmin.class), profiles, clock, true);
     }
     @Test
+    void finishingDeletionPseudonymizesReportsAndPurgesDirectionalBlocksAndAccessWork() {
+        UUID report = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO app.app_user(id,status,created_at,updated_at) VALUES (?,'active',?,?)",
+                other,
+                Timestamp.from(NOW),
+                Timestamp.from(NOW));
+        jdbc.update(
+                """
+                INSERT INTO app.report(id,reporter_user_id,subject_user_id,subject_fingerprint,subject_type,
+                reason_code,details_ciphertext,retain_until,created_at,updated_at)
+                VALUES (?,?,?,?,'ACCOUNT','OTHER',?, ?,?,?)
+                """,
+                report,
+                user,
+                user,
+                new byte[32],
+                new byte[] {1, 2, 3},
+                Timestamp.from(NOW.plusSeconds(86400)),
+                Timestamp.from(NOW),
+                Timestamp.from(NOW));
+        jdbc.update(
+                "INSERT INTO app.user_block VALUES (?,?,?,?)",
+                UUID.randomUUID(),
+                other,
+                user,
+                Timestamp.from(NOW));
+        store.begin(user, "key", new byte[] {1, 2, 3}, NOW);
+        var job = store.claim(user, NOW);
+        store.finish(job, NOW);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT reporter_user_id FROM app.report WHERE id=?",
+                                UUID.class,
+                                report))
+                .isNull();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT subject_user_id FROM app.report WHERE id=?",
+                                UUID.class,
+                                report))
+                .isNull();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT details_ciphertext FROM app.report WHERE id=?",
+                                byte[].class,
+                                report))
+                .isNull();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM app.user_block WHERE blocked_user_id=?",
+                                Integer.class,
+                                user))
+                .isZero();
+        jdbc.update("DELETE FROM app.report WHERE id=?", report);
+    }
+
+    @Test
     void safeProfileOmitsPrivatePhotoAndSecurityFieldsAndRequiresAnActiveSession() {
         service.requireSession(user, session, installation);
         var profile = service.profile(user);

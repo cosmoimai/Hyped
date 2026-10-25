@@ -1,4 +1,6 @@
 import 'package:hyped/core/presentation/countdown_mark.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_formatters.dart';
+import 'package:hyped/features/android_widgets/presentation/controllers/room_widget_providers.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/core/offline/offline_state.dart';
 import 'package:hyped/features/rooms/presentation/widgets/sync_status.dart';
@@ -123,7 +125,27 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: rooms.load,
+          onRefresh: () async {
+            if (rooms.loading) return;
+            final widgets = ref.read(roomWidgetRepositoryProvider);
+            final epoch = widgets.sessionEpoch;
+            await rooms.load();
+            if (!context.mounted ||
+                epoch != widgets.sessionEpoch ||
+                rooms.error != null ||
+                rooms.usingCache) {
+              return;
+            }
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Last synced ${compactDateTime(rooms.lastSync ?? DateTime.now())}',
+                ),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          },
           child: rooms.rooms.isEmpty && rooms.lastSync == null && rooms.loading
               ? const Center(child: CircularProgressIndicator())
               : rooms.rooms.isEmpty &&
@@ -135,9 +157,9 @@ class HomeScreen extends ConsumerWidget {
               : ListView(
                   padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                   children: [
-                    if (rooms.lastSync != null || rooms.error != null)
+                    if (rooms.usingCache || rooms.error != null)
                       SyncStatus(
-                        syncedAt: rooms.lastSync,
+                        syncedAt: null,
                         readOnly: rooms.usingCache,
                         message: rooms.error,
                       ),

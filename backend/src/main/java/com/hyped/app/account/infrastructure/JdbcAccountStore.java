@@ -130,6 +130,13 @@ public class JdbcAccountStore implements AccountStore {
         jdbc.update("DELETE FROM app.user_policy_acceptance WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.user_identity WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.user_profile WHERE user_id=?", job.userId());
+        jdbc.update("UPDATE app.report SET reporter_user_id=NULL,details_ciphertext=NULL WHERE reporter_user_id=?",
+                job.userId());
+        jdbc.update("UPDATE app.report SET subject_user_id=NULL WHERE subject_user_id=?", job.userId());
+        jdbc.update("DELETE FROM app.user_block WHERE blocker_user_id=? OR blocked_user_id=?",
+                job.userId(),job.userId());
+        jdbc.update("DELETE FROM ops.safety_request WHERE user_id=?", job.userId());
+        jdbc.update("DELETE FROM ops.room_access_invalidation WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM ops.idempotency_record WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.room_reminder_preference WHERE user_id=?", job.userId());
         jdbc.update("""

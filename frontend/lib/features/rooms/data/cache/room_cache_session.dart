@@ -160,6 +160,26 @@ class RoomCacheSession {
     });
   }
 
+  /// Access loss must fail closed even if SQLite cannot remove its old projection.
+  Future<bool> removeProtected(CacheIdentity identity, [String? room]) {
+    invalidateReads(identity);
+    return _serial(() async {
+      if (!matches(identity)) return false;
+      try {
+        if (room == null) {
+          await database.erase();
+        } else {
+          await database.remove(identity.accountId, room);
+        }
+        return true;
+      } catch (_) {
+        _usable = false;
+        await identities.clear();
+        rethrow;
+      }
+    });
+  }
+
   Future<T?> run<T>(CacheIdentity identity, Future<T> Function() action) =>
       _serial(() async {
         if (!_usable || !matches(identity)) return null;

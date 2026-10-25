@@ -15,6 +15,24 @@ import org.springframework.beans.factory.support.StaticListableBeanFactory;
 
 class AccountCleanupTickTest {
     @Test
+    void reportRetentionFailureCannotPreventAccountAndMediaCleanup() {
+        var safety=mock(com.hyped.app.moderation.application.SafetyService.class);
+        doThrow(new IllegalStateException("unavailable")).when(safety).cleanup();
+        var accounts=mock(AccountService.class);
+        var media=mock(com.hyped.app.media.application.MediaService.class);
+        var beans=new StaticListableBeanFactory();
+        beans.addBean("accounts",accounts);
+        beans.addBean("media",media);
+        var controller=new ReminderTickController(beans.getBeanProvider(ReminderDeliveryService.class),
+                mock(RoomService.class),beans.getBeanProvider(AccountService.class));
+        controller.safety(safety);
+        controller.media(beans.getBeanProvider(com.hyped.app.media.application.MediaService.class));
+        assertThrows(IllegalStateException.class,controller::tick);
+        verify(accounts).tick();
+        verify(media).cleanup();
+    }
+
+    @Test
     void retriesAccountCleanupWhenPushFails() {
         var reminders = mock(ReminderDeliveryService.class);
         when(reminders.tick()).thenThrow(new IllegalStateException("unavailable"));

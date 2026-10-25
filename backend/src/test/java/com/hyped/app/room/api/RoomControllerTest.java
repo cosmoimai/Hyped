@@ -210,7 +210,8 @@ class RoomControllerTest {
                 .andExpect(header().string(HttpHeaders.ETAG, "\"room-4\""))
                 .andExpect(jsonPath("$.items[0].displayName").value("Mira"))
                 .andExpect(jsonPath("$.items[0].isCurrentUser").value(true))
-                .andExpect(jsonPath("$.items[0].*").value(org.hamcrest.Matchers.hasSize(6)))
+                .andExpect(jsonPath("$.items[0].hiddenProfile").value(false))
+                .andExpect(jsonPath("$.items[0].*").value(org.hamcrest.Matchers.hasSize(7)))
                 .andExpect(jsonPath("$.items[0].email").doesNotExist())
                 .andExpect(jsonPath("$.items[0].providerPhotoUrl").doesNotExist())
                 .andExpect(jsonPath("$.items[0].piiKeyReference").doesNotExist());

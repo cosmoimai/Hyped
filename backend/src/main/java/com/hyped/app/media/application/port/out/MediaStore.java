@@ -34,6 +34,8 @@ public interface MediaStore {
 
     Asset owned(UUID id, UUID owner);
 
+    Asset find(UUID id);
+
     Asset claim(UUID id, UUID owner, UUID claim, Instant now);
 
     void finish(UUID id, UUID claim, String state, Instant now);

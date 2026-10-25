@@ -84,3 +84,7 @@ Use the [Play Data Safety definitions](https://support.google.com/googleplay/and
 and [Firebase privacy information](https://firebase.google.com/support/privacy)
 for the final provider review. This worksheet is based on observed code; it does
 not replace the developer's form attestation or legal approval.
+
+## V16 safety controls
+
+Optional report reasons/details and room/account/photo context are transmitted to the backend for abuse handling. Free text uses reporter-bound encryption; authorized dedicated reviewers may inspect it and current reported content. Directional block records enforce access and profile masking; other users do not receive blocker identity or a notification. Reports/audit expire after at most 90 days, and account deletion strips reporter/subject IDs and details and purges blocks/replays/access work. Disclose these optional user-content/security categories and reviewer access in the final approved privacy text and form. Review/activate a new document version before production; historical accepted legal resources are not edited by this change. See [moderation setup](reporting-blocking-and-moderation.md).

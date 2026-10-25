@@ -57,6 +57,7 @@ public interface RoomRepository {
 
     void transferOwnership(RoomId roomId, UserId oldOwner, UserId newOwner, Instant updatedAt);
 
-    record AuthorizedRoom(Room room, MembershipRole role) {
+    record AuthorizedRoom(Room room, MembershipRole role, boolean moderationHold) {
+        public AuthorizedRoom(Room room, MembershipRole role) { this(room,role,false); }
     }
 }

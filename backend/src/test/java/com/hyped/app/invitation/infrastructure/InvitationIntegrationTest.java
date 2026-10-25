@@ -362,6 +362,34 @@ class InvitationIntegrationTest {
                 String.class, room.value(), member.value())).isEqualTo(roomCode ? "room_code" : "invite_link");
     }
 
+    @Autowired private com.hyped.app.moderation.application.SafetyService safety;
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void blockedOwnerPairCannotRejoinWithEitherCredentialOrReplay(boolean roomCode)
+            throws Exception {
+        UserId owner = user();
+        UserId member = user();
+        RoomId room = room(owner);
+        Share share = invitations.get(owner, room);
+        String reference =
+                json(publicPreview(roomCode ? share.roomCode() : token(share), roomCode)
+                                .andExpect(status().isOk()))
+                        .get("previewReference")
+                        .asText();
+        httpJoin(member, reference, roomCode, "before-block").andExpect(status().isCreated());
+        safety.block(owner, member.value(), room.value(), UUID.randomUUID().toString());
+        httpJoin(member, reference, roomCode, "before-block")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_UNAVAILABLE"));
+        httpJoin(member, reference, roomCode, "after-block")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_UNAVAILABLE"));
+        assertCounts(room, 1);
+        safety.unblock(owner, member.value());
+        httpJoin(member, reference, roomCode, "after-unblock").andExpect(status().isCreated());
+    }
+
     @Test
     void capacityAllowsTwentyFifthRejectsTwentySixthAndAlreadyMemberSucceedsWhenFull() {
         UserId owner = user();

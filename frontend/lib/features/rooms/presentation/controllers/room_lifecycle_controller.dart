@@ -151,8 +151,8 @@ String lifecycleError(RoomApiException error) => switch (error.code) {
     'Permanent deletion is available only after the 24-hour recovery period.',
   'ROOM_ARCHIVED' => 'This room is archived. Reload its current state.',
   'ROOM_MEMBERS_CHANGED' ||
-  'ROOM_REVISION_MISMATCH' ||
-  'ROOM_REVISION_REQUIRED' =>
+  'ROOM_RESTRICTED' => 'This room is under review and cannot be restored.',
+  'ROOM_REVISION_MISMATCH' || 'ROOM_REVISION_REQUIRED' =>
     'This room changed. Reload it before trying again.',
   'OWNED_ROOM_LIMIT_REACHED' || 'JOINED_ROOM_LIMIT_REACHED' =>
     'Restoring this room would exceed an active-room limit. Free a room slot and reload.',
