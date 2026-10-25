@@ -230,3 +230,12 @@ Do not log private request/response bodies while testing authentication.
 The compiled APK remains ignored at `frontend/build/app/outputs/flutter-apk/app-debug.apk`.
 Verification evidence is ignored under `build/verification/staging-api/`.
 No Git push, Play Console change, tester contact, or app-store upload was performed.
+
+### Invite preview transaction boundary
+
+Public previews capture the room, current invitation generation, and encrypted inviter
+profile in a short database transaction. Firestore/KMS decryption runs after that
+transaction releases its locks, as required by the personal-data adapter. Joining
+always revalidates the invitation generation, so a concurrent rotation invalidates
+an earlier preview reference. Integration tests enforce the no-transaction boundary
+at every preview decryption and cover preview/rotation ordering.
