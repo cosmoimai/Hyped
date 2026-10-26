@@ -32,6 +32,12 @@ public class GlobalProblemHandler {
         this.problems = problems;
     }
 
+    @ExceptionHandler(com.hyped.app.notification.application.PushRegistrationException.class)
+    ResponseEntity<ApiProblem> pushRegistration(HttpServletRequest request) {
+        return response(request, HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "Session unavailable",
+                "Sign in again before registering notifications.", false, List.of(), List.of());
+    }
+
     @ExceptionHandler(com.hyped.app.account.application.AccountException.class)
     ResponseEntity<ApiProblem> account(com.hyped.app.account.application.AccountException exception,
             HttpServletRequest request) {

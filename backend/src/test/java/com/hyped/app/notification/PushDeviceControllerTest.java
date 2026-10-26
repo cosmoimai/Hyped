@@ -2,12 +2,14 @@ package com.hyped.app.notification;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 import com.hyped.app.common.api.ApiProblemWriter;
 import com.hyped.app.common.api.GlobalProblemHandler;
@@ -73,6 +75,17 @@ class PushDeviceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON).content(body()))
                 .andExpect(status().isNoContent());
         verify(registrations).register(user, session, installation, "private-token", true);
+    }
+
+    @Test
+    void changedBindingReturnsSanitizedAuthenticationError() throws Exception {
+        doThrow(new com.hyped.app.notification.application.PushRegistrationException())
+                .when(registrations).register(user, session, installation, "private-token", true);
+        mvc.perform(put("/api/v1/devices/" + installation).header("Authorization", "Bearer access")
+                        .contentType(MediaType.APPLICATION_JSON).content(body()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("AUTHENTICATION_REQUIRED"))
+                .andExpect(jsonPath("$.detail").value("Sign in again before registering notifications."));
     }
 
     @Test
