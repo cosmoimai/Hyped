@@ -1,5 +1,8 @@
 # Physical Android smoke-test record (blank template)
 
+For the dated owner-reported passes and deferred checks, see the
+[2026-10-26 staging testing handoff](staging-test-handoff-2026-10-26.md).
+
 Status: **PENDING — not executed by creating this checklist.** Use a dedicated
 non-production test account and disposable rooms. Do not put completed personal
 records or secrets into Git. No physical device was connected during initial

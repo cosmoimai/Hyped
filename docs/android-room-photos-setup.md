@@ -14,7 +14,7 @@ Only an uploader's READY asset can be attached to a new/edited room they control
 
 ## 1. Create a private R2 media bucket
 
-In Cloudflare → R2, create a dedicated bucket, for example `hyped-room-photos`. Keep public access and the `r2.dev` public URL disabled. Do not configure a public custom domain for these objects.
+In Cloudflare → R2, create a dedicated bucket, for staging, use `hyped-staging-room-photos`. Keep public access and the `r2.dev` public URL disabled. Do not configure a public custom domain for these objects.
 
 Create bucket-scoped S3 API credentials allowing object read/write/delete for this bucket only. Keep the access key and secret on the backend; never put them in Flutter, `--dart-define`, Android resources or Git. Record the S3 endpoint, in the form `https://<32-character-account-id>.r2.cloudflarestorage.com`.
 
@@ -36,17 +36,17 @@ Set these through your excluded local configuration or deployment secret manager
 
 ```text
 MEDIA_ENABLED=true
-TERMS_VERSION=2026-10-25
-PRIVACY_VERSION=2026-10-25
+TERMS_VERSION=2026-10-26
+PRIVACY_VERSION=2026-10-26
 R2_MEDIA_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-R2_MEDIA_BUCKET=hyped-room-photos
+R2_MEDIA_BUCKET=hyped-staging-room-photos
 R2_MEDIA_ACCESS_KEY=<private bucket-scoped access key>
 R2_MEDIA_SECRET_KEY=<private bucket-scoped secret>
 ```
 
-On this Mac, store the `MEDIA_` and `R2_MEDIA_` values outside the checkout, such as an owner-readable `~/.config/hyped/local-backend/media.env`, and export them in the terminal that runs `python3 scripts/local-backend.py start`. Set `TERMS_VERSION` and `PRIVACY_VERSION` to `2026-10-25` in the existing private `~/.config/hyped/local-backend/environment.json`: the launcher intentionally takes policy versions from that private configuration rather than inheriting shell overrides. Keep the current private Firebase/identity/signing configuration. Restart the local backend; do not recreate its keys or reset the database. Existing local setup remains usable with `MEDIA_ENABLED=false`, the default.
+On this Mac, store the `MEDIA_` and `R2_MEDIA_` values outside the checkout, such as an owner-readable `~/.config/hyped/local-backend/media.env`, and export them in the terminal that runs `python3 scripts/local-backend.py start`. Set `TERMS_VERSION` and `PRIVACY_VERSION` to `2026-10-26` in the existing private `~/.config/hyped/local-backend/environment.json`: the launcher intentionally takes policy versions from that private configuration rather than inheriting shell overrides. Keep the current private Firebase/identity/signing configuration. Restart the local backend; do not recreate its keys or reset the database. Existing local setup remains usable with `MEDIA_ENABLED=false`, the default.
 
-The 2026-10-25 Terms/Privacy drafts add the photo/storage/moderation disclosures. Review them before any production publication. Enabling media requires these updated versions (or newer reviewed versions); existing users must explicitly accept the updated required documents before uploading. The default non-media documents remain unchanged until configuration is updated.
+Photo/storage/moderation disclosures were introduced in the 2026-10-25 drafts. Staging now uses owner-approved Terms/Privacy version `2026-10-26`; preserve that version and the existing content-rules version when enabling media. Approval is for staging only; production publication still requires owner/legal review. Enabling media requires these disclosures (or newer reviewed versions), and existing users must explicitly accept the current required documents before uploading.
 
 The new V15 migration creates `app.media_asset` and the nullable room-theme media reference. Flutter's derived cache moves to schema v2; rebuilding it discards old cached projections, not server rooms.
 

@@ -1,5 +1,8 @@
 # Staging backend setup
 
+For the dated owner-reported passes and deferred checks, see the
+[2026-10-26 staging testing handoff](staging-test-handoff-2026-10-26.md).
+
 Staging uses the existing Firebase project `hyped-41a30` for Android authentication,
 with separate application data, encryption keys, secrets, and service identities.
 Use synthetic staging data. Never copy the local PostgreSQL database or local key
