@@ -159,9 +159,14 @@ this document is a dated snapshot, not an infrastructure inventory API.
 - Runtime instrumentation reports aggregate backlog age/count, warns at 12 hours,
   and marks 24 hours overdue. Tests cover threshold equality, retry age retention,
   safe errors, empty queues, and monitoring during cleanup failure.
-- Scheduled heartbeat/counter verification is pending deployment at this source
-  checkpoint. Email delivery and recovery exercises remain deferred; policy
-  configuration is not an end-to-end notification PASS.
+- Backend source `c005805` is deployed as `hyped-staging-api-00007-5pz`.
+  Readiness returned HTTP 200; push and media remained enabled.
+- Scheduled worker logs reported `OK`, pending count zero and oldest age zero.
+  Cloud Monitoring returned three real heartbeat data points at inspection, so
+  the absence policy has an observed time series rather than only an empty metric.
+- All 657 backend tests and 18 setup-script tests passed. Policy configuration was
+  reapplied and read back without duplicates. Email delivery and recovery exercises
+  remain deferred; no test email or account deletion was triggered.
 - Account deletion stays disabled during this setup. Check the current flag and
   [monitoring runbook](12-observability-runbook.md#staging-account-deletion-monitoring)
   before enabling or testing it. Use only a disposable Firebase test account.

@@ -281,3 +281,12 @@ documents 12-hour warning and 24-hour overdue boundaries, missing-heartbeat warm
 alert latency and recovery. Policy creation alone is not proof of a live heartbeat
 or delivered email. Observe scheduled logs and counter data after deployment;
 record email delivery/recovery and disposable-account deletion tests separately.
+
+Runtime verification: source `c005805`, revision `hyped-staging-api-00007-5pz`,
+readiness HTTP 200. Ordinary scheduled runs emitted successful aggregate heartbeat
+logs with zero pending jobs; Monitoring returned three heartbeat data points at
+inspection. Three enabled policies referenced the chosen operations channel,
+without duplicates after reapplication. Push/media remained enabled and account
+deletion remained disabled. All 657 backend tests and 18 script tests passed.
+No account deletion or synthetic email alert was triggered. Email delivery and
+recovery exercises remain on the deferred checklist.
