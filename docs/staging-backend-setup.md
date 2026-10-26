@@ -242,3 +242,23 @@ transaction releases its locks, as required by the personal-data adapter. Joinin
 always revalidates the invitation generation, so a concurrent rotation invalidates
 an earlier preview reference. Integration tests enforce the no-transaction boundary
 at every preview decryption and cover preview/rotation ordering.
+
+## Media configuration checkpoint — 2026-10-26
+
+Revision `hyped-staging-api-00006-nxz` enables media with private R2 bucket
+`hyped-staging-room-photos`. The runtime uses `R2_MEDIA_ENDPOINT` and
+`R2_MEDIA_BUCKET`, plus versioned Secret Manager references:
+
+| Runtime variable | Secret |
+|---|---|
+| `R2_MEDIA_ACCESS_KEY` | `hyped-staging-r2-media-access-key` |
+| `R2_MEDIA_SECRET_KEY` | `hyped-staging-r2-media-secret-key` |
+
+Read-only inspection verified enabled media, endpoint format, bucket name,
+numeric secret versions, unchanged push and legal versions, and readiness HTTP 200.
+No credential values were retrieved. The owner reported the bucket lifecycle rule,
+scoped S3 credentials, Vision enablement and IAM setup; real image upload,
+moderation and storage cleanup checks remain deferred in the
+[testing handoff](staging-test-handoff-2026-10-26.md#media-configuration-checkpoint--2026-10-26).
+Account deletion is still disabled at this checkpoint. Configuration readiness does
+not establish photo-flow success or production release readiness.

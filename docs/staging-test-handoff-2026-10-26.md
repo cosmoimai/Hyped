@@ -118,7 +118,7 @@ force-stopped application as proof that ordinary background delivery is broken.
 
 | Area | Work before testing | Required manual evidence |
 |---|---|---|
-| Shared room photos | Private Cloudflare R2 bucket, scoped credentials in Secret Manager, Vision API/IAM and backend media configuration | Upload, SafeSearch outcomes, authorized viewing, removed-member denial, offline fallback and cleanup; see [photo setup](android-room-photos-setup.md) |
+| Shared room photos | Staging media configuration is enabled; live upload/moderation/storage authorization checks remain deferred (see checkpoint below) | Upload, SafeSearch outcomes, authorized viewing, removed-member denial, offline fallback and cleanup; see [photo setup](android-room-photos-setup.md) |
 | Account deletion | Firebase deletion permission, existing KMS/Firestore cleanup readiness, worker monitoring and `ACCOUNT_DELETION_ENABLED` | Disposable-account success/failure/retry, Firebase cleanup and local cache/widget/invite/token cleanup; see [profile/settings setup](../frontend/docs/profile-settings.md) |
 | Android App Links | Owned HTTPS invite domain, assetlinks, signing fingerprints and configured host | Cold/warm link delivery, sign-in/consent continuation and browser fallback; room-code success does not cover App Links |
 | Operator moderation | Configure restricted reviewer identity/access and enable the review module | Authorized review/resolve, unauthorized rejection, holds/appeals and audit/retention behavior; report submission alone does not prove review handling |
@@ -126,9 +126,28 @@ force-stopped application as proof that ordinary background delivery is broken.
 
 Push delivery and its authenticated minute scheduler have been enabled and real
 event-time delivery has passed. Do not treat the old initial-staging push-disabled
-checkpoint as current status. Media, account deletion and operator review were not
-enabled in the completed staging work above. Verify live configuration when resuming;
+checkpoint as current status. At the original testing handoff, media, account deletion and operator review were
+not enabled. Media was subsequently enabled as recorded below; account deletion
+and operator review remain disabled at that checkpoint. Verify live configuration when resuming;
 this document is a dated snapshot, not an infrastructure inventory API.
+
+## Media configuration checkpoint — 2026-10-26
+
+- Owner reported creating private R2 bucket `hyped-staging-room-photos`, saving a
+  `quarantine/` one-day expiration rule, creating bucket-scoped Object Read & Write
+  credentials, and enabling Vision with API service-identity access.
+- Owner stored both R2 credentials in Secret Manager and granted the API identity
+  access. Credential values were not read or copied into this record.
+- Cloud Run revision `hyped-staging-api-00006-nxz` is ready. Read-only configuration
+  inspection confirmed `MEDIA_ENABLED=true`, the expected bucket, a valid S3
+  endpoint format and two secret references pinned to numeric versions.
+- Readiness returned HTTP 200. Push remained enabled and Terms/Privacy remained
+  `2026-10-26`. The scheduler was enabled with no reported status error at inspection.
+- This verifies configuration/startup only. It does not prove R2 upload/read/delete,
+  Vision authorization/decisions, lifecycle execution, or end-to-end room photos.
+  The manual photo checklist remains deferred. No photo flow is marked PASS.
+- Account deletion remains disabled; Firebase permission and cleanup monitoring
+  are the next setup work. No account was deleted during this configuration step.
 
 ## How to resume and record results
 
