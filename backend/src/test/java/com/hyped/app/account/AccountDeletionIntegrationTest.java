@@ -127,6 +127,22 @@ class AccountDeletionIntegrationTest {
                 beans.getBeanProvider(FirebaseAccountAdmin.class), profiles, clock, true);
     }
     @Test
+    void backlogUsesOriginalAcceptanceTimeRatherThanRetryAvailability() {
+        assertThat(store.backlog().pending()).isZero();
+        assertThat(store.backlog().oldestCreatedAt()).isNull();
+        Instant accepted = NOW.minusSeconds(43200);
+        jdbc.update("""
+                INSERT INTO ops.account_deletion_job(user_id,firebase_uid_ciphertext,available_at,created_at)
+                VALUES (?,?,?,?)
+                """, user, new byte[] {1}, Timestamp.from(NOW.plusSeconds(60)), Timestamp.from(accepted));
+        assertThat(store.backlog().pending()).isEqualTo(1);
+        assertThat(store.backlog().oldestCreatedAt()).isEqualTo(accepted);
+        jdbc.update("UPDATE ops.account_deletion_job SET available_at=? WHERE user_id=?",
+                Timestamp.from(NOW.plusSeconds(300)), user);
+        assertThat(store.backlog().oldestCreatedAt()).isEqualTo(accepted);
+    }
+
+    @Test
     void finishingDeletionPseudonymizesReportsAndPurgesDirectionalBlocksAndAccessWork() {
         UUID report = UUID.randomUUID();
         UUID other = UUID.randomUUID();

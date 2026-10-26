@@ -17,6 +17,13 @@ public class JdbcAccountStore implements AccountStore {
     public JdbcAccountStore(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     @Override
+    public Backlog backlog() {
+        return jdbc.queryForObject("SELECT count(*), min(created_at) FROM ops.account_deletion_job",
+                (rs, row) -> new Backlog(rs.getLong(1),
+                        rs.getTimestamp(2) == null ? null : rs.getTimestamp(2).toInstant()));
+    }
+
+    @Override
     public Readiness readiness(UUID userId) {
         var owned = jdbc.query("SELECT id,title FROM app.room WHERE owner_user_id = ? ORDER BY id",
                 (rs, row) -> new OwnedRoom(rs.getObject("id", UUID.class), rs.getString("title")), userId);

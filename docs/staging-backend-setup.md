@@ -262,3 +262,22 @@ moderation and storage cleanup checks remain deferred in the
 [testing handoff](staging-test-handoff-2026-10-26.md#media-configuration-checkpoint--2026-10-26).
 Account deletion is still disabled at this checkpoint. Configuration readiness does
 not establish photo-flow success or production release readiness.
+
+## Account-deletion monitoring setup
+
+The API identity has the separate owner-assigned Firebase deletion permission.
+Account deletion remains disabled until the operational setup is verified; adding
+permission does not delete an account or enable the endpoint.
+
+The existing OIDC minute worker now emits aggregate deletion-backlog observations.
+The checked-in [staging setup script](../scripts/configure-staging-deletion-alerts.py)
+configures the operations channel's three policies: backlog/monitor failure,
+scheduler errors, and missing successful heartbeat. It also configures the
+aggregate-only log-based heartbeat counter. The recipient and channel resource
+are kept outside Git. Reapplication updates the owned policies without duplicates.
+
+The full [monitoring runbook](12-observability-runbook.md#staging-account-deletion-monitoring)
+documents 12-hour warning and 24-hour overdue boundaries, missing-heartbeat warm-up,
+alert latency and recovery. Policy creation alone is not proof of a live heartbeat
+or delivered email. Observe scheduled logs and counter data after deployment;
+record email delivery/recovery and disposable-account deletion tests separately.

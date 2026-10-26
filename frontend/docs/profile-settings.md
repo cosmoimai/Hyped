@@ -24,6 +24,9 @@ A direct account switch clears old credentials and pending state before new sign
 
 External failures retain a disabled `deletion_pending` account and durable retry job; they do not restore access or report cleanup complete. The protected scheduler must run and overdue jobs must be alerted/remediated to meet the documented 24-hour purge deadline. A later sign-in can create a new empty account after deletion; it does not recover the deleted account.
 
+For staging cleanup-age signals and alert setup, see the
+[account-deletion monitoring runbook](../../docs/12-observability-runbook.md#staging-account-deletion-monitoring).
+
 ## Backend/Firebase setup and operations
 
 - Reuse the existing Firebase project, Android `google-services.json`, ADC/workload identity, token signing, KMS and Firestore external personal-key registry. Do not commit credentials or service-account files.

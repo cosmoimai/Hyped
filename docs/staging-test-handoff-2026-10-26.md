@@ -119,7 +119,7 @@ force-stopped application as proof that ordinary background delivery is broken.
 | Area | Work before testing | Required manual evidence |
 |---|---|---|
 | Shared room photos | Staging media configuration is enabled; live upload/moderation/storage authorization checks remain deferred (see checkpoint below) | Upload, SafeSearch outcomes, authorized viewing, removed-member denial, offline fallback and cleanup; see [photo setup](android-room-photos-setup.md) |
-| Account deletion | Firebase deletion permission, existing KMS/Firestore cleanup readiness, worker monitoring and `ACCOUNT_DELETION_ENABLED` | Disposable-account success/failure/retry, Firebase cleanup and local cache/widget/invite/token cleanup; see [profile/settings setup](../frontend/docs/profile-settings.md) |
+| Account deletion | Firebase deletion permission assigned; cleanup monitoring being configured; verify live heartbeat and feature flag before tests | Disposable-account success/failure/retry, Firebase cleanup and local cache/widget/invite/token cleanup; see [profile/settings setup](../frontend/docs/profile-settings.md) |
 | Android App Links | Owned HTTPS invite domain, assetlinks, signing fingerprints and configured host | Cold/warm link delivery, sign-in/consent continuation and browser fallback; room-code success does not cover App Links |
 | Operator moderation | Configure restricted reviewer identity/access and enable the review module | Authorized review/resolve, unauthorized rejection, holds/appeals and audit/retention behavior; report submission alone does not prove review handling |
 | Closed testing / release | Final signed candidate, broader device/Android coverage and required Play Console setup | Execute the [closed-testing plan](android-closed-testing.md), full physical smoke matrix and submission gates; do not publish from this handoff |
@@ -148,6 +148,23 @@ this document is a dated snapshot, not an infrastructure inventory API.
   The manual photo checklist remains deferred. No photo flow is marked PASS.
 - Account deletion remains disabled; Firebase permission and cleanup monitoring
   are the next setup work. No account was deleted during this configuration step.
+
+## Account-deletion monitoring checkpoint
+
+- Firebase deletion permission was confirmed on the API identity; no account was deleted.
+- Read-only inspection found zero pending/overdue deletion jobs before setup.
+- An owner-configured operations email channel is referenced by three staging
+  policies; its recipient is not recorded in Git. Repeated configuration/read-back
+  confirmed three enabled policies, without duplicates.
+- Runtime instrumentation reports aggregate backlog age/count, warns at 12 hours,
+  and marks 24 hours overdue. Tests cover threshold equality, retry age retention,
+  safe errors, empty queues, and monitoring during cleanup failure.
+- Scheduled heartbeat/counter verification is pending deployment at this source
+  checkpoint. Email delivery and recovery exercises remain deferred; policy
+  configuration is not an end-to-end notification PASS.
+- Account deletion stays disabled during this setup. Check the current flag and
+  [monitoring runbook](12-observability-runbook.md#staging-account-deletion-monitoring)
+  before enabling or testing it. Use only a disposable Firebase test account.
 
 ## How to resume and record results
 

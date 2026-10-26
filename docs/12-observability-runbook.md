@@ -536,3 +536,90 @@ See [Android Crashlytics symbols and mapping](android-crash-symbols.md) for the
 current SDK/plugin gap, exact-build archive, Dart/R8/native distinctions, future
 manual upload commands and privacy checks. The existence of these instructions
 is not proof that Crashlytics is installed or that a live crash is readable.
+
+## Staging account-deletion monitoring
+
+The existing authenticated minute worker emits an aggregate-only observation after
+account cleanup, even if an earlier cleanup query fails. It reports pending count,
+oldest acceptance age in elapsed seconds, and one fixed status:
+
+| Status | Meaning | Log level |
+|---|---|---|
+| `OK` | Empty queue, or oldest pending job younger than 12 hours | INFO |
+| `BACKLOG` | Oldest job at least 12 hours old and younger than 24 hours | WARN |
+| `OVERDUE` | Oldest job at least 24 hours old; documented purge deadline exceeded | ERROR |
+| `UNAVAILABLE` | The aggregate backlog query failed | ERROR |
+
+The log marker is `code=ACCOUNT_DELETION_HEALTH`. No job/user/device identity,
+Firebase UID, ciphertext, token, room content or provider exception message is
+included. Age uses `created_at`, never retry `available_at`, so retrying a job does
+not reset the deadline. Future timestamps clamp age to zero. Observability failures
+must not prevent cleanup or hide an existing worker failure.
+
+Staging uses three alert policies, attached to the owner-configured operations
+email channel (recipient address stays outside Git):
+
+1. **Deletion cleanup needs attention:** log match for BACKLOG, OVERDUE or
+   UNAVAILABLE. First warning at 12 hours leaves time to act before the 24-hour
+   deadline. Log notifications are rate-limited to once per hour.
+2. **Cleanup scheduler failed:** Cloud Scheduler ERROR entry for
+   `hyped-staging-reminders`. This alerts on a failed attempt independently of
+   individual job retries.
+3. **Deletion cleanup heartbeat missing:** no successful aggregate observation
+   for ten minutes. A log-based counter includes OK/BACKLOG/OVERDUE but excludes
+   UNAVAILABLE. Monitoring sums across Cloud Run revisions so a retired revision
+   does not cause a false missing-heartbeat alert. Ingestion/evaluation latency
+   adds to the detection window.
+
+A newly created counter must observe a time series before metric-absence detection
+can work. Confirm the normal worker log and counter data after deployment; merely
+creating the policy is not enough. A successful scheduler request does not establish
+that all purges finished. Log-based incidents auto-close after 30 minutes without a
+new matching entry; that closure does not itself prove recovery. Inspect fresh
+aggregate observations and the protected database queue before resolving an incident.
+
+### Reproduce the staging alert configuration
+
+Use the existing `hyped-staging` gcloud sign-in and a file outside Git containing
+only the notification-channel resource name, in this format:
+
+```text
+projects/hyped-41a30/notificationChannels/<numeric-channel-id>
+```
+
+Render a reviewable plan first (no authentication or cloud changes):
+
+```sh
+python3 scripts/configure-staging-deletion-alerts.py \
+  --channel-file /private/path/channel-name.txt
+```
+
+Apply after reviewing the generated plan:
+
+```sh
+python3 scripts/configure-staging-deletion-alerts.py \
+  --channel-file /private/path/channel-name.txt --apply
+```
+
+The script targets only project `hyped-41a30`, the existing staging API/scheduler,
+one named log-based counter, and three named policies. It uses a short-lived gcloud
+token in memory and never stores an email or credential in the plan. It checks all
+policy pages, rejects duplicate names, and refuses to overwrite an existing policy
+without its ownership labels. Re-running updates owned policies rather than
+creating duplicates. It does not create a channel, trigger a test email, invoke
+account deletion, change runtime flags, or configure production monitoring.
+
+### Respond and verify
+
+- For BACKLOG/OVERDUE, inspect aggregate age/count first. Check Firebase deletion
+  permission, KMS/Firestore availability, R2 cleanup, database health and worker
+  identity. Restore the failing dependency, then retry through the existing
+  authenticated tick. Never reset acceptance time or restore deleted credentials.
+- For UNAVAILABLE or missing heartbeat, inspect Scheduler state/execution results,
+  Cloud Run readiness, database access and log/metric ingestion. Keep deletion
+  disabled if observation is unavailable before initial enablement.
+- Never delete a real account, stall a real purge, or pause required cleanup just
+  to test alerting. Use isolated synthetic alert exercises and disposable staging
+  accounts when the deferred monitoring/feature tests are scheduled.
+- Automated boundary/sanitization tests and policy read-back do not prove email
+  receipt. Record delivery and recovery exercises separately in the staging handoff.

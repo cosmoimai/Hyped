@@ -23,6 +23,7 @@ import java.util.UUID;
 @Service
 @ConditionalOnProperty(prefix = "hyped.tokens", name = "enabled", havingValue = "true")
 public class AccountService {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(AccountService.class);
     private final AccountStore store;
     private final IdentityTokenVerifier verifier;
     private final IdentityLookupProtector lookup;
@@ -126,7 +127,33 @@ public class AccountService {
         this.media = provider;
     }
 
-    public void tick() { store.due(clock.instant()).forEach(this::process); }
+    public void tick() {
+        try {
+            store.due(clock.instant()).forEach(this::process);
+        } finally {
+            reportCleanupBacklog();
+        }
+    }
+
+    private void reportCleanupBacklog() {
+        try {
+            var backlog = store.backlog();
+            long age = backlog.oldestCreatedAt() == null ? 0
+                    : Math.max(0, java.time.Duration.between(backlog.oldestCreatedAt(), clock.instant()).getSeconds());
+            // Aggregate-only heartbeat: never emit job identities, ciphertext, tokens or exception messages.
+            String message = "Account deletion cleanup code=ACCOUNT_DELETION_HEALTH "
+                    + "status={} pending={} oldest_age_seconds={}";
+            if (age >= 86400) {
+                LOGGER.error(message, "OVERDUE", backlog.pending(), age);
+            } else if (age >= 43200) {
+                LOGGER.warn(message, "BACKLOG", backlog.pending(), age);
+            } else {
+                LOGGER.info(message, "OK", backlog.pending(), age);
+            }
+        } catch (RuntimeException unavailable) {
+            LOGGER.error("Account deletion cleanup code=ACCOUNT_DELETION_HEALTH status=UNAVAILABLE");
+        }
+    }
     public void process(UUID actor) {
         var job = store.claim(actor, clock.instant());
         if (job == null) { return; }
