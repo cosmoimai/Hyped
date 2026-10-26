@@ -181,6 +181,18 @@ class RoomControllerTest {
     }
 
     @Test
+    void roomEditRejectsWrongContentTypeWithSanitized415() throws Exception {
+        mvc.perform(patch("/api/v1/rooms/{id}", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-1\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventLocalTime\":\"10:10\"}"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"))
+                .andExpect(jsonPath("$.detail").value("Use the content type required by this endpoint."));
+    }
+
+    @Test
     void missingInvalidAndExpiredJwtAreDenied() throws Exception {
         mvc.perform(get("/api/v1/rooms")).andExpect(status().isUnauthorized());
         when(decoder.decode("bad")).thenThrow(new BadJwtException("invalid"));

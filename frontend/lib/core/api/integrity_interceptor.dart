@@ -101,7 +101,8 @@ class IntegrityInterceptor extends Interceptor {
       // Freeze the exact UTF-8 JSON bytes before Dio's transformer serializes them.
       if (data != null) {
         options.data = body;
-        options.contentType = Headers.jsonContentType;
+        // Keep endpoint-specific JSON media types, including JSON Merge Patch.
+        options.contentType ??= Headers.jsonContentType;
       }
       final requestId = id();
       final time = clock().millisecondsSinceEpoch.toString();

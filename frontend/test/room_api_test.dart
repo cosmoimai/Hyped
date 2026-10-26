@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:hyped/core/api/integrity_interceptor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:hyped/features/rooms/data/room_api.dart';
@@ -58,6 +60,53 @@ void main() {
       );
     });
   }
+
+  test(
+    'attested room edit preserves merge-patch type, revision and new event time',
+    () async {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://api.test/api/v1',
+          headers: {'Authorization': 'Bearer fixture-access'},
+        ),
+      );
+      final adapter = DioAdapter(dio: dio);
+      dio.interceptors.add(IntegrityInterceptor((_) async => null));
+      RequestOptions? seen;
+      dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            seen = options;
+            handler.next(options);
+          },
+        ),
+      );
+      final draft = RoomDraft(
+        title: 'Updated event',
+        eventDate: DateTime(2030, 12, 20),
+        eventTime: (hour: 10, minute: 10),
+        eventTimeZone: 'Asia/Kolkata',
+        theme: roomThemeChoices.first,
+      );
+      adapter.onPatch(
+        '/rooms/fixture-room',
+        (server) => server.reply(200, {
+          ...roomJson(),
+          'eventAt': '2030-12-20T04:40:00Z',
+          'revision': 5,
+        }),
+        data: jsonEncode(draft.toPatchJson()),
+      );
+      final updated = await RoomApi(
+        dio,
+      ).updateRoom(roomId: 'fixture-room', etag: '"room-4"', draft: draft);
+      expect(seen!.contentType, 'application/merge-patch+json');
+      expect(seen!.headers['If-Match'], '"room-4"');
+      expect(jsonDecode(seen!.data as String)['eventLocalTime'], '10:10');
+      expect(updated.eventAt, DateTime.utc(2030, 12, 20, 4, 40));
+      expect(updated.revision, 5);
+    },
+  );
 
   test('room models parse backend response fields', () {
     final room = Room.fromJson(roomJson(), etag: '"room-4"');

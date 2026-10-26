@@ -32,6 +32,13 @@ public class GlobalProblemHandler {
         this.problems = problems;
     }
 
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    ResponseEntity<ApiProblem> unsupportedMediaType(HttpServletRequest request) {
+        return response(request, HttpStatus.UNSUPPORTED_MEDIA_TYPE, "UNSUPPORTED_MEDIA_TYPE",
+                "Unsupported content type", "Use the content type required by this endpoint.",
+                false, List.of(), List.of());
+    }
+
     @ExceptionHandler(com.hyped.app.notification.application.PushRegistrationException.class)
     ResponseEntity<ApiProblem> pushRegistration(HttpServletRequest request) {
         return response(request, HttpStatus.UNAUTHORIZED, "AUTHENTICATION_REQUIRED", "Session unavailable",

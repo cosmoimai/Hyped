@@ -774,14 +774,19 @@ class RoomFormModel {
   }
 
   factory RoomFormModel.fromRoom(Room room) {
-    final local = room.eventAt.toLocal();
+    if (!_zonesReady) throw StateError('Time zones are unavailable.');
+    final timeZone = supportedTimeZones.contains(room.eventTimeZone)
+        ? room.eventTimeZone
+        : 'UTC';
+    final local = tz.TZDateTime.from(
+      room.eventAt,
+      timeZone == 'UTC' ? tz.UTC : tz.getLocation(timeZone),
+    );
     return RoomFormModel(
       title: room.title,
       date: DateTime(local.year, local.month, local.day),
       time: (hour: local.hour, minute: local.minute),
-      timeZone: supportedTimeZones.contains(room.eventTimeZone)
-          ? room.eventTimeZone
-          : 'UTC',
+      timeZone: timeZone,
       location: room.location ?? '',
       description: room.description ?? '',
       theme: room.theme,

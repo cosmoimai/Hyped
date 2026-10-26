@@ -279,7 +279,7 @@ Field validation example:
 | `410` | Previously valid invitation/account/resource intentionally ended where safe to reveal |
 | `412` | `If-Match` revision precondition failed |
 | `413` | Upload/request payload too large |
-| `415` | Unsupported media/content type |
+| `415` | Unsupported media/content type (`UNSUPPORTED_MEDIA_TYPE`); room edits require `application/merge-patch+json` |
 | `422` | Semantically invalid field values |
 | `429` | Rate limit exceeded |
 | `500` | Unexpected server failure |
