@@ -290,3 +290,17 @@ without duplicates after reapplication. Push/media remained enabled and account
 deletion remained disabled. All 657 backend tests and 18 script tests passed.
 No account deletion or synthetic email alert was triggered. Email delivery and
 recovery exercises remain on the deferred checklist.
+
+## Account-deletion enablement checkpoint — 2026-10-26
+
+The owner enabled `ACCOUNT_DELETION_ENABLED=true` in configuration-only revision
+`hyped-staging-api-00008-2t4`. The revision became ready; readiness returned HTTP
+200. Read-only inspection confirmed the expected API identity, enabled push/media,
+three enabled alert policies and successful cleanup heartbeats from this exact
+revision with zero pending jobs. Monitoring continued receiving heartbeat data.
+The source image remains `c005805`; enabling the flag required no new APK or schema.
+
+No deletion request was submitted by setup verification. Actual deletion,
+retention/retry/media/key cleanup, and alert email receipt remain on the deferred
+test checklist. Use dedicated disposable accounts: Firebase identity deletion
+still affects the shared Firebase project. Operator moderation remains disabled.

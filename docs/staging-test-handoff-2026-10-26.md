@@ -7,9 +7,12 @@ completed closed-testing period. Dates use Asia/Kolkata.
 ## Candidate and evidence
 
 - Android: engineering debug APK installed on Samsung SM-M336BU, Android 15 / API 35.
-- Source: `a676bfe` (room edit media type and time-zone fix).
-- Backend: Cloud Run `hyped-staging-api-00005-c76`, project `hyped-41a30`.
-- Latest automated verification: 646 backend tests and 421 Flutter tests passed;
+- Android source: `a676bfe` (room edit media type and time-zone fix).
+- Current backend source: `c005805` (cleanup monitoring); subsequent revisions
+  include configuration-only setup changes recorded below.
+- Current backend: Cloud Run `hyped-staging-api-00008-2t4`, project `hyped-41a30`.
+  The original room-edit manual pass used revision `hyped-staging-api-00005-c76`.
+- Latest automated verification: 657 backend tests and 421 Flutter tests passed;
   Flutter formatting/analyze, debug APK build, staged secret scan, image scan under
   existing reviewed exceptions, and Git whitespace checks passed.
 - Manual passes below were reported by the owner during this conversation. They
@@ -119,7 +122,7 @@ force-stopped application as proof that ordinary background delivery is broken.
 | Area | Work before testing | Required manual evidence |
 |---|---|---|
 | Shared room photos | Staging media configuration is enabled; live upload/moderation/storage authorization checks remain deferred (see checkpoint below) | Upload, SafeSearch outcomes, authorized viewing, removed-member denial, offline fallback and cleanup; see [photo setup](android-room-photos-setup.md) |
-| Account deletion | Firebase deletion permission assigned; cleanup monitoring being configured; verify live heartbeat and feature flag before tests | Disposable-account success/failure/retry, Firebase cleanup and local cache/widget/invite/token cleanup; see [profile/settings setup](../frontend/docs/profile-settings.md) |
+| Account deletion | Staging permission, monitoring and feature flag enabled; real deletion/retention tests remain deferred | Disposable-account success/failure/retry, Firebase cleanup and local cache/widget/invite/token cleanup; see [profile/settings setup](../frontend/docs/profile-settings.md) |
 | Android App Links | Owned HTTPS invite domain, assetlinks, signing fingerprints and configured host | Cold/warm link delivery, sign-in/consent continuation and browser fallback; room-code success does not cover App Links |
 | Operator moderation | Configure restricted reviewer identity/access and enable the review module | Authorized review/resolve, unauthorized rejection, holds/appeals and audit/retention behavior; report submission alone does not prove review handling |
 | Closed testing / release | Final signed candidate, broader device/Android coverage and required Play Console setup | Execute the [closed-testing plan](android-closed-testing.md), full physical smoke matrix and submission gates; do not publish from this handoff |
@@ -167,9 +170,25 @@ this document is a dated snapshot, not an infrastructure inventory API.
 - All 657 backend tests and 18 setup-script tests passed. Policy configuration was
   reapplied and read back without duplicates. Email delivery and recovery exercises
   remain deferred; no test email or account deletion was triggered.
-- Account deletion stays disabled during this setup. Check the current flag and
+- Deletion stayed disabled while monitoring was configured. It was subsequently
+  enabled at the checkpoint below. Check the current flag and
   [monitoring runbook](12-observability-runbook.md#staging-account-deletion-monitoring)
-  before enabling or testing it. Use only a disposable Firebase test account.
+  before testing. Use only a disposable Firebase test account.
+
+## Account-deletion enablement checkpoint — 2026-10-26
+
+- Owner enabled `ACCOUNT_DELETION_ENABLED=true`; configuration-only revision
+  `hyped-staging-api-00008-2t4` became ready and readiness returned HTTP 200.
+- Read-only inspection confirmed the expected API identity and that push and media
+  remain enabled. All three operations alert policies remain active.
+- Worker logs from this exact revision reported `OK`, pending count zero and oldest
+  age zero. Monitoring continued receiving heartbeat data across the revision change.
+- Setup verification did not submit any deletion request. Real Firebase deletion,
+  R2/key/database purge, failure/retry/24-hour deadline, local cleanup and email
+  notification receipt are still deferred tests, not established passes.
+- Operator moderation review remains disabled and is the next setup area. Verified
+  Android App Links still need an owned domain. This is staging configuration, not
+  approval for production publication.
 
 ## How to resume and record results
 
