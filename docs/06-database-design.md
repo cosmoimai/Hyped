@@ -617,7 +617,7 @@ The acceptance transaction locks the user and rechecks no ownership/membership (
 
 Cleanup deletes the verified Firebase user, commits the Firebase-deleted checkpoint, destroys the external user key and transactionally removes personal rows. Checkpointing before key destruction allows database cleanup to resume after a crash without decrypting the already destroyed UID. Already missing Firebase users and already destroyed keys are idempotent success. Jobs are removed only after personal cleanup commits. Minimal non-identifying user UUID/timestamps may remain as a tombstone while shared-room author FKs or backup restore safety require it; no provider subject, email, device, token, profile or key-reference data remains there.
 
-The documented 24-hour purge deadline is operationally enforced through continuous scheduler execution and alerts/remediation on job creation age. External cleanup failures retain disabled pending jobs and must not be represented as completed deletion. No recovery period is introduced. Current schema has no remote profile media, moderation or raw analytics rows; future modules must extend this same deletion workflow before storing those data.
+The documented 24-hour purge deadline is operationally enforced through continuous scheduler execution and alerts/remediation on job creation age. External cleanup failures retain disabled pending jobs and must not be represented as completed deletion. No recovery period is introduced. V16 report/block cleanup extends this same deletion workflow: reporter/subject identifiers and encrypted report details are removed, directional blocks/replays/access invalidations are purged, and pseudonymous report/audit rows expire at their original 90-day deadline. Remote profile media and raw analytics remain unimplemented.
 
 ### 13.3 Backup semantics
 
@@ -648,7 +648,7 @@ Only archived rooms with `now >= delete_after` may be permanently deleted. Owner
 - The row enters `deleting` and is physically removed within the same database transaction, so there is no externally visible half-deleted state.
 - `ops.idempotency_record` rows with matching `resource_id` are explicitly deleted, including encrypted join/rotation snapshots outside the FK tree.
 - Memberships, reminder preferences, invitation credentials, room reminder jobs, device delivery records and themes are removed through existing cascade FKs.
-- There are no remote media objects in the current preset/gradient theme implementation. A future media implementation must durably capture object deletion work before removing its references.
+- V15 adds private uploaded room covers. Permanent deletion marks the final referenced asset DELETING before removing the room; protected cleanup deletes its private objects and subsequently removes the expired cleanup tombstone. Other rooms retaining the same asset preserve their reference.
 - Repeated deletion is a safe no-op and cannot recreate relationships or decrement counts twice. Repeated leave is likewise harmless; no former-membership tombstone is needed.
 - Mobile caches and protected widget fields/selections clear on acknowledged leave/delete or authoritative access-loss synchronization. Other devices cannot be remotely rewritten while offline; no new background network jobs are introduced.
 
@@ -883,3 +883,11 @@ business operations. Expired entries are pruned on subsequent use. See
 [production security](production-security.md) for lifetime, observe/fail-closed
 behaviour and deployment/backup considerations. Existing room row-lock and
 transaction ordering are unchanged.
+
+## Implemented private photo projection (V15)
+
+`app.media_asset` stores authenticated uploader UUID, server-generated asset UUID, bounded prepared-upload MIME/size/dimensions/SHA-256, status, bounded completion attempts/claim token, grant expiry and timestamps. It stores no source filename, provider response, public URL, JWT or raw image bytes. `app.room_theme.media_asset_id` is a nullable FK; exactly one preset key or media reference is present by kind. READY assets are locked for attachment within the existing room transaction; unused deletion locks the asset before a fresh reference check. DB/external storage calls are separated. Account deletion falls back remaining cover references and retries object cleanup before destroying keys. See [photo setup and cleanup](android-room-photos-setup.md).
+
+### Applied V16 reporting and account blocks
+
+See [reporting/blocking persistence and transactions](reporting-blocking-and-moderation.md). `app.report` now also supports ACCOUNT subjects, nullable room/media/account references and a subject fingerprint; status is OPEN/ACTIONED/DISMISSED. Optional details are user-key encrypted. `app.user_block` is unique per direction and forbids self-blocks. `ops.safety_request` stores 24-hour digested request replays, never report plaintext. Durable `ops.room_access_invalidation` uses per-user/room upserted UUID versions and survives physical room deletion. `ops.moderation_audit` retains only reviewer digest, controlled action and time and cascades at report expiry; `ops.moderation_rate` is a bounded two-minute operational window. `app.room.moderation_hold` prevents owner restore after a reviewer archives a room. Account deletion clears all user-linked safety data before finishing; physical user deletion defensively strips report details as well.

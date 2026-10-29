@@ -129,6 +129,36 @@ void main() {
   );
 
   test(
+    'photo references remain account partitioned and never store delivery URLs',
+    () async {
+      const id = '019b1f2b-d5e2-7d46-9165-a37ed59d6080';
+      final room = fixtures.room().copyWith(
+        theme: const RoomTheme(
+          kind: RoomThemeKind.uploadedImage,
+          presetKey: 'soft-blue-01',
+          overlayKey: 'image-dark-40',
+          mediaAssetId: id,
+        ),
+      );
+      await database.put('account-a', room, sync);
+      expect(
+        (await database.readRoom('account-a', room.id))?.theme.mediaAssetId,
+        id,
+      );
+      expect(await database.readRoom('account-b', room.id), isNull);
+      final columns = await database
+          .customSelect('PRAGMA table_info(cached_rooms)')
+          .get();
+      expect(
+        columns.any((row) => row.read<String>('name').contains('url')),
+        isFalse,
+      );
+      await database.erase();
+      expect(await database.readRoom('account-a', room.id), isNull);
+    },
+  );
+
+  test(
     'explicit schema contains no credentials, invite data or raw response blob',
     () async {
       final columns = await database
@@ -152,7 +182,7 @@ void main() {
         ),
         isFalse,
       );
-      expect(database.schemaVersion, 1);
+      expect(database.schemaVersion, 2);
     },
   );
   test(
@@ -615,6 +645,15 @@ void main() {
       );
       expect(find.byTooltip('Edit room'), findsNothing);
       expect(find.byTooltip('Members'), findsNothing);
+      expect(find.text('Personal reminders'), findsNothing);
+      await tester.scrollUntilVisible(find.text('2 members'), 150);
+      final membershipTile = tester.widget<ListTile>(
+        find.ancestor(
+          of: find.text('2 members'),
+          matching: find.byType(ListTile),
+        ),
+      );
+      expect(membershipTile.onTap, isNull);
     },
   );
   testWidgets(

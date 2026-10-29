@@ -18,7 +18,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Transactional(propagation = Propagation.NEVER)
-final class KmsFirestorePersonalDataProtectionAdapter implements PersonalDataKeyManager, PersonalDataCipher {
+class KmsFirestorePersonalDataProtectionAdapter implements PersonalDataKeyManager, PersonalDataCipher {
     private static final int DEK_LENGTH = 32;
     private static final int REFERENCE_RANDOM_LENGTH = 24;
     private final PersonalDataKmsClient kms;
@@ -41,6 +41,12 @@ final class KmsFirestorePersonalDataProtectionAdapter implements PersonalDataKey
         this.properties = properties;
         this.clock = clock;
         this.random = random;
+    }
+
+    @Override
+    public String createKey(UserId userId) {
+        // Declare the convenience method on the class so its NEVER transaction guard is proxied too.
+        return provisionKey(userId).keyReference();
     }
 
     @Override

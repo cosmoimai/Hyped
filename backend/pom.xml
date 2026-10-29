@@ -18,6 +18,7 @@
   <description>Spring Boot backend for the Hyped! shared countdown application.</description>
 
   <properties>
+    <hyped.build.directory>${project.basedir}/target</hyped.build.directory>
     <java.version>21</java.version>
     <!-- Security patch overrides; keep the existing Spring Boot major version. -->
     <jackson-bom.version>2.21.7</jackson-bom.version>
@@ -59,6 +60,9 @@
   </dependencyManagement>
 
   <dependencies>
+    <dependency><groupId>software.amazon.awssdk</groupId><artifactId>s3</artifactId><version>2.57.3</version></dependency>
+    <dependency><groupId>software.amazon.awssdk</groupId><artifactId>url-connection-client</artifactId><version>2.57.3</version></dependency>
+    <dependency><groupId>com.twelvemonkeys.imageio</groupId><artifactId>imageio-webp</artifactId><version>3.15.3</version></dependency>
     <dependency>
       <groupId>com.google.firebase</groupId>
       <artifactId>firebase-admin</artifactId>
@@ -155,10 +159,14 @@
   </dependencies>
 
   <build>
+    <directory>${hyped.build.directory}</directory>
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+        <configuration>
+          <mainClass>com.hyped.app.HypedApplication</mainClass>
+        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

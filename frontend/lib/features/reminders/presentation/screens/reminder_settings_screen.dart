@@ -1,3 +1,4 @@
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hyped/features/reminders/domain/reminder_preferences.dart';
@@ -13,7 +14,7 @@ class ReminderSettingsScreen extends ConsumerWidget {
     final controller = ref.watch(reminderControllerProvider(roomId));
     final preferences = controller.preferences;
     return Scaffold(
-      appBar: AppBar(title: const Text('Reminders')),
+      appBar: RoomAppBar(title: 'Reminders', backLocation: '/rooms/$roomId'),
       body: SafeArea(
         child: controller.loading && preferences == null
             ? const Center(child: CircularProgressIndicator())

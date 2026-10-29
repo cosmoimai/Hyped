@@ -1,3 +1,4 @@
+import 'package:hyped/core/presentation/countdown_mark.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +58,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Center(child: CountdownMark(size: 64)),
+                  const SizedBox(height: 12),
                   Text(
                     'Hyped!',
                     textAlign: TextAlign.center,

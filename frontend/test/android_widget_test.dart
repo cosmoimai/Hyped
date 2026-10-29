@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:hyped/core/api/authentication_interceptor.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
@@ -70,6 +71,24 @@ class _Bridge {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test(
+    'widget sync preserves every server-supported theme instead of falling back to blue',
+    () {
+      for (final preset in [
+        'soft-blue-01',
+        'sunset-coral-01',
+        'mint-sky-01',
+        'blue-lilac-02',
+        'peach-gold-01',
+        'aurora-green-01',
+      ]) {
+        expect(
+          RoomWidgetData.fromRoom(room(preset: preset)).toJson()['presetKey'],
+          preset,
+        );
+      }
+    },
+  );
   late _Bridge bridge;
   late MethodChannelRoomWidgetRepository widgets;
   setUp(() async {
@@ -121,6 +140,57 @@ void main() {
     );
   }
 
+  for (final widgetId in [null, 42]) {
+    testWidgets('widget settings opened directly ($widgetId) can return Home', (
+      tester,
+    ) async {
+      final repository = _MockRoomRepository();
+      when(repository.listRooms).thenAnswer((_) async => []);
+      final router = GoRouter(
+        initialLocation: widgetId == null
+            ? '/widgets/room'
+            : '/widgets/room?widgetId=$widgetId',
+        routes: [
+          GoRoute(
+            path: '/widgets/room',
+            builder: (_, state) => RoomWidgetSettingsScreen(
+              appWidgetId: int.tryParse(
+                state.uri.queryParameters['widgetId'] ?? '',
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/home',
+            builder: (_, _) => const Scaffold(body: Text('Home destination')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            roomWidgetRepositoryProvider.overrideWithValue(widgets),
+            roomRepositoryProvider.overrideWithValue(repository),
+            roomListControllerProvider.overrideWith(
+              (ref) => RoomListController(repository)..load(),
+            ),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(router.canPop(), isFalse);
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Home destination'), findsOneWidget);
+      expect(
+        bridge.calls.where((call) => call.method == 'selectRoom'),
+        isEmpty,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets(
     'settings configure selected widget and explain update/offline behavior',
     (tester) async {
@@ -146,11 +216,13 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('Medium widget 42'), 200);
       expect(find.text('Medium widget 42'), findsOneWidget);
       expect(
         find.textContaining('not continuously network-synchronized'),
         findsOneWidget,
       );
+      await tester.scrollUntilVisible(find.text('Goa trip').first, 150);
       await tester.tap(find.text('Goa trip').first);
       await tester.pumpAndSettle();
       expect(

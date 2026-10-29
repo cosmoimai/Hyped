@@ -24,7 +24,7 @@ data class WidgetRoom(
         title = "", eventAt = 0, presetKey = "soft-blue-01", state = state)
 
     companion object {
-        val presets = setOf("soft-blue-01", "mint-sky-01", "blue-lilac-02", "sunset-peach-01", "forest-glow-01")
+        val presets = setOf("soft-blue-01", "mint-sky-01", "blue-lilac-02", "sunset-coral-01", "peach-gold-01", "aurora-green-01")
         fun from(values: Map<*, *>): WidgetRoom? {
             val id = values["roomId"] as? String ?: return null
             val state = values["state"] as? String ?: return null

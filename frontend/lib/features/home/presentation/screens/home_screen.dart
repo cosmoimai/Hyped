@@ -1,3 +1,7 @@
+import 'package:hyped/core/presentation/countdown_mark.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_formatters.dart';
+import 'package:hyped/features/android_widgets/presentation/controllers/room_widget_providers.dart';
+import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/core/offline/offline_state.dart';
 import 'package:hyped/features/rooms/presentation/widgets/sync_status.dart';
 import 'package:hyped/features/notifications/presentation/push_providers.dart';
@@ -16,74 +20,146 @@ class HomeScreen extends ConsumerWidget {
     final push = ref.watch(pushControllerProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hyped!'),
+        title: const Row(
+          children: [
+            CountdownMark(size: 32),
+            SizedBox(width: 8),
+            Flexible(child: Text('Home', overflow: TextOverflow.ellipsis)),
+          ],
+        ),
         actions: [
-          IconButton(
-            onPressed: () => context.go('/settings'),
-            tooltip: 'Profile and Settings',
-            icon: const Icon(Icons.person_outline),
-          ),
-          if (push.status.supported)
-            IconButton(
-              onPressed: () => context.go('/notifications'),
-              tooltip: 'Notifications',
-              icon: const Icon(Icons.notifications_outlined),
+          TextButton.icon(
+            style: TextButton.styleFrom(
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerLow,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
             ),
-          IconButton(
-            onPressed: () => context.go('/widgets/room'),
-            tooltip: 'Countdown widget',
-            icon: const Icon(Icons.widgets_outlined),
+            onPressed: () => context.go('/join'),
+            icon: const Icon(Icons.key_outlined, size: 18),
+            label: const Text('Join'),
           ),
-          IconButton(
-            onPressed: () => ref.read(authControllerProvider).logout(),
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
+          PopupMenuButton<String>(
+            tooltip: 'More options',
+            onSelected: (value) {
+              if (value == 'logout') {
+                ref.read(authControllerProvider).logout();
+              } else {
+                context.go(value);
+              }
+            },
+            itemBuilder: (_) => [
+              if (push.status.supported)
+                const PopupMenuItem(
+                  value: '/notifications',
+                  child: ListTile(
+                    leading: Icon(Icons.notifications_outlined),
+                    title: Text('Notifications'),
+                  ),
+                ),
+              const PopupMenuItem(
+                value: '/widgets/room',
+                child: ListTile(
+                  leading: Icon(Icons.widgets_outlined),
+                  title: Text('Countdown widgets'),
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'logout',
+                child: ListTile(
+                  leading: Icon(Icons.logout),
+                  title: Text('Sign out'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      bottomNavigationBar: push.status.supported && !push.status.enabled
-          ? SafeArea(
-              child: ListTile(
-                title: const Text('Enable event reminders'),
-                subtitle: const Text(
-                  'Choose whether Hyped can send notifications.',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.go('/notifications'),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: .08),
               ),
-            )
-          : null,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          if (rooms.usingCache) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text(offlineReadOnlyMessage)),
-            );
-          } else {
-            context.go('/rooms/new');
-          }
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Create'),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              const Expanded(
+                child: _DockItem(
+                  icon: Icons.home_outlined,
+                  label: 'Home',
+                  selected: true,
+                ),
+              ),
+              FloatingActionButton(
+                tooltip: 'Create room',
+                onPressed: () {
+                  if (rooms.usingCache) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text(offlineReadOnlyMessage)),
+                    );
+                  } else {
+                    context.go('/rooms/new');
+                  }
+                },
+                child: const Icon(Icons.add, size: 30),
+              ),
+              Expanded(
+                child: _DockItem(
+                  icon: Icons.person_outline,
+                  label: 'Profile',
+                  onTap: () => context.go('/settings'),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
       body: SafeArea(
         child: RefreshIndicator(
-          onRefresh: rooms.load,
+          onRefresh: () async {
+            if (rooms.loading) return;
+            final widgets = ref.read(roomWidgetRepositoryProvider);
+            final epoch = widgets.sessionEpoch;
+            await rooms.load();
+            if (!context.mounted ||
+                epoch != widgets.sessionEpoch ||
+                rooms.error != null ||
+                rooms.usingCache) {
+              return;
+            }
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Last synced ${compactDateTime(rooms.lastSync ?? DateTime.now())}',
+                ),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          },
           child: rooms.rooms.isEmpty && rooms.lastSync == null && rooms.loading
               ? const Center(child: CircularProgressIndicator())
               : rooms.rooms.isEmpty &&
-                    rooms.lastSync == null &&
                     rooms.lastSync == null &&
                     rooms.error != null
               ? _ErrorState(message: rooms.error!, onRetry: rooms.load)
               : rooms.rooms.isEmpty && rooms.lastSync == null
               ? const _EmptyState()
               : ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
                   children: [
-                    if (rooms.lastSync != null || rooms.error != null)
+                    if (rooms.usingCache || rooms.error != null)
                       SyncStatus(
-                        syncedAt: rooms.lastSync,
+                        syncedAt: null,
                         readOnly: rooms.usingCache,
                         message: rooms.error,
                       ),
@@ -93,23 +169,77 @@ class HomeScreen extends ConsumerWidget {
                         padding: EdgeInsets.all(24),
                         child: Text('Your countdowns will live here'),
                       ),
+                    if (push.status.supported && !push.status.enabled)
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(Icons.notifications_outlined),
+                          title: const Text('Enable event reminders'),
+                          subtitle: const Text(
+                            'Choose whether Hyped can send notifications.',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () => context.go('/notifications'),
+                        ),
+                      ),
+                    if (rooms.nearestRoom != null) ...[
+                      Text(
+                        'UP NEXT',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(context).colorScheme.primary,
+                              letterSpacing: 1.2,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Your next milestone',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                     if (rooms.nearestRoom case final nearest?)
                       FeaturedRoomCard(
                         room: nearest,
                         onTap: () => context.go('/rooms/${nearest.id}'),
                       ),
-                    if (rooms.otherRooms.isNotEmpty) ...[
+                    if (rooms.otherRooms.any(
+                      (room) => room.status == RoomStatus.active,
+                    )) ...[
                       const SizedBox(height: 24),
                       Text(
-                        'All rooms',
+                        'More countdowns',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       const SizedBox(height: 8),
-                      for (final room in rooms.otherRooms)
+                      for (final room in rooms.otherRooms.where(
+                        (room) => room.status == RoomStatus.active,
+                      ))
                         CompactRoomCard(
                           room: room,
                           onTap: () => context.go('/rooms/${room.id}'),
                         ),
+                    ],
+                    if (rooms.rooms.any(
+                      (room) => room.status == RoomStatus.archived,
+                    )) ...[
+                      const SizedBox(height: 24),
+                      Card(
+                        child: ExpansionTile(
+                          leading: const Icon(Icons.inventory_2_outlined),
+                          title: Text(
+                            'Archived (${rooms.rooms.where((room) => room.status == RoomStatus.archived).length})',
+                          ),
+                          children: [
+                            for (final room in rooms.rooms.where(
+                              (room) => room.status == RoomStatus.archived,
+                            ))
+                              CompactRoomCard(
+                                room: room,
+                                onTap: () => context.go('/rooms/${room.id}'),
+                              ),
+                          ],
+                        ),
+                      ),
                     ],
                   ],
                 ),
@@ -164,5 +294,40 @@ class _ErrorState extends StatelessWidget {
       const SizedBox(height: 16),
       FilledButton(onPressed: onRetry, child: const Text('Retry')),
     ],
+  );
+}
+
+class _DockItem extends StatelessWidget {
+  const _DockItem({
+    required this.icon,
+    required this.label,
+    this.selected = false,
+    this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: selected ? Theme.of(context).colorScheme.primary : null,
+            ),
+            const SizedBox(height: 4),
+            Text(label, style: Theme.of(context).textTheme.labelMedium),
+          ],
+        ),
+      ),
+    ),
   );
 }

@@ -17,6 +17,13 @@ public class JdbcAccountStore implements AccountStore {
     public JdbcAccountStore(JdbcTemplate jdbc) { this.jdbc = jdbc; }
 
     @Override
+    public Backlog backlog() {
+        return jdbc.queryForObject("SELECT count(*), min(created_at) FROM ops.account_deletion_job",
+                (rs, row) -> new Backlog(rs.getLong(1),
+                        rs.getTimestamp(2) == null ? null : rs.getTimestamp(2).toInstant()));
+    }
+
+    @Override
     public Readiness readiness(UUID userId) {
         var owned = jdbc.query("SELECT id,title FROM app.room WHERE owner_user_id = ? ORDER BY id",
                 (rs, row) -> new OwnedRoom(rs.getObject("id", UUID.class), rs.getString("title")), userId);
@@ -130,6 +137,13 @@ public class JdbcAccountStore implements AccountStore {
         jdbc.update("DELETE FROM app.user_policy_acceptance WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.user_identity WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.user_profile WHERE user_id=?", job.userId());
+        jdbc.update("UPDATE app.report SET reporter_user_id=NULL,details_ciphertext=NULL WHERE reporter_user_id=?",
+                job.userId());
+        jdbc.update("UPDATE app.report SET subject_user_id=NULL WHERE subject_user_id=?", job.userId());
+        jdbc.update("DELETE FROM app.user_block WHERE blocker_user_id=? OR blocked_user_id=?",
+                job.userId(),job.userId());
+        jdbc.update("DELETE FROM ops.safety_request WHERE user_id=?", job.userId());
+        jdbc.update("DELETE FROM ops.room_access_invalidation WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM ops.idempotency_record WHERE user_id=?", job.userId());
         jdbc.update("DELETE FROM app.room_reminder_preference WHERE user_id=?", job.userId());
         jdbc.update("""

@@ -1,3 +1,6 @@
+import 'package:hyped/features/safety/presentation/safety_providers.dart';
+import 'package:hyped/features/safety/presentation/safety_sheets.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -31,13 +34,15 @@ class MemberScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(memberControllerProvider(roomId));
     final snapshot = controller.snapshot;
+    final safety = ref.watch(safetyControllerProvider);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Members · ${snapshot?.items.length ?? '—'}/25'),
+      appBar: RoomAppBar(
+        title: 'Members · ${snapshot?.items.length ?? '—'}/25',
+        backLocation: '/rooms/$roomId',
       ),
       body: Column(
         children: [
-          if (controller.loading || controller.saving)
+          if (controller.loading || controller.saving || safety.busy)
             const LinearProgressIndicator(),
           if (controller.error case final error?)
             Padding(
@@ -77,13 +82,16 @@ class MemberScreen extends ConsumerWidget {
                         subtitle: Text(
                           '${_role(member.role)}${member.isCurrentUser ? ' · You' : ''}',
                         ),
-                        trailing:
-                            memberActions(snapshot, member).isEmpty ||
-                                controller.stale
-                            ? null
-                            : PopupMenuButton<MemberAction>(
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!(memberActions(snapshot, member).isEmpty ||
+                                controller.stale))
+                              PopupMenuButton<MemberAction>(
                                 enabled:
-                                    !controller.saving && !controller.loading,
+                                    !controller.saving &&
+                                    !controller.loading &&
+                                    !safety.busy,
                                 tooltip: 'Manage ${member.displayName}',
                                 onSelected: (action) async {
                                   final confirmed = await showDialog<bool>(
@@ -132,6 +140,46 @@ class MemberScreen extends ConsumerWidget {
                                     ),
                                 ],
                               ),
+                            if (!member.isCurrentUser && !controller.stale)
+                              PopupMenuButton<String>(
+                                tooltip:
+                                    'Safety options for ${member.displayName}',
+                                icon: const Icon(Icons.shield_outlined),
+                                enabled:
+                                    !controller.saving &&
+                                    !controller.loading &&
+                                    !safety.busy,
+                                onSelected: (action) {
+                                  if (action == 'report') {
+                                    showReport(
+                                      context,
+                                      roomId: roomId,
+                                      subject: 'ACCOUNT',
+                                      target: member.userId,
+                                    );
+                                  } else {
+                                    showBlock(
+                                      context,
+                                      ref,
+                                      roomId: roomId,
+                                      target: member.userId,
+                                      displayName: member.displayName,
+                                    );
+                                  }
+                                },
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(
+                                    value: 'report',
+                                    child: Text('Report account'),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'block',
+                                    child: Text('Block account'),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
                   if (snapshot == null &&
                       !controller.loading &&

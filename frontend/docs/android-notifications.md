@@ -20,6 +20,12 @@ The documented `PUT/DELETE /api/v1/devices/{installationId}` and `POST /internal
 
 Registration is a PUT with `platform: ANDROID`, `fcmToken`, `notificationsEnabled`, and `appVersion`. Both PUT and DELETE return 204 without echoing a token. The authenticated JWT supplies the user and session. The path must match the JWT installation claim, and the server checks that the active session actually owns that Android installation. Unknown ownership fields are rejected. False `notificationsEnabled` or DELETE removes the token without revoking the login itself.
 
+Registration validates the authenticated user/session/installation in a short database transaction,
+then releases its locks before calling the external personal-data encryption service. A second transaction
+revalidates the same active binding and key reference before replacing the token. Logout, expiry,
+device revocation or key replacement during encryption prevents the registration from being saved.
+Removal stays a single database transaction and requires no external encryption call.
+
 Tokens are encrypted with the existing per-user cipher under `DEVICE_FCM_TOKEN`. A SHA-256 fingerprint of the high-entropy FCM token supports replacement/uniqueness; neither value is returned. A replacement takes effect for that device and removes registrations for the same token/installation on previous accounts. A late UNREGISTERED response for an old fingerprint cannot remove its replacement. A token rotation racing an already claimed send cancels that stale snapshot rather than sending it to the old token.
 
 Database triggers clear push credentials immediately on session revocation/deletion (including refresh-token reuse), device invalidation and account transition out of active state. Account/device/room deletion also cascades delivery rows. Worker polling removes expired-session tokens. Recipients are checked again before sending, including session expiry, account/device status, current room event/status, membership and reminder preference. Removal after FCM acceptance cannot recall a remote message; Android's generic presentation and session gate protect content.

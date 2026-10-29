@@ -279,7 +279,7 @@ Field validation example:
 | `410` | Previously valid invitation/account/resource intentionally ended where safe to reveal |
 | `412` | `If-Match` revision precondition failed |
 | `413` | Upload/request payload too large |
-| `415` | Unsupported media/content type |
+| `415` | Unsupported media/content type (`UNSUPPORTED_MEDIA_TYPE`); room edits require `application/merge-patch+json` |
 | `422` | Semantically invalid field values |
 | `429` | Rate limit exceeded |
 | `500` | Unexpected server failure |
@@ -509,7 +509,7 @@ After acceptance, `accepted` contains `versions`, `adultAffirmed:true` and the f
 
 Success is `200` with the status shape above. Terms includes the content rules. Ownership comes only from the verified JWT; `userId`, `acceptedAt` and all unknown body fields are rejected. The backend supplies Clock timestamps and locks the account before insertion. The unique user/version tuple makes repeated/concurrent acceptance return the same original timestamp; it does not infer consent from sign-in or a new idempotency key.
 
-False/missing confirmations return `422 EXPLICIT_CONSENT_REQUIRED`; blank/missing versions return validation failure. Stale/unsupported version combinations return `409 POLICY_VERSION_CHANGED`, requiring fresh review. Unpublished/missing legal documents return `503 LEGAL_DOCUMENTS_UNAVAILABLE`. The generated initial versions are `2026-10-22`; `LEGAL_PUBLICATION_READY` defaults false, and enabling publication requires real operator/contact details and matching bundled documents.
+False/missing confirmations return `422 EXPLICIT_CONSENT_REQUIRED`; blank/missing versions return validation failure. Stale/unsupported version combinations return `409 POLICY_VERSION_CHANGED`, requiring fresh review. Unpublished/missing legal documents return `503 LEGAL_DOCUMENTS_UNAVAILABLE`. The generated initial versions are `2026-10-22`; the additional `2026-10-26` resources include photo, reporting, blocking, reviewer-access and report-retention disclosures. Required versions are selected explicitly per environment; bundling a version does not activate it. `LEGAL_PUBLICATION_READY` defaults false, and enabling publication requires owner approval, real operator/contact details and matching bundled documents. Historical resources are preserved.
 
 Create and join (including internal add-member and previously successful join replays) return `403 CURRENT_POLICY_ACCEPTANCE_REQUIRED` until current acceptance exists. Authentication, public invite preview, legal reads, sign-out, account deletion and existing-room/lifecycle operations remain available. A future upload implementation must use the same guard. Historical acceptances are removed during account deletion under existing retention rules.
 
@@ -609,10 +609,9 @@ placeholder or unprotected invitation material when those modules are unavailabl
 - Recurrence fields: rejected as unknown/unsupported.
 - User at ten active owned rooms: `409 OWNED_ROOM_LIMIT_REACHED`.
 
-### 10.6 Theme input variants (deferred)
+### 10.6 Theme input variants
 
-Theme persistence is outside the room-and-membership foundation. Until the theme module is implemented, room create and
-update requests reject theme fields as unsupported rather than silently discarding them.
+PRESET and GRADIENT themes are implemented. UPLOADED_IMAGE uses a validated, READY user-owned media reference and the `image-dark-40` overlay. Existing room covers can be retained by authorized co-hosts when editing other fields. GIPHY remains deferred and rejected; no inert GIF controls are exposed. Uploaded photos require the private media configuration described in [Android room photos setup](android-room-photos-setup.md).
 
 Preset:
 
@@ -733,7 +732,7 @@ All identity/authorization comes from the verified JWT subject. These actions ha
 - Restoration rechecks the 10 active owned-room and 25 active joined-room limits for every affected participant. Sorted account locks precede the room lock. A membership-set race returns `409 ROOM_MEMBERS_CHANGED` for a reload; quota failures use the existing distinct room-limit codes and roll back the whole restore.
 - Permanent deletion is allowed only for ARCHIVED rooms with `now >= deleteAfter`; active or early requests return `409 ROOM_DELETE_NOT_ELIGIBLE`. There is no immediate-delete bypass. Current nonowner participants receive `403 ROOM_ACTION_FORBIDDEN`.
 - Repeated permanent deletion and nonmember requests return the same `204` no-op to avoid disclosing whether a foreign room exists. They never modify a room without current owner authorization. No tombstone containing room content or former membership is retained.
-- The deletion transaction briefly marks the row `deleting`, clears encrypted room-linked join/rotation replays and physically deletes the room. Existing FKs cascade memberships, invitation credentials, reminder preferences/jobs/device deliveries and themes. The current implementation has preset/gradient themes and no room media objects requiring external deletion.
+- The deletion transaction briefly marks the row `deleting`, clears encrypted room-linked join/rotation replays and physically deletes the room. Existing FKs cascade memberships, invitation credentials, reminder preferences/jobs/device deliveries and themes. Any last-referenced uploaded cover is marked for durable private-object cleanup by the protected job tick; external storage deletion occurs outside the room transaction.
 - The existing OIDC-protected `POST /internal/jobs/tick` also purges up to 100 eligible archives after processing reminder deliveries, using `FOR UPDATE SKIP LOCKED`. Repeated/concurrent owner and worker deletion is safe. The response's existing reminder counters are unchanged. Deployments must keep the documented protected scheduler enabled for automatic cleanup; eligibility and restore limits are enforced independently of worker timing.
 - Successful Flutter leave/delete clears room/member caches and revokes every associated widget selection. Other devices clear protected fields after their next authoritative synchronization; offline widgets retain the last successful snapshot until then. Known removed selections are cleared and cannot be resurrected by a late response. Logout/account change continues to clear all protected widget data.
 
@@ -778,6 +777,14 @@ Rules:
 - Room and user locks serialize membership/ownership writes. Existing unique owner and deferred membership/count consistency constraints enforce exactly one owner and the 25-member limit at transaction commit. Transfers lock both users in stable ID order before the room and re-evaluate permissions after waiting.
 - Removal transactionally deletes the membership and personal reminder preferences, cancels pending/sending device reminders, and updates member count/revision. Delivery eligibility is also rechecked before sending. A message already accepted by FCM cannot be recalled and uses generic notification text.
 - Removed users lose REST access immediately. On the next successful foreground synchronization, Flutter clears protected widget snapshots on the safe unavailable response. Offline cached widgets remain subject to the existing documented offline behavior; there is no new background synchronization.
+
+Member reads capture an authorized membership snapshot under a short room transaction,
+decrypt approved profile fields outside any database transaction, then reacquire the
+room lock and recheck caller access, membership, roles, status and revision. No room
+locks are retained across local/cloud key resolution. A concurrent change returns
+`412 ROOM_REVISION_MISMATCH` with no member list; reload to obtain the current view.
+A caller removed during decryption receives `404 ROOM_UNAVAILABLE` instead. The
+final authorized snapshot supplies both action visibility and the response ETag.
 
 `GET /rooms/{roomId}/members` returns `Cache-Control: private, no-store` and `ETag: "room-{revision}"`:
 
@@ -826,6 +833,11 @@ Ordering is owner, co-hosts, then members, with case-insensitive display name an
 ```
 
 The response is `Cache-Control: no-store`. Raw credentials are decrypted only for an authorized current member and never logged.
+
+The Android room page and Room actions expose **Share invite** for active, online room views, including MEMBER and CO_HOST views. The sheet fetches current credentials with authenticated Dio and the current-session fence. An explicit share fetches them again before opening Android's text share chooser, so stale/rotated credentials or access-loss failures do not fall back to a cached invite. Credentials stay only in the transient sheet/controller and are cleared on close or authentication/session change; they are never written to Drift or ordinary preferences. Sharing does not rotate an invitation.
+
+The shared text always contains the room code and in-app Join instructions. An HTTPS link is added only if the native App Link validator accepts it against the build's exact `INVITE_HOST`. Unconfigured, localhost, malformed and foreign links are omitted. A local build without an owned invite domain therefore supports code sharing without sending an unusable link. The OS/user-selected receiving app controls the payload after an explicit share; Hyped does not send messages automatically.
+
 
 ### 12.3 Rotate invitation
 
@@ -1006,7 +1018,11 @@ Failure codes include:
 - `UPLOAD_NOT_FOUND`
 - `UPLOAD_EXPIRED`
 
-A rejected upload cannot replace the current profile photo or room theme.
+A rejected upload cannot replace the current room theme. Profile-photo editing remains outside this implementation.
+
+`GET /media/configuration` is authenticated and reports only `{ "available": boolean }`. Media defaults disabled (`MEDIA_ENABLED=false`), returning a safe `503 MEDIA_UNAVAILABLE` for cloud operations. Enabling media requires private R2 credentials, Google ADC/Vision and the updated required Terms/Privacy versions. Upload creation is limited to 40 grants per authenticated account per 24 hours. Only ROOM_COVER is supported; client user IDs and object keys cannot select ownership. Filename is not persisted. Completion verifies the exact uploaded checksum and metadata; final delivery is a newly re-encoded static JPEG under a separate private ready key. Pending completions use bounded claims/retries; READY completion replays do not repeat publication/moderation. Uncertain results remain hidden; there is no manual approval endpoint or bypass in this change.
+
+The existing protected internal tick now cleans at most 20 unreferenced/orphan assets per call. Room deletion records cleanup before removing references. Account deletion removes uploaded objects before final personal-data purge; failed storage calls retain the deletion job for retry. A minimal DELETING metadata marker is retained until an hour after the original upload grant expires, enabling repeated cleanup of late/replayed writes. Configure quarantine bucket expiry after one day as a safeguard. No network operation runs inside room/media database transactions. Signed URLs/credentials and image bytes are never logged or cached in Drift/widget snapshots.
 
 `GET /media/{mediaAssetId}` authorizes the caller and returns a private R2 signed GET URL valid for **15 minutes**. The URL is scoped to one object and is never logged or included in analytics.
 
@@ -1047,7 +1063,7 @@ Headers: access token and `Idempotency-Key`.
 - Success returns `201 Created` with report ID and status only.
 - Reports are limited separately to five per account per day unless security operations adjust the threshold.
 - Eligible records are pseudonymized after account deletion and deleted after 90 days.
-- `subjectType` supports `ROOM`, `THEME`, and `ACCOUNT`; an account subject must be resolvable from the reporter's current room/member context.
+- `subjectType` supports `ROOM`, `THEME`, and `ACCOUNT`; `ACCOUNT` requires `subjectUserId` from the reporter's current room/member context. The server resolves THEME to the current cover; callers cannot supply an asset key or reporter identity.
 - Reporting and blocking are independent. The client may offer both actions, but neither silently implies the other.
 
 ## 17. Privacy-safe analytics
@@ -1307,3 +1323,13 @@ evidence and `503 INTEGRITY_UNAVAILABLE` for unavailable verification. Distribut
 authenticated-write limits can return `429 RATE_LIMITED` with `Retry-After: 60`.
 Retry with fresh evidence and preserve the business Idempotency-Key/revision.
 No userId/deviceId ownership field or new public endpoint is introduced.
+
+## Reporting/blocking implementation (V16)
+
+[Reporting, blocking and moderation](reporting-blocking-and-moderation.md) defines the applied contracts and reviewer setup. `POST /reports` and `PUT /me/blocks/{userId}` require a canonical UUID `Idempotency-Key`; changing the request under a key returns `409 IDEMPOTENCY_KEY_REUSED`. Block PUT requires `{ "roomId": "<current shared room>" }` and returns only `removedCount` and `leftCount`. Own block GET returns `items` (`userId`, safe `displayName`, `blockedAt`) and nullable `nextCursor`; pass it as `after` for the next 100-item page. DELETE is directional and idempotent.
+
+Controlled report reasons are `INAPPROPRIATE_CONTENT`, `HARASSMENT`, `HATE_OR_VIOLENCE`, `SPAM`, `OTHER`. The receipt is `{ "reportId": "…", "status": "OPEN" }`, 201, without subject/reporter details. Rate limit: five new reports per rolling 24 hours, with idempotent retries exempt. Optional free text is encrypted with the reporter's existing per-user key; no plaintext report content appears in replay/audit data.
+
+`GET /me/room-invalidations` returns up to 100 pending `{roomId,version}` entries in `items`; `DELETE /me/room-invalidations/{version}` acknowledges only the current caller's exact version after local cleanup. No reason, block origin or notification is exposed. These routes use authenticated session-fenced Dio. This bounded durable sync queue does not add room-change push delivery.
+
+Member items add `hiddenProfile`; a blocked pair in third-party rooms receives `Blocked account`, null photo and unavailable direct role actions. Authenticated room responses add `moderationHold`; Flutter hides restore while it applies. Moderation-held rooms reject owner restore with `403 ROOM_RESTRICTED` until a verified reviewer releases the hold; release does not extend recovery. Internal reviewer routes require their separate verified Google OIDC identity and are unavailable to app JWTs.

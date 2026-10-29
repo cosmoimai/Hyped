@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:hyped/app/theme/hyped_theme.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_cards.dart';
+import 'package:hyped/features/rooms/presentation/controllers/room_controllers.dart';
 import 'package:hyped/features/home/presentation/screens/home_screen.dart';
 import 'package:hyped/features/rooms/data/room_repository.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
@@ -12,6 +16,58 @@ import 'package:mocktail/mocktail.dart';
 class MockRoomRepository extends Mock implements RoomRepository {}
 
 void main() {
+  testWidgets('home shows last sync only as a five-second refresh popup', (
+    tester,
+  ) async {
+    final controller = RoomListController(repositoryWithRooms([room()]));
+    await controller.load();
+    controller.lastSync = DateTime.utc(2030, 1, 1);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [roomListControllerProvider.overrideWith((_) => controller)],
+        child: const MaterialApp(home: HomeScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Last synced'), findsNothing);
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    await tester.pump();
+    expect(find.textContaining('Last synced'), findsOneWidget);
+    final popup = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(popup.duration, const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('Last synced'), findsNothing);
+  });
+
+  testWidgets('compact countdown fits device text scaling without overflow', (
+    tester,
+  ) async {
+    for (final scale in [1.0, 1.3, 2.0]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: HypedTheme.light,
+          home: Scaffold(
+            body: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+              child: CompactRoomCard(
+                room: room(
+                  eventAt: DateTime.now().add(const Duration(hours: 22)),
+                ),
+                onTap: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.text('HOURS LEFT'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('home shows nearest room as featured card and others compact', (
     tester,
   ) async {
@@ -38,9 +94,45 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Next up'), findsOneWidget);
+    expect(find.text('UP NEXT'), findsOneWidget);
     expect(find.text('Soon'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Later'), 200);
     expect(find.text('Later'), findsOneWidget);
+  });
+
+  testWidgets('direct room detail has a working back button to Home', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/rooms/room-id',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('Home destination')),
+        ),
+        GoRoute(
+          path: '/rooms/:roomId',
+          builder: (_, _) => const RoomDetailScreen(roomId: 'room-id'),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          roomRepositoryProvider.overrideWith(
+            (ref) => repositoryWithDetail(room()),
+          ),
+        ],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(router.canPop(), isFalse);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Home destination'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('room detail shows countdown data and edit action for hosts', (
@@ -59,6 +151,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Goa trip'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('2 members'), 150);
     expect(find.text('2 members'), findsOneWidget);
     expect(find.byTooltip('Edit room'), findsOneWidget);
   });

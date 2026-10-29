@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
@@ -36,6 +37,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -100,12 +102,18 @@ class PushDeliveryIntegrationTest {
                 """, session, user, device, UUID.randomUUID(), java.sql.Timestamp.from(clock.now),
                 java.sql.Timestamp.from(clock.now), java.sql.Timestamp.from(NOW.plusSeconds(172800)),
                 java.sql.Timestamp.from(clock.now), java.sql.Timestamp.from(clock.now));
-        when(cipher.encrypt(any(), anyString(), any(), any())).thenAnswer(invocation ->
-                ("cipher:" + new String(invocation.getArgument(3), StandardCharsets.UTF_8))
-                        .getBytes(StandardCharsets.UTF_8));
-        when(cipher.decrypt(any(), anyString(), any(), any())).thenAnswer(invocation ->
-                new String((byte[]) invocation.getArgument(3), StandardCharsets.UTF_8)
-                        .substring(7).getBytes(StandardCharsets.UTF_8));
+        when(cipher.encrypt(any(), anyString(), any(), any())).thenAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive())
+                    .as("External encryption must not run in a database transaction").isFalse();
+            return ("cipher:" + new String(invocation.getArgument(3), StandardCharsets.UTF_8))
+                    .getBytes(StandardCharsets.UTF_8);
+        });
+        when(cipher.decrypt(any(), anyString(), any(), any())).thenAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive())
+                    .as("External decryption must not run in a database transaction").isFalse();
+            return new String((byte[]) invocation.getArgument(3), StandardCharsets.UTF_8)
+                    .substring(7).getBytes(StandardCharsets.UTF_8);
+        });
         when(sender.send(anyString(), any())).thenReturn(PushSender.Outcome.SENT);
         clearInvocations(sender);
         com.hyped.app.policy.AcceptedPolicyFixture.accept(jdbc, user);
@@ -174,6 +182,34 @@ class PushDeliveryIntegrationTest {
                 .isInstanceOf(ApiProblemException.class);
         assertThatThrownBy(() -> registrations.register(user, session, UUID.randomUUID(), "foreign", true))
                 .isInstanceOf(ApiProblemException.class);
+    }
+
+    @Test
+    void logoutDuringEncryptionCannotRestorePushRegistration() {
+        doAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            jdbc.update("UPDATE app.auth_session SET revoked_at = ?, revoke_reason = 'logout' WHERE id = ?",
+                    java.sql.Timestamp.from(clock.now), session);
+            return "cipher:replacement".getBytes(StandardCharsets.UTF_8);
+        }).when(cipher).encrypt(any(), anyString(), any(), any());
+        assertThatThrownBy(() -> registrations.register(user, session, installation, "replacement", true))
+                .isInstanceOf(ApiProblemException.class);
+        assertThat(jdbc.queryForObject("SELECT notifications_enabled FROM app.device_registration WHERE id = ?",
+                Boolean.class, device)).isFalse();
+    }
+
+    @Test
+    void keyChangeDuringEncryptionCannotPersistCiphertextWithOldKey() {
+        doAnswer(invocation -> {
+            assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
+            jdbc.update("UPDATE app.app_user SET pii_key_reference = 'replacement-key' WHERE id = ?", user);
+            return "cipher:replacement".getBytes(StandardCharsets.UTF_8);
+        }).when(cipher).encrypt(any(), anyString(), any(), any());
+        assertThatThrownBy(() -> registrations.register(user, session, installation, "replacement", true))
+                .isInstanceOf(com.hyped.app.notification.application.PushRegistrationException.class);
+        assertThat(new String(jdbc.queryForObject(
+                "SELECT fcm_token_ciphertext FROM app.device_registration WHERE id = ?", byte[].class, device),
+                StandardCharsets.UTF_8)).isEqualTo("cipher:token-one");
     }
 
     @Test

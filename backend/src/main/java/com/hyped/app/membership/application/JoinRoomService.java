@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class JoinRoomService {
     private final com.hyped.app.policy.application.PolicyService policies;
     private final RoomRepository rooms;
+    private final com.hyped.app.moderation.application.port.out.SafetyStore safety;
     private final InvitationRepository invitations;
     private final PreviewReferenceService references;
     private final InvitationGuard guard;
@@ -33,7 +34,9 @@ public class JoinRoomService {
 
     public JoinRoomService(RoomRepository rooms, InvitationRepository invitations, PreviewReferenceService references,
             InvitationGuard guard, InvitationReplayService replays, Clock clock,
-            com.hyped.app.policy.application.PolicyService policies) {
+            com.hyped.app.policy.application.PolicyService policies,
+            com.hyped.app.moderation.application.port.out.SafetyStore safety) {
+        this.safety = safety;
         this.policies = policies;
         this.rooms = rooms;
         this.invitations = invitations;
@@ -96,6 +99,9 @@ public class JoinRoomService {
             throw InvitationException.invalid();
         }
         guard.requireActive(room);
+        if (safety.blocked(actor.value(), room.ownerUserId().value())) {
+            throw new InvitationException(404, "ROOM_UNAVAILABLE");
+        }
         if (member.isEmpty()) {
             if (room.memberCount() >= RoomService.MAX_MEMBERS) {
                 throw new InvitationException(409, "ROOM_FULL");

@@ -30,10 +30,21 @@ spring:
       enabled: true
 
 server:
+  port: ${PORT:8080}
   shutdown: graceful
   forward-headers-strategy: none
 
 hyped:
+  moderation:
+    review-enabled: ${MODERATION_REVIEW_ENABLED:false}
+    audience: ${MODERATION_AUDIENCE:}
+    reviewers: ${MODERATION_REVIEWERS:}
+  media:
+    enabled: ${MEDIA_ENABLED:false}
+    r2-endpoint: ${R2_MEDIA_ENDPOINT:}
+    r2-bucket: ${R2_MEDIA_BUCKET:}
+    r2-access-key: ${R2_MEDIA_ACCESS_KEY:}
+    r2-secret-key: ${R2_MEDIA_SECRET_KEY:}
   integrity:
     mode: ${PLAY_INTEGRITY_MODE:observe}
     package-name: ${PLAY_INTEGRITY_PACKAGE:com.hyped.hyped}
@@ -109,10 +120,20 @@ info:
 
 logging:
   level:
+    software.amazon.awssdk: "OFF"
     org.springframework.web.servlet.mvc.method.annotation.ExceptionHandlerExceptionResolver: INFO
+    org.springframework.web: INFO
+    org.springframework.jdbc: INFO
+    org.springframework.security: INFO
+    org.hibernate.SQL: "OFF"
+    org.hibernate.orm.jdbc.bind: "OFF"
+    org.hibernate.type.descriptor.sql.BasicBinder: "OFF"
 
 # Never render container exception details or enable request/header logging in production.
 server.error.include-message: never
 server.error.include-stacktrace: never
 server.error.include-binding-errors: never
 spring.mvc.log-request-details: false
+
+# Private photo processing is opt-in; development needs no storage credentials.
+# SDK diagnostics must never expose signed URLs or credentials.

@@ -17,6 +17,7 @@ class CachedRooms extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get themeKind => text()();
   TextColumn get presetKey => text()();
+  TextColumn get mediaAssetId => text().nullable()();
   TextColumn get overlayKey => text()();
   TextColumn get role => text()();
   IntColumn get memberCount => integer()();
@@ -58,7 +59,7 @@ class RoomCacheDatabase extends _$RoomCacheDatabase {
     }),
   );
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) => m.createAll(),
@@ -114,6 +115,7 @@ class RoomCacheDatabase extends _$RoomCacheDatabase {
         themeKind: room.theme.kind.wire,
         presetKey: room.theme.presetKey,
         overlayKey: room.theme.overlayKey,
+        mediaAssetId: Value(room.theme.mediaAssetId),
         role: room.role.wire,
         memberCount: room.memberCount,
         revision: room.revision,
@@ -164,6 +166,7 @@ class RoomCacheDatabase extends _$RoomCacheDatabase {
           kind: RoomThemeKindX.fromWire(row.themeKind),
           presetKey: row.presetKey,
           overlayKey: row.overlayKey,
+          mediaAssetId: row.mediaAssetId,
         ),
         status: RoomStatus.active,
         role: RoomRoleX.fromWire(row.role),
@@ -200,7 +203,17 @@ class RoomCacheDatabase extends _$RoomCacheDatabase {
         (room.location?.runes.length ?? 0) > 120 ||
         (room.description?.runes.length ?? 0) > 500 ||
         !presets.contains(room.theme.presetKey) ||
-        !{'dark-soft', 'light-soft', 'none'}.contains(room.theme.overlayKey) ||
+        !{
+          'dark-soft',
+          'light-soft',
+          'none',
+          'image-dark-40',
+        }.contains(room.theme.overlayKey) ||
+        (room.theme.kind == RoomThemeKind.uploadedImage &&
+            (room.theme.mediaAssetId == null ||
+                !RegExp(
+                  r'^[0-9a-fA-F]{8}-(?:[0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$',
+                ).hasMatch(room.theme.mediaAssetId!))) ||
         room.memberCount < 1 ||
         room.memberCount > 25 ||
         room.revision < 1) {

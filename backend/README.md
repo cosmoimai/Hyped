@@ -78,3 +78,5 @@ allowlists, enforcement rollout and ingress requirements.
 Android candidate verification: run `python3 scripts/verify-pre-release.py` from
 the repository root. It requires running Docker and rejects skipped integration
 tests; see [closed-testing preparation](../docs/android-closed-testing.md).
+
+Local Android testing without KMS/Firestore billing: [setup steps](../docs/local-android-testing.md).

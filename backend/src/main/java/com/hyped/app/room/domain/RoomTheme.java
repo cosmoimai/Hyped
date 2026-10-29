@@ -1,6 +1,7 @@
 package com.hyped.app.room.domain;
 
 import com.hyped.app.identity.domain.UserId;
+
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Set;
@@ -9,18 +10,25 @@ public record RoomTheme(
         RoomId roomId,
         Kind kind,
         String presetKey,
+        java.util.UUID mediaAssetId,
         String overlayKey,
         UserId updatedByUserId,
         Instant createdAt,
         Instant updatedAt) {
-    private static final Set<String> PRESET_KEYS = Set.of("soft-blue-01", "sunset-coral-01", "mint-sky-01");
-    private static final Set<String> GRADIENT_KEYS = Set.of("blue-lilac-02", "peach-gold-01", "aurora-green-01");
+    private static final Set<String> PRESET_KEYS =
+            Set.of("soft-blue-01", "sunset-coral-01", "mint-sky-01");
+    private static final Set<String> GRADIENT_KEYS =
+            Set.of("blue-lilac-02", "peach-gold-01", "aurora-green-01");
     private static final Set<String> OVERLAY_KEYS = Set.of("dark-soft", "light-soft", "none");
 
     public RoomTheme {
         Objects.requireNonNull(roomId, "roomId");
         Objects.requireNonNull(kind, "kind");
-        presetKey = boundedRequired(presetKey, 64, "presetKey");
+        if (kind != Kind.UPLOADED_IMAGE) {
+            presetKey = boundedRequired(presetKey, 64, "presetKey");
+        } else if (mediaAssetId == null || presetKey != null) {
+            throw new IllegalArgumentException("Invalid room cover");
+        }
         overlayKey = boundedRequired(overlayKey, 64, "overlayKey");
         Objects.requireNonNull(updatedByUserId, "updatedByUserId");
         Objects.requireNonNull(createdAt, "createdAt");
@@ -30,14 +38,31 @@ public record RoomTheme(
         }
         boolean validPreset = kind == Kind.PRESET && PRESET_KEYS.contains(presetKey);
         boolean validGradient = kind == Kind.GRADIENT && GRADIENT_KEYS.contains(presetKey);
-        if ((!validPreset && !validGradient) || !OVERLAY_KEYS.contains(overlayKey)) {
+        boolean validImage =
+                kind == Kind.UPLOADED_IMAGE
+                        && mediaAssetId != null
+                        && overlayKey.equals("image-dark-40");
+        if ((!validImage && ((!validPreset && !validGradient) || !OVERLAY_KEYS.contains(overlayKey)))
+                || (kind != Kind.UPLOADED_IMAGE && mediaAssetId != null)) {
             throw new IllegalArgumentException("Unsupported room theme");
         }
     }
 
+    public RoomTheme(
+            RoomId room,
+            Kind kind,
+            String preset,
+            String overlay,
+            UserId actor,
+            Instant created,
+            Instant updated) {
+        this(room, kind, preset, null, overlay, actor, created, updated);
+    }
+
     public enum Kind {
         PRESET,
-        GRADIENT
+        GRADIENT,
+        UPLOADED_IMAGE
     }
 
     public static RoomTheme defaultTheme(RoomId roomId, UserId actor, Instant now) {

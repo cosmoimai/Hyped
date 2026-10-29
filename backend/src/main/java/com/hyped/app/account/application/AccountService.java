@@ -10,17 +10,20 @@ import com.hyped.app.identity.application.port.out.PersonalDataKeyManager;
 import com.hyped.app.identity.application.port.out.UserIdentityRepository;
 import com.hyped.app.identity.application.service.AuthenticationProfileReader;
 import com.hyped.app.identity.domain.UserId;
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.UUID;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Service;
 
 @Service
 @ConditionalOnProperty(prefix = "hyped.tokens", name = "enabled", havingValue = "true")
 public class AccountService {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(AccountService.class);
     private final AccountStore store;
     private final IdentityTokenVerifier verifier;
     private final IdentityLookupProtector lookup;
@@ -31,12 +34,20 @@ public class AccountService {
     private final AuthenticationProfileReader profiles;
     private final Clock clock;
     private final boolean deletionEnabled;
-    public AccountService(AccountStore store, IdentityTokenVerifier verifier, IdentityLookupProtector lookup,
-            UserIdentityRepository identities, PersonalDataCipher cipher, PersonalDataKeyManager keys,
+
+    public AccountService(
+            AccountStore store,
+            IdentityTokenVerifier verifier,
+            IdentityLookupProtector lookup,
+            UserIdentityRepository identities,
+            PersonalDataCipher cipher,
+            PersonalDataKeyManager keys,
             org.springframework.beans.factory.ObjectProvider<FirebaseAccountAdmin> firebase,
-            AuthenticationProfileReader profiles, Clock clock,
-            @org.springframework.beans.factory.annotation.Value("${hyped.account-deletion.enabled:false}")
-            boolean deletionEnabled) {
+            AuthenticationProfileReader profiles,
+            Clock clock,
+            @org.springframework.beans.factory.annotation.Value(
+                            "${hyped.account-deletion.enabled:false}")
+                    boolean deletionEnabled) {
         this.store = store;
         this.verifier = verifier;
         this.lookup = lookup;
@@ -75,7 +86,10 @@ public class AccountService {
         } catch (com.hyped.app.identity.application.exception.IdentityTokenVerificationException failure) {
             if (failure.reason() == com.hyped.app.identity.application.exception.IdentityTokenVerificationException
                     .Reason.VERIFIER_UNAVAILABLE) {
-                throw new AccountException(503, "DEPENDENCY_UNAVAILABLE", "Authentication is temporarily unavailable.");
+                throw new AccountException(
+                        503,
+                        "DEPENDENCY_UNAVAILABLE",
+                        "Authentication is temporarily unavailable.");
             }
             throw recent();
         }
@@ -88,7 +102,8 @@ public class AccountService {
         if (owner.isEmpty() || !owner.get().userId().value().equals(actor)) { throw recent(); }
         var admin = firebase.getIfAvailable();
         if (admin == null) {
-            throw new AccountException(503, "DEPENDENCY_UNAVAILABLE", "Account deletion unavailable.");
+            throw new AccountException(
+                    503, "DEPENDENCY_UNAVAILABLE", "Account deletion unavailable.");
         }
         String uid = admin.verifiedUid(token);
         String reference = store.keyReference(actor);
@@ -102,7 +117,43 @@ public class AccountService {
         try { process(actor); } catch (RuntimeException failure) { /* Committed request remains irreversible. */ }
         return new Accepted("DELETION_PENDING", true, now.plusSeconds(86400));
     }
-    public void tick() { store.due(clock.instant()).forEach(this::process); }
+    private org.springframework.beans.factory.ObjectProvider<com.hyped.app.media.application.MediaService> media;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public void media(
+            org.springframework.beans.factory.ObjectProvider<
+                            com.hyped.app.media.application.MediaService>
+                    provider) {
+        this.media = provider;
+    }
+
+    public void tick() {
+        try {
+            store.due(clock.instant()).forEach(this::process);
+        } finally {
+            reportCleanupBacklog();
+        }
+    }
+
+    private void reportCleanupBacklog() {
+        try {
+            var backlog = store.backlog();
+            long age = backlog.oldestCreatedAt() == null ? 0
+                    : Math.max(0, java.time.Duration.between(backlog.oldestCreatedAt(), clock.instant()).getSeconds());
+            // Aggregate-only heartbeat: never emit job identities, ciphertext, tokens or exception messages.
+            String message = "Account deletion cleanup code=ACCOUNT_DELETION_HEALTH "
+                    + "status={} pending={} oldest_age_seconds={}";
+            if (age >= 86400) {
+                LOGGER.error(message, "OVERDUE", backlog.pending(), age);
+            } else if (age >= 43200) {
+                LOGGER.warn(message, "BACKLOG", backlog.pending(), age);
+            } else {
+                LOGGER.info(message, "OK", backlog.pending(), age);
+            }
+        } catch (RuntimeException unavailable) {
+            LOGGER.error("Account deletion cleanup code=ACCOUNT_DELETION_HEALTH status=UNAVAILABLE");
+        }
+    }
     public void process(UUID actor) {
         var job = store.claim(actor, clock.instant());
         if (job == null) { return; }
@@ -112,10 +163,13 @@ public class AccountService {
                 uid = cipher.decrypt(new UserId(actor), job.keyReference(),
                         PersonalDataField.ACCOUNT_DELETION_FIREBASE_UID, job.firebaseUid());
                 var admin = firebase.getIfAvailable();
-                if (admin == null) { throw new IllegalStateException("Account cleanup unavailable"); }
+                if (admin == null) {
+                    throw new IllegalStateException("Account cleanup unavailable");
+                }
                 admin.delete(new String(uid, StandardCharsets.UTF_8));
                 if (!store.firebaseDeleted(job)) { return; } // Durable checkpoint before key destruction.
             }
+            if (media != null) { media.ifAvailable(service -> service.purgeUser(actor)); }
             keys.destroyKey(new UserId(actor), job.keyReference());
             store.finish(job, clock.instant());
         } catch (RuntimeException failure) {
@@ -130,6 +184,7 @@ public class AccountService {
         }
     }
     private static AccountException recent() {
-        return new AccountException(401, "RECENT_AUTHENTICATION_REQUIRED", "Sign in again to confirm deletion.");
+        return new AccountException(
+                401, "RECENT_AUTHENTICATION_REQUIRED", "Sign in again to confirm deletion.");
     }
 }

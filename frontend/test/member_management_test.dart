@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:hyped/features/android_widgets/data/room_widget_repository.dart';
 import 'package:hyped/features/rooms/data/room_api.dart';
@@ -314,6 +315,60 @@ void main() {
         contains(entry.value),
       );
     });
+  }
+  for (final failed in [false, true]) {
+    for (final destination in ['Back', 'Home']) {
+      testWidgets(
+        'direct members ${failed ? 'error' : 'loaded'} screen can go $destination',
+        (tester) async {
+          final controller = MemberController(MockMemberApi(), 'r');
+          if (failed) {
+            controller.error = 'Room unavailable.';
+          } else {
+            controller.snapshot = view();
+          }
+          final router = GoRouter(
+            initialLocation: '/rooms/r/members',
+            routes: [
+              GoRoute(
+                path: '/home',
+                builder: (_, _) =>
+                    const Scaffold(body: Text('Home destination')),
+              ),
+              GoRoute(
+                path: '/rooms/r',
+                builder: (_, _) =>
+                    const Scaffold(body: Text('Room destination')),
+              ),
+              GoRoute(
+                path: '/rooms/r/members',
+                builder: (_, _) => const MemberScreen(roomId: 'r'),
+              ),
+            ],
+          );
+          addTearDown(router.dispose);
+          await tester.pumpWidget(
+            ProviderScope(
+              overrides: [
+                memberControllerProvider.overrideWith((ref, id) => controller),
+              ],
+              child: MaterialApp.router(routerConfig: router),
+            ),
+          );
+          await tester.pumpAndSettle();
+          expect(router.canPop(), isFalse);
+          await tester.tap(find.byTooltip(destination));
+          await tester.pumpAndSettle();
+          expect(
+            find.text(
+              destination == 'Home' ? 'Home destination' : 'Room destination',
+            ),
+            findsOneWidget,
+          );
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
   }
   testWidgets('read-only member list shows safe names and no management menu', (
     tester,

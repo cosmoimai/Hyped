@@ -1,3 +1,4 @@
+import 'package:hyped/features/safety/presentation/blocked_accounts_screen.dart';
 import 'package:hyped/core/offline/offline_state.dart';
 import 'package:hyped/features/policy/presentation/policy_controller.dart';
 import 'package:hyped/features/policy/presentation/policy_screen.dart';
@@ -111,6 +112,10 @@ GoRouter createRouter(
         builder: (_, _) => const NotificationSettingsScreen(),
       ),
       GoRoute(path: '/settings', builder: (_, _) => const SettingsScreen()),
+      GoRoute(
+        path: '/settings/blocked',
+        builder: (_, _) => const BlockedAccountsScreen(),
+      ),
       GoRoute(
         path: '/settings/rooms',
         builder: (_, _) => const RoomNotificationChoicesScreen(),

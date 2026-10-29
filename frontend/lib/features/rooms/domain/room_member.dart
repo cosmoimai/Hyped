@@ -6,16 +6,19 @@ class RoomMember {
     required this.displayName,
     required this.role,
     this.isCurrentUser = false,
+    this.hiddenProfile = false,
   });
   final String userId;
   final String displayName;
   final RoomRole role;
   final bool isCurrentUser;
+  final bool hiddenProfile;
   factory RoomMember.fromJson(Map<String, dynamic> json) => RoomMember(
     userId: json['userId'] as String,
     displayName: json['displayName'] as String,
     role: RoomRoleX.fromWire(json['role'] as String),
     isCurrentUser: json['isCurrentUser'] == true,
+    hiddenProfile: json['hiddenProfile'] == true,
   );
 }
 
@@ -30,7 +33,8 @@ class MemberSnapshot {
 enum MemberAction { promote, demote, remove, transfer }
 
 List<MemberAction> memberActions(MemberSnapshot snapshot, RoomMember member) {
-  if (!snapshot.active ||
+  if (member.hiddenProfile ||
+      !snapshot.active ||
       member.isCurrentUser ||
       member.role == RoomRole.owner) {
     return const [];

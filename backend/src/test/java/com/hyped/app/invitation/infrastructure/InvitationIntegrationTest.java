@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -82,6 +83,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -159,7 +161,11 @@ class InvitationIntegrationTest {
         jdbc.update("DELETE FROM app.room");
         jdbc.update("DELETE FROM app.app_user");
         when(personalData.decrypt(any(), any(), any(), any()))
-                .thenAnswer(invocation -> "Aarav".getBytes(StandardCharsets.UTF_8));
+                .thenAnswer(invocation -> {
+                    assertThat(TransactionSynchronizationManager.isActualTransactionActive())
+                            .as("External personal-data decryption must run outside database transactions").isFalse();
+                    return "Aarav".getBytes(StandardCharsets.UTF_8);
+                });
     }
 
     @Test
@@ -362,6 +368,34 @@ class InvitationIntegrationTest {
                 String.class, room.value(), member.value())).isEqualTo(roomCode ? "room_code" : "invite_link");
     }
 
+    @Autowired private com.hyped.app.moderation.application.SafetyService safety;
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void blockedOwnerPairCannotRejoinWithEitherCredentialOrReplay(boolean roomCode)
+            throws Exception {
+        UserId owner = user();
+        UserId member = user();
+        RoomId room = room(owner);
+        Share share = invitations.get(owner, room);
+        String reference =
+                json(publicPreview(roomCode ? share.roomCode() : token(share), roomCode)
+                                .andExpect(status().isOk()))
+                        .get("previewReference")
+                        .asText();
+        httpJoin(member, reference, roomCode, "before-block").andExpect(status().isCreated());
+        safety.block(owner, member.value(), room.value(), UUID.randomUUID().toString());
+        httpJoin(member, reference, roomCode, "before-block")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_UNAVAILABLE"));
+        httpJoin(member, reference, roomCode, "after-block")
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("ROOM_UNAVAILABLE"));
+        assertCounts(room, 1);
+        safety.unblock(owner, member.value());
+        httpJoin(member, reference, roomCode, "after-unblock").andExpect(status().isCreated());
+    }
+
     @Test
     void capacityAllowsTwentyFifthRejectsTwentySixthAndAlreadyMemberSucceedsWhenFull() {
         UserId owner = user();
@@ -562,12 +596,12 @@ class InvitationIntegrationTest {
         CountDownLatch locked = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var preview = executor.submit(() -> tx().execute(status -> {
-                rooms.findForUpdate(room).orElseThrow();
+            doAnswer(invocation -> {
                 locked.countDown();
                 await(release);
-                return resolver.preview(share.roomCode(), true);
-            }));
+                return invocation.callRealMethod();
+            }).when(crypto).encrypt(org.mockito.ArgumentMatchers.eq("preview"), any());
+            var preview = executor.submit(() -> resolver.preview(share.roomCode(), true));
             await(locked);
             var rotate = executor.submit(() -> invitations.rotate(owner, room, "rotate"));
             release.countDown();

@@ -6,6 +6,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var photoBridge: AndroidRoomPhotoBridge? = null
+    private var shareBridge: AndroidInvitationShareBridge? = null
     private var integrityBridge: AndroidIntegrityBridge? = null
     private var inviteBridge: AndroidInviteLinkBridge? = null
     private var pushBridge: AndroidPushBridge? = null
@@ -26,6 +28,8 @@ class MainActivity : FlutterActivity() {
         inviteBridge = AndroidInviteLinkBridge(flutterEngine.dartExecutor.binaryMessenger)
         inviteBridge?.opened(intent)
         super.configureFlutterEngine(flutterEngine)
+        photoBridge = AndroidRoomPhotoBridge(this, flutterEngine.dartExecutor.binaryMessenger)
+        shareBridge = AndroidInvitationShareBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         integrityBridge = AndroidIntegrityBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         pushBridge = AndroidPushBridge(this, flutterEngine.dartExecutor.binaryMessenger)
         widgetChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "hyped/android_widgets")
@@ -71,11 +75,19 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (photoBridge?.result(requestCode, resultCode, data) != true) super.onActivityResult(requestCode, resultCode, data)
+    }
+
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         if (pushBridge?.permissionResult(requestCode) != true) super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        photoBridge?.close()
+        photoBridge = null
+        shareBridge?.close()
+        shareBridge = null
         integrityBridge?.close()
         integrityBridge = null
         inviteBridge?.close()

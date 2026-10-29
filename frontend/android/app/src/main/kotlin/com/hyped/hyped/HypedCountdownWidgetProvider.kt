@@ -70,8 +70,8 @@ open class HypedCountdownWidgetProvider : AppWidgetProvider() {
         private fun background(preset: String?) = when (preset) {
             "mint-sky-01" -> R.drawable.widget_mint_background
             "blue-lilac-02" -> R.drawable.widget_lilac_background
-            "sunset-peach-01" -> R.drawable.widget_peach_background
-            "forest-glow-01" -> R.drawable.widget_forest_background
+            "peach-gold-01", "sunset-coral-01" -> R.drawable.widget_peach_background
+            "aurora-green-01" -> R.drawable.widget_forest_background
             else -> R.drawable.widget_soft_blue_background
         }
 

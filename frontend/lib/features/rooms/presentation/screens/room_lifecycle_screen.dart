@@ -1,3 +1,6 @@
+import 'package:hyped/features/safety/presentation/safety_sheets.dart';
+import 'package:hyped/features/invitations/presentation/screens/share_invite_sheet.dart';
+import 'package:hyped/features/rooms/presentation/widgets/room_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -24,21 +27,134 @@ final roomLifecycleControllerProvider = ChangeNotifierProvider.autoDispose
     });
 
 class RoomLifecycleScreen extends ConsumerWidget {
-  const RoomLifecycleScreen({required this.roomId, super.key});
+  const RoomLifecycleScreen({
+    required this.roomId,
+    this.asSheet = false,
+    super.key,
+  });
   final String roomId;
+  final bool asSheet;
+  void _open(BuildContext context, String location) {
+    if (asSheet) Navigator.pop(context);
+    context.go(location);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.watch(roomLifecycleControllerProvider(roomId));
     final room = controller.room;
     return Scaffold(
-      appBar: AppBar(title: const Text('Room actions')),
+      appBar: asSheet
+          ? AppBar(
+              title: const Text('Room actions'),
+              leading: CloseButton(onPressed: () => Navigator.pop(context)),
+            )
+          : RoomAppBar(title: 'Room actions', backLocation: '/rooms/$roomId'),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [
           if (controller.loading || controller.saving)
             const LinearProgressIndicator(),
           if (room != null) ...[
-            Text(room.title, style: Theme.of(context).textTheme.headlineSmall),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      room.title,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${room.memberCount} members · ${compactDate(room.eventAt)}',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('YOUR ROOM', style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 8),
+            Card(
+              child: Column(
+                children: [
+                  if (room.status == RoomStatus.active)
+                    ListTile(
+                      leading: const Icon(Icons.ios_share),
+                      title: const Text('Share invite'),
+                      subtitle: const Text('Invite people with your room code'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: controller.saving
+                          ? null
+                          : () => showShareInvite(context, roomId),
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.people_outline),
+                    title: const Text('View members'),
+                    subtitle: const Text('People and room permissions'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: controller.saving
+                        ? null
+                        : () => _open(context, '/rooms/$roomId/members'),
+                  ),
+                  if (room.status == RoomStatus.active)
+                    ListTile(
+                      leading: const Icon(Icons.notifications_outlined),
+                      title: const Text('Personal reminders'),
+                      subtitle: const Text('Your three fixed event reminders'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: controller.saving
+                          ? null
+                          : () => _open(context, '/rooms/$roomId/reminders'),
+                    ),
+                  ListTile(
+                    leading: const Icon(Icons.widgets_outlined),
+                    title: const Text('Home-screen widgets'),
+                    subtitle: const Text('Choose a room for each widget'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: controller.saving
+                        ? null
+                        : () => _open(context, '/widgets/room'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.flag_outlined),
+                    title: const Text('Report room'),
+                    onTap: controller.saving || room.isCached
+                        ? null
+                        : () => showReport(
+                            context,
+                            roomId: roomId,
+                            subject: 'ROOM',
+                          ),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.image_outlined),
+                    title: const Text('Report photo or style'),
+                    onTap: controller.saving || room.isCached
+                        ? null
+                        : () => showReport(
+                            context,
+                            roomId: roomId,
+                            subject: 'THEME',
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'ROOM LIFECYCLE',
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
             const SizedBox(height: 12),
             Text(lifecycleLabel(room, controller.now)),
             if (room.deleteAfter case final deadline?)
@@ -58,7 +174,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
               TextButton(
                 onPressed: controller.saving
                     ? null
-                    : () => context.go('/rooms/$roomId/members'),
+                    : () => _open(context, '/rooms/$roomId/members'),
                 child: const Text('Open Members'),
               ),
             ],
@@ -115,7 +231,7 @@ class RoomLifecycleScreen extends ConsumerWidget {
             ),
           if (controller.removed)
             FilledButton(
-              onPressed: () => context.go('/home'),
+              onPressed: () => _open(context, '/home'),
               child: const Text('Back to rooms'),
             ),
         ],

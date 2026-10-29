@@ -127,6 +127,81 @@ class AccountDeletionIntegrationTest {
                 beans.getBeanProvider(FirebaseAccountAdmin.class), profiles, clock, true);
     }
     @Test
+    void backlogUsesOriginalAcceptanceTimeRatherThanRetryAvailability() {
+        assertThat(store.backlog().pending()).isZero();
+        assertThat(store.backlog().oldestCreatedAt()).isNull();
+        Instant accepted = NOW.minusSeconds(43200);
+        jdbc.update("""
+                INSERT INTO ops.account_deletion_job(user_id,firebase_uid_ciphertext,available_at,created_at)
+                VALUES (?,?,?,?)
+                """, user, new byte[] {1}, Timestamp.from(NOW.plusSeconds(60)), Timestamp.from(accepted));
+        assertThat(store.backlog().pending()).isEqualTo(1);
+        assertThat(store.backlog().oldestCreatedAt()).isEqualTo(accepted);
+        jdbc.update("UPDATE ops.account_deletion_job SET available_at=? WHERE user_id=?",
+                Timestamp.from(NOW.plusSeconds(300)), user);
+        assertThat(store.backlog().oldestCreatedAt()).isEqualTo(accepted);
+    }
+
+    @Test
+    void finishingDeletionPseudonymizesReportsAndPurgesDirectionalBlocksAndAccessWork() {
+        UUID report = UUID.randomUUID();
+        UUID other = UUID.randomUUID();
+        jdbc.update(
+                "INSERT INTO app.app_user(id,status,created_at,updated_at) VALUES (?,'active',?,?)",
+                other,
+                Timestamp.from(NOW),
+                Timestamp.from(NOW));
+        jdbc.update(
+                """
+                INSERT INTO app.report(id,reporter_user_id,subject_user_id,subject_fingerprint,subject_type,
+                reason_code,details_ciphertext,retain_until,created_at,updated_at)
+                VALUES (?,?,?,?,'ACCOUNT','OTHER',?, ?,?,?)
+                """,
+                report,
+                user,
+                user,
+                new byte[32],
+                new byte[] {1, 2, 3},
+                Timestamp.from(NOW.plusSeconds(86400)),
+                Timestamp.from(NOW),
+                Timestamp.from(NOW));
+        jdbc.update(
+                "INSERT INTO app.user_block VALUES (?,?,?,?)",
+                UUID.randomUUID(),
+                other,
+                user,
+                Timestamp.from(NOW));
+        store.begin(user, "key", new byte[] {1, 2, 3}, NOW);
+        var job = store.claim(user, NOW);
+        store.finish(job, NOW);
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT reporter_user_id FROM app.report WHERE id=?",
+                                UUID.class,
+                                report))
+                .isNull();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT subject_user_id FROM app.report WHERE id=?",
+                                UUID.class,
+                                report))
+                .isNull();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT details_ciphertext FROM app.report WHERE id=?",
+                                byte[].class,
+                                report))
+                .isNull();
+        assertThat(
+                        jdbc.queryForObject(
+                                "SELECT count(*) FROM app.user_block WHERE blocked_user_id=?",
+                                Integer.class,
+                                user))
+                .isZero();
+        jdbc.update("DELETE FROM app.report WHERE id=?", report);
+    }
+
+    @Test
     void safeProfileOmitsPrivatePhotoAndSecurityFieldsAndRequiresAnActiveSession() {
         service.requireSession(user, session, installation);
         var profile = service.profile(user);
@@ -171,6 +246,21 @@ class AccountDeletionIntegrationTest {
         service.tick();
         assertThat(status()).isEqualTo("deleted");
         service.tick();
+    }
+    @Test
+    void mediaCleanupFailureKeepsDeletionPendingBeforeKeyDestruction() {
+        var photos = mock(com.hyped.app.media.application.MediaService.class);
+        var beans = new StaticListableBeanFactory();
+        beans.addBean("photos", photos);
+        service.media(beans.getBeanProvider(com.hyped.app.media.application.MediaService.class));
+        doThrow(new IllegalStateException("private storage failure")).when(photos).purgeUser(user);
+        service.request(user, "proof");
+        assertThat(status()).isEqualTo("deletion_pending");
+        verify(keys, never()).destroyKey(any(), anyString());
+        doNothing().when(photos).purgeUser(user);
+        clock.now = NOW.plusSeconds(61);
+        service.tick();
+        assertThat(status()).isEqualTo("deleted");
     }
     @Test
     void keyFailureResumesAfterFirebaseCheckpointWithoutNeedingTheOldToken() {

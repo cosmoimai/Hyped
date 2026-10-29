@@ -11,6 +11,8 @@ public interface AccountStore {
         @Override
         public String toString() { return "AccountDeletionJob[REDACTED]"; }
     }
+    record Backlog(long pending, Instant oldestCreatedAt) { }
+    Backlog backlog();
     Readiness readiness(UUID userId);
     boolean activeSession(UUID userId, UUID sessionId, UUID installationId, Instant now);
     int activeDevices(UUID userId, Instant now);

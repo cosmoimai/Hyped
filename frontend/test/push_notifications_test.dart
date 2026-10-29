@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:hyped/core/api/authentication_interceptor.dart';
 import 'package:hyped/core/auth/auth_tokens.dart';
@@ -366,6 +367,37 @@ void main() {
     await request;
     expect(store.value?.sessionId, _otherSession);
     expect(store.clearCount, 0);
+  });
+
+  testWidgets('notifications opened directly can return Home', (tester) async {
+    providerOwnsController = true;
+    final router = GoRouter(
+      initialLocation: '/notifications',
+      routes: [
+        GoRoute(
+          path: '/notifications',
+          builder: (_, _) => const NotificationSettingsScreen(),
+        ),
+        GoRoute(
+          path: '/home',
+          builder: (_, _) => const Scaffold(body: Text('Home destination')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [pushControllerProvider.overrideWith((ref) => controller)],
+        child: MaterialApp.router(routerConfig: router),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(router.canPop(), isFalse);
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Home destination'), findsOneWidget);
+    expect(platform.permissionRequests, 0);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(

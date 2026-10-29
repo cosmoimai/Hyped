@@ -122,7 +122,7 @@ class RoomControllerTest {
                                  "theme":{"kind":"PRESET","presetKey":"soft-blue-01",
                                  "overlayKey":"dark-soft","mediaAssetId":"019b1f2b-d5e2-7d46-9165-a37ed59d6080"}}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isUnprocessableEntity());
     }
 
     @Test
@@ -181,6 +181,18 @@ class RoomControllerTest {
     }
 
     @Test
+    void roomEditRejectsWrongContentTypeWithSanitized415() throws Exception {
+        mvc.perform(patch("/api/v1/rooms/{id}", ROOM.value())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + TOKEN)
+                        .header(HttpHeaders.IF_MATCH, "\"room-1\"")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"eventLocalTime\":\"10:10\"}"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_MEDIA_TYPE"))
+                .andExpect(jsonPath("$.detail").value("Use the content type required by this endpoint."));
+    }
+
+    @Test
     void missingInvalidAndExpiredJwtAreDenied() throws Exception {
         mvc.perform(get("/api/v1/rooms")).andExpect(status().isUnauthorized());
         when(decoder.decode("bad")).thenThrow(new BadJwtException("invalid"));
@@ -210,7 +222,8 @@ class RoomControllerTest {
                 .andExpect(header().string(HttpHeaders.ETAG, "\"room-4\""))
                 .andExpect(jsonPath("$.items[0].displayName").value("Mira"))
                 .andExpect(jsonPath("$.items[0].isCurrentUser").value(true))
-                .andExpect(jsonPath("$.items[0].*").value(org.hamcrest.Matchers.hasSize(6)))
+                .andExpect(jsonPath("$.items[0].hiddenProfile").value(false))
+                .andExpect(jsonPath("$.items[0].*").value(org.hamcrest.Matchers.hasSize(7)))
                 .andExpect(jsonPath("$.items[0].email").doesNotExist())
                 .andExpect(jsonPath("$.items[0].providerPhotoUrl").doesNotExist())
                 .andExpect(jsonPath("$.items[0].piiKeyReference").doesNotExist());

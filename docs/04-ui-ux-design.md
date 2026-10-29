@@ -30,7 +30,7 @@ Hyped! should feel **minimal and elegant**. The product shell stays calm and con
 |---|---|
 | Visual direction | Minimal and elegant |
 | Brand colour | Aesthetic soft blue |
-| Typography | Manrope with native fallback where needed |
+| Typography | Bundled Manrope body text and Outfit headings/countdown numerals; see [Stitch implementation](stitch-ui-implementation.md) |
 | Appearance | System default initially; manual Light, Dark, or System setting |
 | Navigation | Home, central Create action, Profile/Settings |
 | Join entry | Top-right action on Home |
@@ -452,10 +452,10 @@ Soft blue is not used with white normal-sized text because the contrast is insuf
 
 | Style | Font | Weight | Suggested size |
 |---|---|---:|---:|
-| Countdown hero | Manrope | 600 | 56–72 sp, responsive |
-| Display heading | Manrope | 600 | 32 sp |
-| Screen title | Manrope | 600 | 24 sp |
-| Section heading | Manrope | 600 | 18 sp |
+| Countdown hero | Outfit | 600 | 56–72 sp, responsive |
+| Display heading | Outfit | 600 | 32 sp |
+| Screen title | Outfit | 600 | 24 sp |
+| Section heading | Outfit | 600 | 18 sp |
 | Body | Manrope | 400 | 16 sp |
 | Supporting | Manrope | 400/500 | 14 sp |
 | Caption | Manrope | 500 | 12 sp minimum |
