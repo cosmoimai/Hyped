@@ -40,12 +40,20 @@ fun productionHost(host: String?): Boolean {
     return listOf("localhost", "local", "internal", "invalid", "test", "example",
         "example.com", "example.org", "example.net").none { host == it || host.endsWith(".$it") }
 }
+val internalTesting = providers.environmentVariable("HYPED_INTERNAL_TESTING").getOrElse("false") == "true"
 fun validateRelease() {
     val api = runCatching { URI(apiUrl ?: "") }.getOrNull()
     require(api != null && api.scheme == "https" && productionHost(api.host) &&
         api.rawAuthority == api.host && api.rawQuery == null && api.rawFragment == null &&
         api.path == "/api/v1") { "Release requires an HTTPS production HYPED_API_BASE_URL ending /api/v1" }
-    require(productionHost(inviteHost)) { "Release requires an owned production INVITE_HOST" }
+    if (internalTesting) {
+        require(apiUrl == "https://hyped-staging-api-jmi2i42hbq-as.a.run.app/api/v1" &&
+            inviteHost.isEmpty() && System.getenv("HYPED_FIREBASE_PROJECT_ID") == "hyped-41a30") {
+            "Internal testing requires the approved staging API/Firebase and disabled App Links"
+        }
+    } else {
+        require(productionHost(inviteHost)) { "Release requires an owned production INVITE_HOST" }
+    }
     require(System.getenv("HYPED_KEYSTORE_PATH")?.let { file(it).isFile } == true &&
         listOf("HYPED_KEYSTORE_PASSWORD", "HYPED_KEY_ALIAS", "HYPED_KEY_PASSWORD")
             .all { !System.getenv(it).isNullOrBlank() }) { "Release requires controlled release signing configuration" }

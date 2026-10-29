@@ -13,7 +13,7 @@ import tempfile
 android = Path(__file__).resolve().parents[1] / 'frontend/android'
 base = os.environ.copy()
 for key in ['INVITE_HOST', 'HYPED_KEYSTORE_PATH', 'HYPED_KEYSTORE_PASSWORD',
-            'HYPED_KEY_ALIAS', 'HYPED_KEY_PASSWORD', 'HYPED_DISABLE_FIREBASE', 'HYPED_FIREBASE_PROJECT_ID']:
+            'HYPED_KEY_ALIAS', 'HYPED_KEY_PASSWORD', 'HYPED_INTERNAL_TESTING', 'HYPED_DISABLE_FIREBASE', 'HYPED_FIREBASE_PROJECT_ID']:
     base.pop(key, None)
 
 
@@ -69,6 +69,17 @@ with tempfile.TemporaryDirectory(prefix='hyped-signing-check-') as directory:
         env['HYPED_FIREBASE_PROJECT_ID'] = config['project_info']['project_id']
         check('https://api.hyped.app/api/v1', 'links.hyped.app', None, env)
         check('https://api.hyped.app/api/v1', 'links.hyped.app', None, env, task=':app:bundleRelease')
+        internal = env | {'HYPED_INTERNAL_TESTING': 'true', 'HYPED_FIREBASE_PROJECT_ID': 'hyped-41a30'}
+        staging = 'https://hyped-staging-api-jmi2i42hbq-as.a.run.app/api/v1'
+        if config['project_info']['project_id'] == 'hyped-41a30':
+            check(staging, '', None, internal, task=':app:bundleRelease')
+        for url, host, overrides in [
+            ('https://api.hyped.app/api/v1', '', {}),
+            (staging, 'links.hyped.app', {}),
+            (staging, '', {'HYPED_FIREBASE_PROJECT_ID': 'foreign-project'}),
+        ]:
+            check(url, host, 'approved staging API/Firebase and disabled App Links', internal | overrides)
+        print('Internal staging build checks passed; production still requires an owned invite domain')
         print('14 negative + 2 valid Gradle release/AAB configuration checks passed (no release artifact built)')
     else:
         print('12 negative Gradle release/AAB configuration checks passed; valid checks need local Firebase client config')
