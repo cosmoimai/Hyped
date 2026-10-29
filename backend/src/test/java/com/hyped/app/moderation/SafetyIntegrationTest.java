@@ -37,12 +37,26 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+    "hyped.moderation.review-enabled=true",
+    "hyped.moderation.audience=https://review.example.test",
+    "hyped.moderation.reviewers=reviewer@test"
+})
 @Testcontainers
 @Import(SafetyIntegrationTest.CipherConfig.class)
 class SafetyIntegrationTest {
     @Container @ServiceConnection
     static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
+
+    @Autowired org.springframework.context.ApplicationContext context;
+
+    @Test
+    void enabledModerationStartsWithComponentScanningAndBeanOverridingDisabled() {
+        assertThat(context.getBean("moderationSecurityFilterChain"))
+                .isInstanceOf(org.springframework.security.web.SecurityFilterChain.class);
+        assertThat(context.getBean("moderationSecurity"))
+                .isInstanceOf(com.hyped.app.moderation.infrastructure.ModerationSecurity.class);
+    }
 
     @Autowired SafetyService safety;
     @Autowired ModerationService moderation;

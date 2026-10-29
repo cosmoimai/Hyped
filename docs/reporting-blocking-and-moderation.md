@@ -73,3 +73,28 @@ There is no new graphical admin console or automatic approval path for uncertain
 6. Verify offline cached content, reconnect invalidations, multiple widgets, logout/account switch and report/account-deletion pseudonymization. Never use customer data for these checks.
 
 Home sync feedback is now a five-second snackbar after a successful pull-to-refresh. A persistent last-sync timestamp is removed from Home; offline/error banners remain and room detail still exposes last successful synchronization time.
+
+## Staging reviewer setup — 2026-10-29
+
+The staging reviewer uses a dedicated service account with no project role. The
+operator receives `roles/iam.serviceAccountOpenIdTokenCreator` on that account
+only and mints short-lived identity tokens using IAM Credentials `generateIdToken`.
+No downloaded service-account key is required. Tokens stay in memory; never put
+one in a command argument, document, screenshot or saved HTTP trace.
+
+Cloud Run enables the module with `MODERATION_REVIEW_ENABLED=true`, an exact HTTPS
+`MODERATION_AUDIENCE` ending in `/internal/moderation`, and the dedicated account's
+email in `MODERATION_REVIEWERS`. An audience identifies the intended receiver;
+it is not a password. The backend independently verifies Google signatures,
+issuer, expiry, audience and the verified allowlisted reviewer email.
+
+Initial enablement exposed a Spring bean-name collision between the configuration
+class and its filter chain. The chain now has the distinct name
+`moderationSecurityFilterChain`; bean overriding remains disabled. The full
+component-scanned integration context enables moderation to guard against a
+repeat. Existing validator and HTTP security tests cover reviewer access and
+mobile/unauthenticated rejection.
+
+Configuration and read-only access checks do not prove moderation decisions,
+photo cleanup, retention alerts or appeal handling. Keep those manual checks on
+the staging handoff until exercised with disposable fixtures.

@@ -59,7 +59,7 @@ public class ModerationSecurity {
 
     @Bean
     @Order(-1)
-    SecurityFilterChain moderationSecurity(
+    SecurityFilterChain moderationSecurityFilterChain(
             HttpSecurity http, SecurityProblemHandlers problems, ReviewDecoder verifier)
             throws Exception {
         return http.securityMatcher("/internal/moderation/**")
