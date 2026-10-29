@@ -19,6 +19,7 @@ Thumbs.db
 .env.*
 !.env.example
 backend/src/main/resources/application-local.yml
+.ignore_pass
 
 # Local verification output
 build/verification/

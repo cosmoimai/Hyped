@@ -1,0 +1,97 @@
+for multiple widgets i can't select different rooms.[OPEN]
+
+Could not update widget setting in Countdown Widgets 
+
+
+
+AT HERE:
+Verified—the reviewer service account exists.
+Next, grant your operator Google account permission to obtain reviewer identity tokens:
+1. Open IAM & Admin → Service Accounts.
+2. Select:hyped-staging-reviewer@hyped-41a30.iam.gserviceaccount.com
+3. Open Principals with access → Grant access.
+4. Enter your operator Google email.
+5. Choose Service Account OpenID Connect Identity Token Creator:roles/iam.serviceAccountOpenIdTokenCreator
+6. Save this grant on this service account, rather than the whole project.
+7. Under APIs & Services → Library, enable IAM Service Account Credentials API (iamcredentials.googleapis.com).
+This role permits short-lived OIDC identity tokens without granting access-token creation or downloadable keys. Google’s role documentation
+Keep moderation review disabled for now. Reply “reviewer access granted” when both steps are complete.
+
+
+5:04 PM
+
+
+
+
+
+
+
+reviewer access granted
+
+
+
+
+
+
+
+5:08 PM
+
+
+
+
+
+
+Worked for 2m 14s
+
+
+
+Verified: your operator account can generate a short-lived reviewer identity token with the correct audience. The token was not displayed or saved.
+Now configure Cloud Run → hyped-staging-api → Edit & deploy new revision → Variables & Secrets:
+Variable	Value
+MODERATION_REVIEW_ENABLED	true
+MODERATION_AUDIENCE	https://hyped-staging-api-661950448866.asia-southeast1.run.app/internal/moderation
+MODERATION_REVIEWERS	hyped-staging-reviewer@hyped-41a30.iam.gserviceaccount.com
+
+
+Preserve all existing settings and deploy.
+The audience binds tokens to the moderation API. The reviewer allowlist determines which Google service identities it accepts. Ordinary app users remain outside this authorization boundary.
+Reply “moderation deployed” when ready. Then I’ll verify authorized read access and rejection of invalid credentials without changing any reports.
+
+
+5:10 PM
+
+
+
+
+
+
+
+how much more task is left in infra ?
+
+
+
+
+
+
+
+5:11 PM
+
+
+
+
+
+
+Most core staging infrastructure is set up:
+- Cloud Run API, database, Firebase authentication, KMS/Firestore encryption.
+- Push delivery and reminder scheduler.
+- Private R2 storage and Vision configuration.
+- Account-deletion capability and cleanup monitoring.
+- Reviewer identity and token access.
+About five infrastructure areas remain:
+1. Finish moderation setup: deploy the three settings just provided, verify authorized/unauthorized access, and finish moderation/media cleanup alerts.
+2. Set up invite hosting: obtain a domain, configure HTTPS invitation fallback pages and Android assetlinks.json.
+3. Verify backups and recovery: automated backups, retention, restore procedure, and a restore exercise.
+4. Finish production observability/security: API availability/error alerts, alert-delivery checks, production Play Integrity configuration, and dependency/secret-scanning verification.
+5. Prepare production deployment: decide staging/production separation, provision production resources, finalize signing/Firebase configuration, and verify the release AAB.
+Separately, photo flows, actual account deletion, remaining reminder cases, and alert delivery still need testing. Configuration being enabled does not prove those flows work.
+I recommend finishing moderation → backups/recovery → domain/App Links → production readiness. No publication is needed during these steps.

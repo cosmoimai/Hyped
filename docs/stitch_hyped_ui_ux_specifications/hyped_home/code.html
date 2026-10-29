@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Outfit:wght@500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#faf8ff;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary-container": "#f2f2ff", "surface-container-high": "#e1e8ff", "surface-container": "#e9edff", "background": "#faf8ff", "tertiary-container": "#5e6d9f", "on-primary-fixed-variant": "#0d3cab", "on-tertiary-fixed-variant": "#354574", "on-secondary": "#ffffff", "on-secondary-fixed": "#001550", "surface": "#faf8ff", "primary-container": "#4567d6", "outline": "#747685", "surface-tint": "#3256c4", "on-surface-variant": "#444653", "on-tertiary": "#ffffff", "tertiary": "#465485", "on-surface": "#131b2e", "inverse-surface": "#283044", "primary-fixed-dim": "#b6c4ff", "surface-variant": "#dae2fc", "secondary-fixed-dim": "#b6c4ff", "on-primary-fixed": "#001550", "inverse-on-surface": "#edf0ff", "error": "#ba1a1a", "on-secondary-container": "#002376", "primary-fixed": "#dce1ff", "on-tertiary-container": "#f2f2ff", "secondary-fixed": "#dce1ff", "primary": "#284dbc", "on-background": "#131b2e", "surface-container-low": "#f2f3ff", "on-secondary-fixed-variant": "#0d3bad", "tertiary-fixed": "#dbe1ff", "on-error-container": "#93000a", "on-tertiary-fixed": "#051846", "outline-variant": "#c4c5d5", "error-container": "#ffdad6", "secondary": "#3255c6", "secondary-container": "#6c8cff", "on-primary": "#ffffff", "tertiary-fixed-dim": "#b6c5fc", "surface-container-lowest": "#ffffff", "surface-container-highest": "#dae2fc", "inverse-primary": "#b6c4ff", "on-error": "#ffffff", "surface-bright": "#faf8ff", "surface-dim": "#d2d9f3" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.5rem", "space-xl": "2rem", "space-md": "1rem", "space-sm": "0.5rem", "margin": "1.25rem", "space-xs": "0.25rem", "gutter": "1rem" }, "fontFamily": { "label-lg": ["Manrope"], "body-md": ["Manrope"], "label-md": ["Manrope"], "headline-sm": ["Outfit"], "display-hero-mobile": ["Outfit"], "body-sm": ["Manrope"], "headline-md": ["Outfit"], "label-numeral": ["Outfit"], "body-lg": ["Manrope"], "headline-lg": ["Outfit"], "display-hero": ["Outfit"] }, "fontSize": { "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "700" }], "body-md": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "headline-sm": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "display-hero-mobile": ["44px", { "lineHeight": "50px", "letterSpacing": "-0.03em", "fontWeight": "600" }], "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "headline-md": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "label-numeral": ["16px", { "lineHeight": "20px", "letterSpacing": "0.04em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.005em", "fontWeight": "400" }], "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }], "display-hero": ["56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "600" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface font-body-md antialiased min-h-screen flex flex-col selection:bg-secondary-container selection:text-on-secondary-container"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_12px_rgba(69,103,214,0.06)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><img alt="Hyped! Countdown Ring Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VYhYAJSipkjkCm0s0sc8DJJvDSBHFK6Ak6h9utsuSi1BVWVJUfYWDKlxmjttVx6jFzVSe6j8Vh73wqWqCno8DW0BX0aw_hkSd9-HOdpipVZAO3DuehpQYw8PhWpfJhAOcRVJCTIHAXHj81VojdlgYXfuok50Q2hVbDaMhIKTexS8F6ov8RzLpbfviN69wvsGxTjP6thk4hj7tl2_DNv_aTXqsGhgq7o0mKgZB1YNO4ExnkC8XOgkPfJMw"/><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Home</span></div><div class="flex items-center gap-space-sm"><a class="inline-flex items-center justify-center h-9 px-space-md rounded-full bg-surface-container-low text-primary hover:bg-surface-container-high transition-colors font-label-md text-label-md" data-path="join-event" href="#"><span class="material-symbols-outlined text-[18px] mr-1">key</span>Join</a><a class="flex items-center justify-center p-0.5 rounded-full hover:opacity-90 transition-opacity" data-path="profile" href="#"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-2 ring-surface-container-high" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLuLa_6XjCDf9eWyuToFtpEtiqUraIeL380cDvpz10VKwIJ9Np8b3una_jLWJk7kpT49eHAralINjuvojIFnQ4XbS6MtHrVewvbMB8MKKitSzKM9KC-ZKsZt9f_Jg4ecaL_aZlRaNntOsNwGoNsgVVJIKa6vq6b-cKL15oiqhU4Cg2ptObUn1tBYT6soBrB7dQFWfi4Zq8CRrYhQfJrUrW36Kg9TZZRrwDdWrKMcM5gZja5XD-u_wP"/></a></div></div></header><main class="flex-1 flex flex-col w-full bg-surface pt-16 pb-28"><div class="flex flex-col w-full px-margin space-y-space-lg">
+<!-- Subtle ambient greeting banner -->
+<div class="flex items-center justify-between pt-space-xs">
+<div>
+<span class="font-label-md text-label-md text-tertiary uppercase tracking-wider">Up next</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Your Next Milestone</h2>
+</div>
+<div class="flex items-center gap-1.5 bg-surface-container-high text-primary px-3 py-1 rounded-full">
+<span class="w-2 h-2 rounded-full bg-secondary-container animate-ping"></span>
+<span class="font-label-md text-label-md">Live sync</span>
+</div>
+</div>
+<!-- Featured Nearest Event Hero Card -->
+<div class="relative w-full rounded-2xl overflow-hidden bg-surface-container-lowest shadow-[0_4px_16px_rgba(69,103,214,0.06),0_16px_36px_-6px_rgba(69,103,214,0.12)]">
+<!-- Card Media Layer -->
+<div class="relative w-full h-[360px] bg-cover bg-center flex flex-col justify-between p-space-lg text-on-primary" data-alt="A tranquil, sun-drenched golden hour coastline in Palolem South Goa with soft warm pastel sunset light, gentle ocean waves caressing pristine sand, and distant coconut palms silhouettes in serene tones of azure, gold, and dusty indigo." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuC8I3Bg-EPbAMs_ju-sO9mM7b9KuzgSoYYtKQnng5bbOoWimOpPasfPVm5nUlcIwqPBi0u_ag6HmHAFKfHlzV1i1gNQyCIrlzf39TNcqu-qQY9JPTJS7kpCfFsHj5PaaBK0Eg8S9jItZ6gx4yGkAlwhyZlpoU8SpZ5u63uUvobNW6r_BflAaHy-lWtu87Uew0yA0p4_fQlyyOpGEkYt1TC07w9hxFNtArBa1W0aehSvcW7Hl1_H11Ju')">
+<!-- Contrast Scrim -->
+<div class="absolute inset-0 bg-gradient-to-t from-[#131b2e] via-[#131b2e]/60 to-[#131b2e]/25"></div>
+<!-- Top Row Badges -->
+<div class="relative z-10 flex items-center justify-between">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-lowest/20 backdrop-blur-md text-on-primary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-secondary-fixed">location_on</span>
+<span>Palolem Beach, South Goa</span>
+</div>
+<div class="flex items-center -space-x-2">
+<div class="w-7 h-7 rounded-full bg-secondary-container text-on-surface flex items-center justify-center font-label-md text-[11px] shadow-sm">AK</div>
+<div class="w-7 h-7 rounded-full bg-primary-container text-on-primary flex items-center justify-center font-label-md text-[11px] shadow-sm">SM</div>
+<div class="w-7 h-7 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-label-md text-[11px] shadow-sm">+6</div>
+</div>
+</div>
+<!-- Center Countdown Core -->
+<div class="relative z-10 flex flex-col items-center justify-center my-auto text-center space-y-3">
+<!-- Circular Progress Sparkle Motif -->
+<div class="relative flex items-center justify-center w-24 h-24">
+<svg class="w-full h-full -rotate-90 pointer-events-none" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="42" stroke="rgba(255,255,255,0.18)" stroke-width="4"></circle>
+<circle cx="50" cy="50" fill="none" r="42" stroke="#6c8cff" stroke-dasharray="264" stroke-dashoffset="70" stroke-linecap="round" stroke-width="4.5"></circle>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="material-symbols-outlined text-secondary-fixed text-[26px]">flight_takeoff</span>
+</div>
+<!-- Sparkle pin tip -->
+<div class="absolute top-1 right-5 text-secondary-container animate-pulse">
+<span class="material-symbols-outlined text-[14px]">arrow_back_ios_new</span>
+</div>
+</div>
+<div class="space-y-1">
+<span class="font-headline-lg text-headline-lg font-headline-lg text-on-primary tracking-tight">Goa trip</span>
+<div class="flex items-center justify-center gap-1 text-primary-fixed font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[15px]">event</span>
+<span>Oct 12, 2026 · 10:00 AM IST</span>
+</div>
+</div>
+<!-- Adaptive Segmented Unit Chips -->
+<div class="grid grid-cols-4 gap-2 w-full max-w-[270px] pt-1">
+<div class="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-surface-container-lowest/15 backdrop-blur-md">
+<span class="font-headline-sm text-headline-sm text-on-primary font-bold tracking-tight">18</span>
+<span class="font-label-md text-[10px] text-surface-container-high tracking-widest uppercase">Days</span>
+</div>
+<div class="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-surface-container-lowest/15 backdrop-blur-md">
+<span class="font-headline-sm text-headline-sm text-on-primary font-bold tracking-tight">14</span>
+<span class="font-label-md text-[10px] text-surface-container-high tracking-widest uppercase">Hours</span>
+</div>
+<div class="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-surface-container-lowest/15 backdrop-blur-md">
+<span class="font-headline-sm text-headline-sm text-on-primary font-bold tracking-tight">22</span>
+<span class="font-label-md text-[10px] text-surface-container-high tracking-widest uppercase">Mins</span>
+</div>
+<div class="flex flex-col items-center justify-center py-2 px-1 rounded-xl bg-secondary-container/30 backdrop-blur-md">
+<span class="font-headline-sm text-headline-sm text-secondary-fixed font-bold tracking-tight" id="hero-seconds">48</span>
+<span class="font-label-md text-[10px] text-secondary-fixed tracking-widest uppercase">Secs</span>
+</div>
+</div>
+</div>
+<!-- Bottom Metadata Row -->
+<div class="relative z-10 flex items-center justify-between pt-2 border-t border-white/10">
+<div class="flex items-center gap-1.5 text-on-primary/90 font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px] text-secondary-container">group</span>
+<span>8 counting down together</span>
+</div>
+<button class="flex items-center gap-1 text-primary-fixed hover:text-white font-label-md text-label-md transition-colors" type="button">
+<span>Details</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Section: More Countdowns -->
+<div class="flex flex-col space-y-space-md pt-space-xs">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">More countdowns</h3>
+<span class="font-label-md text-label-md text-on-surface-variant">2 active</span>
+</div>
+<!-- Compact Card 1: Design Conference -->
+<div class="flex items-center justify-between p-space-md rounded-2xl bg-surface-container-lowest shadow-[0_8px_24px_-4px_rgba(69,103,214,0.06)] hover:shadow-[0_12px_28px_-4px_rgba(69,103,214,0.1)] transition-all">
+<div class="flex items-center gap-space-md min-w-0">
+<!-- Soft Pastel Indigo Accent Pill Track -->
+<div class="relative w-12 h-12 rounded-xl bg-surface-container-high flex items-center justify-center shrink-0">
+<svg class="w-10 h-10 -rotate-90" viewbox="0 0 40 40">
+<circle cx="20" cy="20" fill="none" r="16" stroke="#dae2fc" stroke-width="3"></circle>
+<circle cx="20" cy="20" fill="none" r="16" stroke="#4567d6" stroke-dasharray="100" stroke-dashoffset="36" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+<span class="material-symbols-outlined absolute text-[18px] text-primary">interests</span>
+</div>
+<div class="min-w-0">
+<h4 class="font-headline-sm text-[16px] leading-tight text-on-surface truncate">Design Conference 2026</h4>
+<div class="flex items-center gap-1.5 mt-0.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+<span>Nov 5, 2026</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end shrink-0 pl-space-sm">
+<span class="font-headline-sm text-headline-sm text-primary font-bold">42</span>
+<span class="font-label-md text-[11px] text-on-surface-variant uppercase tracking-wider">Days left</span>
+</div>
+</div>
+<!-- Compact Card 2: Maya's Birthday Bash -->
+<div class="flex items-center justify-between p-space-md rounded-2xl bg-surface-container-lowest shadow-[0_8px_24px_-4px_rgba(69,103,214,0.06)] hover:shadow-[0_12px_28px_-4px_rgba(69,103,214,0.1)] transition-all">
+<div class="flex items-center gap-space-md min-w-0">
+<!-- Soft Warm Coral-Gold Accent Pill Track -->
+<div class="relative w-12 h-12 rounded-xl bg-surface-container flex items-center justify-center shrink-0">
+<svg class="w-10 h-10 -rotate-90" viewbox="0 0 40 40">
+<circle cx="20" cy="20" fill="none" r="16" stroke="#e1e8ff" stroke-width="3"></circle>
+<circle cx="20" cy="20" fill="none" r="16" stroke="#6c8cff" stroke-dasharray="100" stroke-dashoffset="65" stroke-linecap="round" stroke-width="3"></circle>
+</svg>
+<span class="material-symbols-outlined absolute text-[18px] text-secondary">cake</span>
+</div>
+<div class="min-w-0">
+<h4 class="font-headline-sm text-[16px] leading-tight text-on-surface truncate">Maya's Birthday Bash</h4>
+<div class="flex items-center gap-1.5 mt-0.5 text-on-surface-variant font-body-sm text-body-sm">
+<span class="material-symbols-outlined text-[14px]">calendar_today</span>
+<span>Dec 24, 2026</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col items-end shrink-0 pl-space-sm">
+<span class="font-headline-sm text-headline-sm text-secondary font-bold">3</span>
+<span class="font-label-md text-[11px] text-on-surface-variant uppercase tracking-wider">Months left</span>
+</div>
+</div>
+</div>
+<!-- Collapsible Archived Section -->
+<div class="w-full pt-space-xs pb-space-lg">
+<div class="rounded-2xl bg-surface-container-low overflow-hidden transition-all duration-200">
+<button class="w-full flex items-center justify-between p-space-md text-left focus:outline-none" id="archive-toggle" type="button">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">inventory_2</span>
+<span class="font-label-lg text-label-lg text-on-surface">Archived</span>
+<span class="inline-flex items-center justify-center h-5 px-2 rounded-full bg-surface-container-highest text-on-surface-variant font-label-md text-[11px] font-bold">(2)</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant transition-transform duration-200" id="archive-chevron">expand_more</span>
+</button>
+<div class="hidden px-space-md pb-space-md space-y-2 border-t border-surface-container-highest/60 pt-space-sm" id="archive-content">
+<!-- Archived Card 1 -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-lowest/80 text-on-surface-variant">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="material-symbols-outlined text-[18px] text-outline">check_circle</span>
+<span class="font-body-sm text-body-sm truncate">Tokyo Cherry Blossom Trip</span>
+</div>
+<span class="font-label-md text-[11px] text-outline shrink-0">Passed · Apr 2026</span>
+</div>
+<!-- Archived Card 2 -->
+<div class="flex items-center justify-between p-3 rounded-xl bg-surface-container-lowest/80 text-on-surface-variant">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="material-symbols-outlined text-[18px] text-outline">check_circle</span>
+<span class="font-body-sm text-body-sm truncate">Product 2.0 Launch Day</span>
+</div>
+<span class="font-label-md text-[11px] text-outline shrink-0">Passed · Feb 2026</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  (function () {
+    // Accordion Toggle
+    const archiveBtn = document.getElementById('archive-toggle');
+    const archiveContent = document.getElementById('archive-content');
+    const archiveChevron = document.getElementById('archive-chevron');
+
+    if (archiveBtn && archiveContent && archiveChevron) {
+      archiveBtn.addEventListener('click', function () {
+        const isHidden = archiveContent.classList.contains('hidden');
+        if (isHidden) {
+          archiveContent.classList.remove('hidden');
+          archiveChevron.style.transform = 'rotate(180deg)';
+        } else {
+          archiveContent.classList.add('hidden');
+          archiveChevron.style.transform = 'rotate(0deg)';
+        }
+      });
+    }
+
+    // Gentle Live Second Counter Tick
+    const secondsEl = document.getElementById('hero-seconds');
+    if (secondsEl) {
+      let sec = 48;
+      setInterval(function () {
+        sec = sec <= 0 ? 59 : sec - 1;
+        secondsEl.textContent = sec < 10 ? '0' + sec : sec;
+      }, 1000);
+    }
+  })();
+</script></main><nav class="fixed bottom-0 w-full z-50 pb-safe bg-surface-container-lowest/90 backdrop-blur-xl shadow-[0_-8px_24px_rgba(69,103,214,0.08)]" data-active-classes="text-primary font-bold"><div class="relative flex items-center justify-around h-16 px-margin"><a aria-current="page" class="flex flex-col items-center justify-center w-16 h-12 transition-colors text-primary font-bold" data-path="home" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-label-md text-label-md mt-0.5">Home</span></a><div class="relative -top-5 flex items-center justify-center"><a class="group relative flex items-center justify-center w-14 h-14 rounded-full bg-secondary-container text-on-surface shadow-[0_12px_28px_rgba(69,103,214,0.32)] transition-transform active:scale-95" data-path="create-event" href="#"><svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewbox="0 0 56 56"><circle cx="28" cy="28" fill="none" r="25" stroke="#e1e8ff" stroke-width="2.5"></circle><circle cx="28" cy="28" fill="none" r="25" stroke="#284dbc" stroke-dasharray="157" stroke-dashoffset="45" stroke-linecap="round" stroke-width="2.5"></circle></svg><span class="material-symbols-outlined text-[28px] text-on-surface transition-transform group-hover:rotate-90">add</span></a></div><a class="flex flex-col items-center justify-center w-16 h-12 text-on-surface-variant hover:text-on-surface transition-colors" data-path="profile" href="#"><span class="material-symbols-outlined text-[24px]">person</span><span class="font-label-md text-label-md mt-0.5">Profile</span></a></div></nav></body></html>

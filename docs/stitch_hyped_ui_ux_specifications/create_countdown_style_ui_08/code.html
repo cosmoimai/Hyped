@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;family=Outfit:wght@600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-tertiary-fixed": "#051846", "on-error": "#ffffff", "on-error-container": "#93000a", "surface-container-low": "#f2f3ff", "outline": "#747685", "on-surface": "#131b2e", "background": "#faf8ff", "on-surface-variant": "#444653", "surface-container": "#e9edff", "error-container": "#ffdad6", "on-tertiary": "#ffffff", "on-primary-container": "#f2f2ff", "secondary-container": "#6c8cff", "surface-tint": "#3256c4", "tertiary-fixed-dim": "#b6c5fc", "secondary-fixed-dim": "#b6c4ff", "inverse-primary": "#b6c4ff", "on-primary-fixed-variant": "#0d3cab", "surface-variant": "#dae2fc", "on-tertiary-container": "#f2f2ff", "tertiary-container": "#5e6d9f", "inverse-on-surface": "#edf0ff", "surface": "#faf8ff", "on-background": "#131b2e", "surface-container-highest": "#dae2fc", "tertiary-fixed": "#dbe1ff", "surface-bright": "#faf8ff", "tertiary": "#465485", "on-primary": "#ffffff", "primary-container": "#4567d6", "on-primary-fixed": "#001550", "primary-fixed": "#dce1ff", "inverse-surface": "#283044", "on-secondary": "#ffffff", "surface-container-lowest": "#ffffff", "on-tertiary-fixed-variant": "#354574", "primary": "#284dbc", "error": "#ba1a1a", "primary-fixed-dim": "#b6c4ff", "outline-variant": "#c4c5d5", "secondary": "#3255c6", "on-secondary-fixed-variant": "#0d3bad", "surface-dim": "#d2d9f3", "on-secondary-container": "#002376", "surface-container-high": "#e1e8ff", "secondary-fixed": "#dce1ff", "on-secondary-fixed": "#001550" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1.25rem", "space-xl": "2rem", "space-sm": "0.5rem", "space-lg": "1.5rem", "space-md": "1rem", "space-xs": "0.25rem", "gutter": "1rem" }, fontFamily: { "body-sm": ["Manrope"], "body-md": ["Manrope"], "display-hero": ["Outfit"], "display-hero-mobile": ["Outfit"], "label-lg": ["Manrope"], "headline-sm": ["Outfit"], "headline-md": ["Outfit"], "label-md": ["Manrope"], "body-lg": ["Manrope"], "label-numeral": ["Outfit"], "headline-lg": ["Outfit"] }, fontSize: { "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "500" }], "body-md": ["15px", { "lineHeight": "22px", "fontWeight": "400" }], "display-hero": ["56px", { "lineHeight": "64px", "letterSpacing": "-0.03em", "fontWeight": "600" }], "display-hero-mobile": ["44px", { "lineHeight": "50px", "letterSpacing": "-0.03em", "fontWeight": "600" }], "label-lg": ["14px", { "lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "700" }], "headline-sm": ["20px", { "lineHeight": "26px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-md": ["24px", { "lineHeight": "30px", "letterSpacing": "-0.015em", "fontWeight": "600" }], "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600" }], "body-lg": ["18px", { "lineHeight": "26px", "letterSpacing": "-0.005em", "fontWeight": "400" }], "label-numeral": ["16px", { "lineHeight": "20px", "letterSpacing": "0.04em", "fontWeight": "600" }], "headline-lg": ["32px", { "lineHeight": "38px", "letterSpacing": "-0.02em", "fontWeight": "600" }] } } } }</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-background font-body-md text-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(0,0,0,0.04)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Go back" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container-high transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined">arrow_back</span></button><img alt="Brand logo. - Primary color: #4567d6
+- Font: outfit
+- Mode: light
+- Roundness: rounded-md
+" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1VYhYAJSipkjkCm0s0sc8DJJvDSBHFK6Ak6h9utsuSi1BVWVJUfYWDKlxmjttVx6jFzVSe6j8Vh73wqWqCno8DW0BX0aw_hkSd9-HOdpipVZAO3DuehpQYw8PhWpfJhAOcRVJCTIHAXHj81VojdlgYXfuok50Q2hVbDaMhIKTexS8F6ov8RzLpbfviN69wvsGxTjP6thk4hj7tl2_DNv_aTXqsGhgq7o0mKgZB1YNO4ExnkC8XOgkPfJMw"/><h1 class="font-headline-sm text-headline-sm text-on-surface tracking-tight truncate pl-space-xs">Style Selection</h1></div><div class="flex items-center gap-space-sm"><img alt="Profile" class="w-8 h-8 rounded-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1UvhqvOTh4F2nTeKJ5JBQb3Oz1tByQn1XMV3yZRvAYwI70fg9k8LqCiyJLYGFm8WsZb-jqlpTc7JF-E0lDE1_oAS1WAVC-Ul_mQwFn2YgW1q2yU5HDQz70sdSJQGQY-RL8Ptve7fn6Mm6vZigGoWtZYql9ImxfvpO3gXvAlY99eZSdpY_6foPArgaEqS3J2VezSlRZPT6fViEz8THW-bT7b-WM6zCEbgopquAD-eU_zNGQYteiF48hEt_0"/><button aria-label="Close" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined">close</span></button></div></div></header><main class="flex flex-col relative w-full pt-16 pb-safe bg-surface min-h-screen"><div class="flex flex-col w-full pb-32">
+<!-- Progress Stepper (Step 2 of 3) -->
+<div class="px-margin pt-space-sm pb-space-md">
+<div class="flex items-center justify-between">
+<!-- Step 1: Done -->
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-label-md text-primary font-bold">Details</span>
+</div>
+<div class="h-0.5 flex-1 mx-space-sm bg-primary-container rounded-full"></div>
+<!-- Step 2: Active -->
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-secondary-container text-on-secondary flex items-center justify-center shadow-sm ring-4 ring-secondary-container/20">
+<span class="font-label-numeral text-xs font-bold">2</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface font-bold">Style</span>
+</div>
+<div class="h-0.5 flex-1 mx-space-sm bg-surface-container-highest rounded-full"></div>
+<!-- Step 3: Upcoming -->
+<div class="flex items-center gap-space-xs">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-outline flex items-center justify-center">
+<span class="font-label-numeral text-xs">3</span>
+</div>
+<span class="font-label-md text-label-md text-outline">Review</span>
+</div>
+</div>
+</div>
+<!-- Hero Live Preview Section -->
+<div class="px-margin pb-space-lg">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Live Card Preview</span>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[14px]">auto_awesome</span>
+<span class="font-label-md text-label-md font-semibold">Real-time sync</span>
+</div>
+</div>
+<!-- Live Event Card Showcase -->
+<div class="relative w-full rounded-2xl overflow-hidden shadow-xl transition-all duration-300 bg-secondary-container text-on-primary min-h-[280px] flex flex-col justify-between p-5" id="countdown-card-preview">
+<!-- Background Graphic Layer (Dynamic) -->
+<div class="absolute inset-0 z-0 bg-cover bg-center transition-all duration-300" data-alt="Sun-drenched tropical shoreline with golden sand and azure gentle waves at sunset, palm shadows swaying softly, minimal dreamy aesthetic bathed in warm coastal twilight blue and amber hues" id="preview-backdrop" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBa55bapbam9gIiEwSYtSyQ6VKsXntrG-8cDVYF9ISiuHBSVH8QL0rH7ve2shUWVqRzefsri5YFleAUwoXE9IugY5Nbig26h8ybyhuHeTLgVAxmURhBGMDuNKQlaaXgPxGX9sLH7472zhhzclnWBILqL5AEYZNGmTcbkipfitWa5lB3T7SQW43OHHz5bAtIsjKqDIWBnpXApFRCh-jHiBc9PmJoqzqIKxfkrofrgpxEzEw8spRPzbjA')">
+<div class="absolute inset-0 bg-gradient-to-t from-[#131b2e]/90 via-[#131b2e]/40 to-black/20"></div>
+</div>
+<!-- Card Top Pill Badges -->
+<div class="relative z-10 flex items-center justify-between">
+<div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface/20 backdrop-blur-md text-white">
+<span class="material-symbols-outlined text-[15px]">location_on</span>
+<span class="font-label-md text-label-md tracking-wide">Palolem Beach, South Goa</span>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface/20 backdrop-blur-md flex items-center justify-center text-white">
+<svg class="w-4 h-4" fill="currentColor" viewbox="0 0 24 24">
+<path d="M12 0L14.59 9.41L24 12L14.59 14.59L12 24L9.41 14.59L0 12L9.41 9.41L12 0Z"></path>
+</svg>
+</div>
+</div>
+<!-- Card Central Timer Counter -->
+<div class="relative z-10 my-auto py-3">
+<div class="grid grid-cols-4 gap-2 text-center text-white">
+<div class="flex flex-col items-center bg-white/10 backdrop-blur-md rounded-xl py-2 px-1">
+<span class="font-headline-lg text-headline-lg font-bold tracking-tight text-white leading-none">18</span>
+<span class="font-label-md text-[10px] uppercase tracking-widest text-white/80 mt-1">Days</span>
+</div>
+<div class="flex flex-col items-center bg-white/10 backdrop-blur-md rounded-xl py-2 px-1">
+<span class="font-headline-lg text-headline-lg font-bold tracking-tight text-white leading-none">14</span>
+<span class="font-label-md text-[10px] uppercase tracking-widest text-white/80 mt-1">Hours</span>
+</div>
+<div class="flex flex-col items-center bg-white/10 backdrop-blur-md rounded-xl py-2 px-1">
+<span class="font-headline-lg text-headline-lg font-bold tracking-tight text-white leading-none">22</span>
+<span class="font-label-md text-[10px] uppercase tracking-widest text-white/80 mt-1">Mins</span>
+</div>
+<div class="flex flex-col items-center bg-white/10 backdrop-blur-md rounded-xl py-2 px-1">
+<span class="font-headline-lg text-headline-lg font-bold tracking-tight text-white leading-none">46</span>
+<span class="font-label-md text-[10px] uppercase tracking-widest text-white/80 mt-1">Secs</span>
+</div>
+</div>
+</div>
+<!-- Card Bottom Title & Participants -->
+<div class="relative z-10 flex items-end justify-between pt-2">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-white/70 uppercase tracking-wider">Upcoming Milestone</span>
+<h2 class="font-headline-md text-headline-md font-bold text-white tracking-tight">Goa Beach Retreat</h2>
+</div>
+<div class="flex -space-x-2">
+<div class="w-7 h-7 rounded-full bg-primary-container text-on-primary font-bold text-[10px] flex items-center justify-center ring-2 ring-white">SK</div>
+<div class="w-7 h-7 rounded-full bg-secondary-container text-on-secondary font-bold text-[10px] flex items-center justify-center ring-2 ring-white">AM</div>
+<div class="w-7 h-7 rounded-full bg-surface-container-high text-on-surface font-bold text-[10px] flex items-center justify-center ring-2 ring-white">+4</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Style Options Flow -->
+<div class="flex flex-col gap-space-xl px-margin">
+<!-- 1. Preset Soft Colour Swatches -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">1. Pastel Tones</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Clean &amp; Minimal</span>
+</div>
+<div class="grid grid-cols-6 gap-space-sm pt-1" id="swatch-group">
+<!-- Soft Blue (Selected) -->
+<button class="swatch-item flex flex-col items-center gap-1 group focus:outline-none" data-color="#6C8CFF" data-name="Soft Blue" type="button">
+<div class="w-12 h-12 rounded-2xl bg-secondary-container flex items-center justify-center text-white shadow-md transition-transform active:scale-95 ring-2 ring-offset-2 ring-primary">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-[11px] text-on-surface font-semibold truncate w-full text-center">Blue</span>
+</button>
+<!-- Sunset Ochre -->
+<button class="swatch-item flex flex-col items-center gap-1 group focus:outline-none" data-color="#f59e0b" data-name="Sunset Ochre" type="button">
+<div class="w-12 h-12 rounded-2xl bg-[#f59e0b] flex items-center justify-center text-white shadow-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px] hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-[11px] text-on-surface-variant group-hover:text-on-surface truncate w-full text-center">Ochre</span>
+</button>
+<!-- Coastal Cyan -->
+<button class="swatch-item flex flex-col items-center gap-1 group focus:outline-none" data-color="#06b6d4" data-name="Coastal Cyan" type="button">
+<div class="w-12 h-12 rounded-2xl bg-[#06b6d4] flex items-center justify-center text-white shadow-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px] hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-[11px] text-on-surface-variant group-hover:text-on-surface truncate w-full text-center">Cyan</span>
+</button>
+<!-- Midnight Slate -->
+<button class="swatch-item flex flex-col items-center gap-1 group focus:outline-none" data-color="#283044" data-name="Midnight Slate" type="button">
+<div class="w-12 h-12 rounded-2xl bg-inverse-surface flex items-center justify-center text-white shadow-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px] hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-[11px] text-on-surface-variant group-hover:text-on-surface truncate w-full text-center">Slate</span>
+</button>
+<!-- Lavender Bloom -->
+<button class="swatch-item flex flex-col items-center gap-1 group focus:outline-none" data-color="#8b5cf6" data-name="Lavender Bloom" type="button">
+<div class="w-12 h-12 rounded-2xl bg-[#8b5cf6] flex items-center justify-center text-white shadow-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px] hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-[11px] text-on-surface-variant group-hover:text-on-surface truncate w-full text-center">Bloom</span>
+</button>
+<!-- Rose Clay -->
+<button class="swatch-item flex flex-col items-center gap-1 group focus:outline-none" data-color="#f43f5e" data-name="Rose Clay" type="button">
+<div class="w-12 h-12 rounded-2xl bg-[#f43f5e] flex items-center justify-center text-white shadow-sm transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[20px] hidden" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<span class="font-label-md text-[11px] text-on-surface-variant group-hover:text-on-surface truncate w-full text-center">Rose</span>
+</button>
+</div>
+</section>
+<!-- 2. Curated Gradients -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">2. Luminescent Gradients</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Fluid blends</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<!-- Sunset Haze -->
+<button class="gradient-choice flex items-center gap-3 p-2.5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all text-left group" type="button">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#f97316] via-[#ec4899] to-[#6366f1] shadow-inner shrink-0"></div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">Sunset Haze</span>
+<span class="font-label-md text-[11px] text-on-surface-variant">Amber &amp; Pink</span>
+</div>
+</button>
+<!-- Ocean Deep -->
+<button class="gradient-choice flex items-center gap-3 p-2.5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all text-left group" type="button">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0284c7] via-[#2563eb] to-[#1e1b4b] shadow-inner shrink-0"></div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">Ocean Deep</span>
+<span class="font-label-md text-[11px] text-on-surface-variant">Cobalt &amp; Abyss</span>
+</div>
+</button>
+<!-- Aurora Dawn -->
+<button class="gradient-choice flex items-center gap-3 p-2.5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all text-left group" type="button">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#10b981] via-[#06b6d4] to-[#6366f1] shadow-inner shrink-0"></div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">Aurora Dawn</span>
+<span class="font-label-md text-[11px] text-on-surface-variant">Mint &amp; Indigo</span>
+</div>
+</button>
+<!-- Twilight Velvet -->
+<button class="gradient-choice flex items-center gap-3 p-2.5 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all text-left group" type="button">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8b5cf6] via-[#4338ca] to-[#1e1b4b] shadow-inner shrink-0"></div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-lg text-label-lg text-on-surface truncate">Twilight Velvet</span>
+<span class="font-label-md text-[11px] text-on-surface-variant">Violet Aura</span>
+</div>
+</button>
+</div>
+</section>
+<!-- 3. GIF Search via GIPHY -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<h3 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">3. Animated Mood</h3>
+<span class="px-2 py-0.5 rounded-full bg-surface-container text-primary text-[10px] font-bold tracking-wider">GIFS</span>
+</div>
+<div class="flex items-center gap-1.5 bg-surface-container-low px-2 py-1 rounded-full text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">motion_photos_off</span>
+<span class="font-label-md text-[10px]">Static preview</span>
+</div>
+</div>
+<!-- Search Input Container -->
+<div class="relative w-full">
+<div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-on-surface-variant">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="w-full h-12 pl-10 pr-10 rounded-xl bg-surface-container-low text-on-surface font-body-md text-body-md placeholder:text-outline focus:outline-none focus:bg-surface-container transition-all" placeholder="Search aesthetic GIFs via GIPHY" type="text"/>
+<div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+<span class="font-label-md text-[10px] uppercase font-bold text-on-surface-variant bg-surface-container-highest px-1.5 py-0.5 rounded">GIPHY</span>
+</div>
+</div>
+<!-- Trending Filter Chips -->
+<div class="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar">
+<button class="px-3.5 py-1.5 rounded-full bg-primary text-on-primary font-label-md text-label-md whitespace-nowrap shadow-sm" type="button">
+          #beach
+        </button>
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors" type="button">
+          #travel
+        </button>
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors" type="button">
+          #party
+        </button>
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors" type="button">
+          #excitement
+        </button>
+<button class="px-3.5 py-1.5 rounded-full bg-surface-container-high text-on-surface-variant hover:text-on-surface font-label-md text-label-md whitespace-nowrap transition-colors" type="button">
+          #sunset
+        </button>
+</div>
+<!-- GIF Grid (Simulated Responsive Cards) -->
+<div class="grid grid-cols-3 gap-space-sm pt-1">
+<div class="group relative aspect-video rounded-xl overflow-hidden bg-surface-container cursor-pointer shadow-sm active:scale-95 transition-transform">
+<img class="w-full h-full object-cover" data-alt="Cinematic drone shot of turquoise ocean waves gently lapping against golden sand in Goa during golden hour, soft slow motion motion blur" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcfTtkevTZZdN7s0CRetP6sp2O42WTlFXrmAJCbFQ0CdfqiR7k2n1BYSRDQU0w2MhdzjPxZxCtE9Yjhkrl9PGl4Bqkpk0NdHpsbY4gfLKTa-27hNnIOP_LtZvcngEQmX1aV6CoO5O0sz3CcBpkzqoH1ULYSp7Sc7N6638bZQ0hpv6U1HibrDPhpap9X_z01Q-z6-2tyAETCdt7s8I2XZqV4dfuEb8FjUz0zzJm8mnaGEI0RbHnL0B3"/>
+<div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[20px]">check_circle</span>
+</div>
+<span class="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white px-1 rounded font-label-md">GIF</span>
+</div>
+<div class="group relative aspect-video rounded-xl overflow-hidden bg-surface-container cursor-pointer shadow-sm active:scale-95 transition-transform">
+<img class="w-full h-full object-cover" data-alt="Tropical palm trees gently dancing in the warm coastal evening breeze against an amber sunset sky, cinematic vacation aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTktfXqLG-aVxh8w6OSr4RWz0aa4a3lVBAkCy7JG8dMbARTsqDi7DGIwwMrr1DFORiYhJqHwfs1iL6Fh25zHMRyH49zCFnUDB3SL0DFGPzcuYr3tAEOtiwmgkSgHCH-DtEFVXh_trzP2z1fv98ecs5XQtdCNzRxXsHZ3m9u28k0e145txwG-TkCUPRl9b9f5z3SSb4ANd2HJamD8zf7pT-3s98-xEtDtXXMROiSVaj2SQ6EA-7qBE8"/>
+<div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[20px]">check_circle</span>
+</div>
+<span class="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white px-1 rounded font-label-md">GIF</span>
+</div>
+<div class="group relative aspect-video rounded-xl overflow-hidden bg-surface-container cursor-pointer shadow-sm active:scale-95 transition-transform">
+<img class="w-full h-full object-cover" data-alt="Friends laughing and clinking cold cocktail glasses over a seaside bonfire under twilight sky with warm string lights glowing" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBWlykakJ6hE427Mpnp7YxL3cpDQgfbBwYxQ5tDBvucb86JCIvpJp6FdD0ylzI3rlw6NLNNI5nKSmpfBRJmOoMndd68lR-H5KR6hUPrzGyOvPIOi7FmdMAPsXmUkmVnTuA7N3E6EvjQN8xAOuzlDKaj6Yn_-c0auGikwJOaXzf_dM-YfY041bLicg1GCmR9xXCvEUEd-oFkHudYmKW30KFigARmZDx30L60pEP6Qx_dTGyH8GEebrB4"/>
+<div class="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[20px]">check_circle</span>
+</div>
+<span class="absolute bottom-1 right-1 text-[9px] bg-black/60 text-white px-1 rounded font-label-md">GIF</span>
+</div>
+</div>
+<div class="flex items-center justify-center gap-1.5 pt-1 text-outline">
+<span class="material-symbols-outlined text-[13px]">bolt</span>
+<span class="font-label-md text-[11px]">Powered by GIPHY API</span>
+</div>
+</section>
+<!-- 4. Upload Static Image Option -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">4. Custom Memories</h3>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Your photos</span>
+</div>
+<div class="relative w-full p-4 rounded-2xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-all flex items-center gap-4 cursor-pointer active:scale-[0.99]">
+<div class="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[28px]">add_photo_alternate</span>
+</div>
+<div class="flex flex-col min-w-0 flex-1">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Upload photo from library</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Supports JPG, PNG • Portrait crop optimized</span>
+</div>
+<div class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[20px]">file_upload</span>
+</div>
+</div>
+</section>
+</div>
+<!-- Bottom Persistent Navigation Deck -->
+<div class="fixed bottom-0 left-0 w-full z-40 bg-surface/90 backdrop-blur-xl shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-margin py-3 pb-safe">
+<div class="flex items-center gap-3">
+<!-- Back Trigger -->
+<button class="h-[52px] px-6 rounded-full bg-surface-container-high text-on-surface font-label-lg text-label-lg flex items-center justify-center gap-1.5 transition-colors active:scale-95" onclick="history.back()" type="button">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span>
+<span>Back</span>
+</button>
+<!-- Primary Next Button -->
+<button class="flex-1 h-[52px] rounded-full bg-primary text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]" type="button">
+<span>Next: Review</span>
+<span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  // Interactive Palette Swatch Selection Behavior
+  document.querySelectorAll('.swatch-item').forEach(button => {
+    button.addEventListener('click', () => {
+      // Clear previous active checkmarks and rings
+      document.querySelectorAll('.swatch-item').forEach(b => {
+        const icon = b.querySelector('.material-symbols-outlined');
+        const box = b.querySelector('div');
+        if (icon) icon.classList.add('hidden');
+        if (box) {
+          box.classList.remove('ring-2', 'ring-offset-2', 'ring-primary', 'shadow-md');
+          box.classList.add('shadow-sm');
+        }
+      });
+
+      // Activate current
+      const activeIcon = button.querySelector('.material-symbols-outlined');
+      const activeBox = button.querySelector('div');
+      if (activeIcon) activeIcon.classList.remove('hidden');
+      if (activeBox) {
+        activeBox.classList.add('ring-2', 'ring-offset-2', 'ring-primary', 'shadow-md');
+      }
+
+      // Soft dynamic accenting on the live preview
+      const previewBackdrop = document.getElementById('preview-backdrop');
+      const chosenColor = button.getAttribute('data-color');
+      if (previewBackdrop && chosenColor) {
+        previewBackdrop.style.backgroundColor = chosenColor;
+      }
+    });
+  });
+
+  // Gradient Tap Preview Behavior
+  document.querySelectorAll('.gradient-choice').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.gradient-choice').forEach(b => {
+        b.classList.remove('bg-surface-container');
+        b.classList.add('bg-surface-container-lowest');
+      });
+      button.classList.remove('bg-surface-container-lowest');
+      button.classList.add('bg-surface-container');
+    });
+  });
+</script></main></body></html>
