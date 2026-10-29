@@ -124,7 +124,7 @@ force-stopped application as proof that ordinary background delivery is broken.
 | Shared room photos | Staging media configuration is enabled; live upload/moderation/storage authorization checks remain deferred (see checkpoint below) | Upload, SafeSearch outcomes, authorized viewing, removed-member denial, offline fallback and cleanup; see [photo setup](android-room-photos-setup.md) |
 | Account deletion | Staging permission, monitoring and feature flag enabled; real deletion/retention tests remain deferred | Disposable-account success/failure/retry, Firebase cleanup and local cache/widget/invite/token cleanup; see [profile/settings setup](../frontend/docs/profile-settings.md) |
 | Android App Links | Owned HTTPS invite domain, assetlinks, signing fingerprints and configured host | Cold/warm link delivery, sign-in/consent continuation and browser fallback; room-code success does not cover App Links |
-| Operator moderation | Configure restricted reviewer identity/access and enable the review module | Authorized review/resolve, unauthorized rejection, holds/appeals and audit/retention behavior; report submission alone does not prove review handling |
+| Operator moderation | Restricted reviewer identity and module enabled; read-only access verified on 2026-10-29; decisions/alerts remain deferred | Authorized review/resolve, unauthorized rejection, holds/appeals and audit/retention behavior; report submission alone does not prove review handling |
 | Closed testing / release | Final signed candidate, broader device/Android coverage and required Play Console setup | Execute the [closed-testing plan](android-closed-testing.md), full physical smoke matrix and submission gates; do not publish from this handoff |
 
 Push delivery and its authenticated minute scheduler have been enabled and real
@@ -189,6 +189,29 @@ this document is a dated snapshot, not an infrastructure inventory API.
 - Operator moderation review remains disabled and is the next setup area. Verified
   Android App Links still need an owned domain. This is staging configuration, not
   approval for production publication.
+
+## Moderation enablement checkpoint — 2026-10-29
+
+- Enabling the module exposed a configuration/filter-chain Spring bean-name
+  collision. Source `4f756ca` fixes it without enabling bean overriding and adds
+  a component-scanned startup regression check.
+- Backend clean verification passed: 658 tests, zero failures/errors/skips.
+  Staged secret scan passed. Cached-database container scanning found zero
+  unignored HIGH/CRITICAL findings under the existing scoped exceptions.
+- Migration job completed; configuration-only enablement and patched image are
+  live on ready revision `hyped-staging-api-00010-rhb`. Readiness returned 200;
+  push, media and account deletion remain enabled.
+- A dedicated reviewer OIDC token, generated only in memory, read the queue with
+  HTTP 200 and `no-store`. Anonymous, invalid-token and valid Google token with
+  a wrong audience all returned 401. No report details were written to evidence
+  and no decisions were submitted.
+- Real review decisions, cleanup/retention alerts, appeal handling and media
+  operations remain deferred. Earlier disabled-state checkpoints above describe
+  history, not the current flag. See the
+  [reviewer setup notes](reporting-blocking-and-moderation.md#staging-reviewer-setup--2026-10-29).
+- Next infrastructure work: independent encrypted daily backups, seven-day
+  retention and an isolated restore/deletion-journal exercise. The deployment
+  document defines these requirements; no backup job or restore pass is claimed.
 
 ## How to resume and record results
 

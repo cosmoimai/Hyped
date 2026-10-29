@@ -304,3 +304,15 @@ No deletion request was submitted by setup verification. Actual deletion,
 retention/retry/media/key cleanup, and alert email receipt remain on the deferred
 test checklist. Use dedicated disposable accounts: Firebase identity deletion
 still affects the shared Firebase project. Operator moderation remains disabled.
+
+## Moderation configuration checkpoint — 2026-10-29
+
+Staging revision `hyped-staging-api-00010-rhb` uses backend source `4f756ca`.
+Moderation review is enabled with a dedicated allowlisted Google service-account
+identity and exact HTTPS audience; no downloaded reviewer key is used. Readiness
+and authorized read-only review access returned 200. Anonymous, invalid-token and
+wrong-audience requests returned 401. Push, media and deletion remain enabled.
+The enablement uncovered and fixed a Spring bean-name collision; all 658 backend
+tests passed. No moderation decisions were performed. See the
+[handoff checkpoint](staging-test-handoff-2026-10-26.md#moderation-enablement-checkpoint--2026-10-29)
+for remaining tests and backup/restore work. Nothing was published to Play.
