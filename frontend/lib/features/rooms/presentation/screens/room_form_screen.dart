@@ -79,6 +79,14 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
   Widget build(BuildContext context) {
     final controller = ref.watch(roomDetailControllerProvider(widget.roomId));
     final room = controller.room;
+    if (model == null && room != null && !controller.readOnly && room.canEdit) {
+      model = RoomFormModel.fromRoom(room);
+    }
+    // Returning from Android's picker refreshes the room controller. Retain the
+    // selection while that refresh temporarily replaces the form with loading UI.
+    if (model case final editingModel?) {
+      ref.watch(roomPhotoSelectionProvider(editingModel));
+    }
     if (controller.loading && room == null) {
       return Scaffold(
         appBar: RoomAppBar(
@@ -125,7 +133,6 @@ class _EditRoomScreenState extends ConsumerState<EditRoomScreen> {
         ),
       );
     }
-    model ??= RoomFormModel.fromRoom(room);
     return RoomFormScaffold(
       title: 'Edit room',
       backLocation: '/rooms/${widget.roomId}',

@@ -67,3 +67,18 @@ Unattached uploads are eligible for cleanup after 24 hours. Permanent room delet
 7. Test offline: cached room text remains readable with a color fallback; selecting/saving an upload cannot bypass server authorization.
 8. Delete a test room/account through the normal lifecycle, run protected cleanup, and confirm private objects disappear. Test failed R2 deletion and the durable retry before production.
 9. Do not publish until R2, Vision, cleanup scheduling, privacy disclosures and end-to-end cloud delivery have been checked with the real configured services.
+
+## Android edit-picker return regression — 2026-10-29
+
+Returning from the system photo picker triggers the app's normal room refresh.
+The edit route retains its photo-selection controller while room loading
+briefly replaces the form. This prevents discarding the chosen photo before
+upload begins. Authentication/session checks and cancellation on route disposal
+remain in place.
+
+The regression test delays the picker result, invalidates the room-detail
+provider, completes selection during the reload, then checks that upload occurs
+and the refreshed form's save draft contains the new media reference. It fails
+against the previous implementation. On a device, replace a room photo, wait
+for “Photo ready”, continue to Review and save; verify Home/detail and reopen.
+This check does not establish external object cleanup or moderation outcomes.

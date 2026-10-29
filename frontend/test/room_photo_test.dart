@@ -15,11 +15,16 @@ import 'package:hyped/features/media/presentation/room_photo_providers.dart';
 import 'package:hyped/features/rooms/domain/room.dart';
 import 'package:hyped/features/rooms/presentation/screens/room_form_screen.dart';
 import 'helpers/fakes.dart';
+import 'room_api_test.dart' as fixtures;
+import 'package:hyped/features/rooms/data/room_repository.dart';
+import 'package:hyped/features/rooms/presentation/controllers/room_providers.dart';
 
 const asset = '019b1f2b-d5e2-7d46-9165-a37ed59d6080';
 final photo = PickedRoomPhoto(Uint8List.fromList([255, 216, 255, 217]), 16, 12);
 
 class MockPhotoAuthRepository extends Mock implements AuthRepository {}
+
+class MockPhotoRoomRepository extends Mock implements RoomRepository {}
 
 class Picker extends RoomPhotoPicker {
   Future<PickedRoomPhoto?> Function() result = () async => photo;
@@ -317,6 +322,67 @@ void main() {
       scopeModel.dispose();
     },
   );
+  testWidgets(
+    'edit retains photo selection across picker resume room refresh',
+    (tester) async {
+      final repository = MockPhotoRoomRepository();
+      final room = Room.fromJson(fixtures.roomJson());
+      final refresh = Completer<Room>();
+      var reads = 0;
+      when(
+        () => repository.getRoom(room.id),
+      ).thenAnswer((_) async => ++reads == 1 ? room : await refresh.future);
+      final picked = Completer<PickedRoomPhoto?>();
+      picker.result = () => picked.future;
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            roomRepositoryProvider.overrideWithValue(repository),
+            authControllerProvider.overrideWith(
+              (ref) => AuthController(MockPhotoAuthRepository()),
+            ),
+            roomPhotoApiProvider.overrideWithValue(api),
+            roomPhotoPickerProvider.overrideWithValue(picker),
+            tokenStoreProvider.overrideWithValue(store),
+          ],
+          child: MaterialApp(home: EditRoomScreen(roomId: room.id)),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final form = tester.widget<RoomFormScaffold>(
+        find.byType(RoomFormScaffold),
+      );
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(EditRoomScreen)),
+      );
+      final selection = container.read(roomPhotoSelectionProvider(form.model));
+      final operation = selection.pick();
+      await tester.pump();
+      container.invalidate(roomDetailControllerProvider(room.id));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(RoomFormScaffold), findsNothing);
+      picked.complete(photo);
+      await operation;
+      expect(api.uploads, 1);
+      expect(form.model.draft.theme.mediaAssetId, asset);
+      expect(selection.ready, isTrue);
+      refresh.complete(room);
+      await tester.pumpAndSettle();
+      expect(find.byType(RoomFormScaffold), findsOneWidget);
+      expect(
+        tester
+            .widget<RoomFormScaffold>(find.byType(RoomFormScaffold))
+            .model
+            .draft
+            .theme
+            .mediaAssetId,
+        asset,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
   test('photo model survives room JSON and stores no signed delivery URL', () {
     final theme = RoomTheme.fromJson({
       'kind': 'UPLOADED_IMAGE',
